@@ -1,0 +1,58 @@
+[project]
+name = "herald"
+version = "0.1.0"
+description = "Hazard Estimation via Real-time Analysis of Logit Distributions: predicting catastrophic failures in KV-cache compression"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "Joaquin Campo", email = "jcamponario@gmail.com" }]
+dependencies = [
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.13.1",
+    "torch>=2.10.0",
+]
+
+[project.scripts]
+herald = "herald:main"
+
+[dependency-groups]
+dev = [
+  "mypy>=1.0",
+  "poethepoet",
+  "pre-commit",
+  "ruff>=0.8",
+]
+test = [
+  "pytest>=8.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.8.15,<0.9.0"]
+build-backend = "uv_build"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[[tool.mypy.overrides]]
+module = [
+  "kvpress.*",
+  "datasets.*",
+  "transformers.*",
+  "xgboost.*",
+  "sklearn.*",
+]
+ignore_missing_imports = true
+
+# --- Task runner ---
+[tool.poe]
+include = "poe_tasks.toml"
+
+[tool.pytest]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]

@@ -1,0 +1,53 @@
+[tool.poe.tasks]
+setup = ["_sync", "_precommit"]
+init = ["_install-dev-dependencies", "_install-test-dependencies"]
+
+[tool.poe.tasks.hi]
+cmd = "echo HERALD: Hazard Estimation via Real-time Analysis of Logit Distributions"
+help = "Print project info"
+
+[tool.poe.tasks.fmt]
+cmd = "uv run ruff format src/ tests/"
+help = "Format code"
+
+[tool.poe.tasks.lint]
+cmd = "uv run ruff check src/ tests/"
+help = "Lint code"
+
+[tool.poe.tasks.typecheck]
+cmd = "uv run mypy src/"
+help = "Type check"
+
+[tool.poe.tasks.test]
+cmd = "uv run pytest tests/ -x -q"
+help = "Run tests"
+
+[tool.poe.tasks.check]
+sequence = ["fmt", "lint", "typecheck", "test"]
+help = "Run all checks (fmt + lint + typecheck + test)"
+
+[tool.poe.tasks.sweep]
+cmd = "uv run herald sweep"
+help = "Run full compression sweep"
+
+[tool.poe.tasks.train]
+cmd = "uv run herald train --results-dir results --output-dir models"
+help = "Train hazard predictor"
+
+[tool.poe.tasks.figures]
+cmd = "uv run python scripts/generate_figures.py"
+help = "Generate paper figures"
+
+# --- Setup commands ---
+
+[tool.poe.tasks._install-dev-dependencies]
+cmd = "uv add --dev ruff mypy poethepoet pre-commit"
+
+[tool.poe.tasks._install-test-dependencies]
+cmd = "uv add --group test pytest"
+
+[tool.poe.tasks._precommit]
+cmd = "uv run pre-commit install"
+
+[tool.poe.tasks._sync]
+cmd = "uv sync --all-packages --all-groups"
