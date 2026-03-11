@@ -183,11 +183,17 @@ def run_single(
     catastrophes = detect_all(
         generated_text, generated_ids, stop_reason, prompt_data["ground_truth"]
     )
-    catastrophe_onsets = detect_catastrophe_onsets(generated_ids, stop_reason, catastrophes)
+    catastrophe_onsets = detect_catastrophe_onsets(
+        generated_ids, stop_reason, catastrophes
+    )
 
     predicted = parse_gsm8k_answer(generated_text)
     try:
-        correct = float(predicted) == float(prompt_data["ground_truth"]) if predicted else None
+        correct = (
+            float(predicted) == float(prompt_data["ground_truth"])
+            if predicted
+            else None
+        )
     except ValueError:
         correct = None
 
@@ -269,12 +275,16 @@ def run_prompts(
     results = _load_checkpoint(config)
     completed_ids = {r.prompt_id for r in results}
     if completed_ids:
-        logger.info(f"Resuming from checkpoint: {len(completed_ids)}/{len(prompts)} prompts done")
+        logger.info(
+            f"Resuming from checkpoint: {len(completed_ids)}/{len(prompts)} prompts done"
+        )
 
     n_failed = 0
     for i, prompt_data in enumerate(prompts):
         if prompt_data["id"] in completed_ids:
-            logger.info(f"[{i + 1}/{len(prompts)}] {prompt_data['id']} — skipped (checkpoint)")
+            logger.info(
+                f"[{i + 1}/{len(prompts)}] {prompt_data['id']} — skipped (checkpoint)"
+            )
             continue
 
         logger.info(f"[{i + 1}/{len(prompts)}] {prompt_data['id']}")
@@ -306,7 +316,9 @@ def run_prompts(
             torch.cuda.empty_cache()
 
     if n_failed > 0:
-        logger.warning(f"{n_failed}/{len(prompts)} prompts failed and were excluded from results")
+        logger.warning(
+            f"{n_failed}/{len(prompts)} prompts failed and were excluded from results"
+        )
 
     return results
 
@@ -331,7 +343,9 @@ def print_summary(results: list[RunResult], config: ExperimentConfig) -> None:
 
 def run_experiment(config: ExperimentConfig) -> list[RunResult]:
     """Run the full experiment: load model, iterate prompts, collect results."""
-    logger.info(f"Experiment: {config.press_name} @ compression_ratio={config.compression_ratio}")
+    logger.info(
+        f"Experiment: {config.press_name} @ compression_ratio={config.compression_ratio}"
+    )
 
     model, tokenizer, device = load_model(config)
     press = get_press(config.press_name, config.compression_ratio)
@@ -441,13 +455,17 @@ def run_sweep(
         if not pending:
             continue
 
-        logger.info(f"Loading model for {group_name} attention group ({len(pending)} configs)...")
+        logger.info(
+            f"Loading model for {group_name} attention group ({len(pending)} configs)..."
+        )
         model, tokenizer, device = load_model(pending[0])
 
         for config in pending:
             done += 1
             logger.info(f"\n{'#' * 60}")
-            logger.info(f"SWEEP [{done}/{total}] {config.press_name} @ {config.compression_ratio}")
+            logger.info(
+                f"SWEEP [{done}/{total}] {config.press_name} @ {config.compression_ratio}"
+            )
             logger.info(f"{'#' * 60}")
 
             press = get_press(config.press_name, config.compression_ratio)
