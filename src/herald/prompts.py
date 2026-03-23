@@ -1,9 +1,4 @@
-"""GSM8K prompt loading and formatting.
-
-Returns chat messages (list[dict]) rather than raw strings — the caller applies
-the model's chat template via tokenizer.apply_chat_template(). This ensures
-instruct models receive the format they were trained on.
-"""
+"""GSM8K prompt loading and formatting."""
 
 from datasets import load_dataset
 from loguru import logger
@@ -44,7 +39,8 @@ def format_chat(question: str) -> ChatMessages:
     """Format a GSM8K question as chat messages for instruct models.
 
     Returns a list of message dicts ready for tokenizer.apply_chat_template().
-    Zero-shot — instruct models are already trained for step-by-step reasoning.
+    Zero-shot — instruct models are already trained for
+    step-by-step reasoning.
     """
     return [
         {"role": "system", "content": SYSTEM_PROMPT},

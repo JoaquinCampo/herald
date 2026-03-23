@@ -46,7 +46,8 @@ def extract_signals(
     log_probs = F.log_softmax(logits_f, dim=-1)
     probs = log_probs.exp()
 
-    # Top-20 in one shot — reuse for top-5 logprobs, top-1/5 prob, tail mass, top-10 ids
+    # Top-20 in one shot — reuse for top-5 logprobs,
+    # top-1/5 prob, tail mass, top-10 ids
     k20 = min(20, log_probs.shape[-1])
     top20_lp, top20_idx = torch.topk(log_probs, k=k20)
     top20_probs = probs[top20_idx]
@@ -77,11 +78,12 @@ def extract_signals(
     else:
         h_alts = 0.0
 
-    # Temporal features
-    delta_h: float | None = None
-    kl_div: float | None = None
+    # Temporal features (NaN for first token — XGBoost native)
+    nan = float("nan")
+    delta_h = nan
+    kl_div = nan
     top10_ids = frozenset(top20_idx[:10].tolist())
-    top10_jaccard: float | None = None
+    top10_jaccard = nan
 
     if prev is not None:
         delta_h = round(entropy - prev.entropy, 4)

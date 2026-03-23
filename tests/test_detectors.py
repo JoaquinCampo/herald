@@ -1,7 +1,5 @@
 """Tests for herald.detectors — catastrophe detection and answer parsing."""
 
-import pytest
-
 from herald.detectors import (
     detect_all,
     detect_answer_failure,
@@ -11,7 +9,6 @@ from herald.detectors import (
     detect_non_termination,
     parse_gsm8k_answer,
 )
-
 
 # ---------------------------------------------------------------------------
 # detect_non_termination
@@ -25,8 +22,11 @@ class TestDetectNonTermination:
     def test_eos(self):
         assert detect_non_termination("eos") is False
 
+    def test_timeout(self):
+        assert detect_non_termination("timeout") is True
+
     def test_other_reason(self):
-        assert detect_non_termination("timeout") is False
+        assert detect_non_termination("unknown") is False
 
 
 # ---------------------------------------------------------------------------
@@ -62,7 +62,9 @@ class TestDetectLooping:
         pattern = [1, 2, 3, 4, 5]
         token_ids = pattern * 4
         assert detect_looping(token_ids, window_size=5, min_repeats=4) is True
-        assert detect_looping(token_ids, window_size=5, min_repeats=5) is False
+        assert (
+            detect_looping(token_ids, window_size=5, min_repeats=5) is False
+        )
 
     def test_empty_sequence(self):
         assert detect_looping([]) is False
@@ -123,7 +125,9 @@ class TestDetectCatastropheOnsets:
     def test_non_termination_onset(self):
         token_ids = list(range(100))
         catastrophes = ["non_termination"]
-        onsets = detect_catastrophe_onsets(token_ids, "max_tokens", catastrophes)
+        onsets = detect_catastrophe_onsets(
+            token_ids, "max_tokens", catastrophes
+        )
         assert "non_termination" in onsets
         assert onsets["non_termination"] == 99  # last token index
 
@@ -141,7 +145,9 @@ class TestDetectCatastropheOnsets:
         pattern = list(range(20))
         token_ids = pattern * 3
         catastrophes = ["looping", "non_termination", "wrong_answer"]
-        onsets = detect_catastrophe_onsets(token_ids, "max_tokens", catastrophes)
+        onsets = detect_catastrophe_onsets(
+            token_ids, "max_tokens", catastrophes
+        )
         assert "looping" in onsets
         assert "non_termination" in onsets
         assert "wrong_answer" not in onsets

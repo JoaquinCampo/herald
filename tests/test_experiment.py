@@ -1,23 +1,21 @@
 """Tests for herald.experiment — pure functions (no GPU required)."""
 
-import json
 from pathlib import Path
 
 import pytest
 
-from herald.config import ExperimentConfig, RunResult, TokenSignals
+from herald.config import ExperimentConfig, RunResult
 from herald.experiment import (
+    SWEEP_METHODS,
+    SWEEP_RATIOS,
+    _append_checkpoint,
     _checkpoint_path,
     _clear_checkpoint,
     _load_checkpoint,
-    _append_checkpoint,
     build_sweep_configs,
     result_exists,
     summarize,
-    SWEEP_METHODS,
-    SWEEP_RATIOS,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -73,14 +71,20 @@ class TestSummarize:
 
     def test_catastrophe_counting(self):
         results = [
-            _make_result("p0", correct=False, catastrophes=["looping", "non_termination"]),
+            _make_result(
+                "p0",
+                correct=False,
+                catastrophes=["looping", "non_termination"],
+            ),
             _make_result("p1", correct=True, catastrophes=[]),
             _make_result("p2", correct=False, catastrophes=["looping"]),
         ]
         s = summarize(results)
         assert s["total"] == 3
         assert s["correct"] == 1
-        assert s["catastrophic_failure_rate"] == pytest.approx(2 / 3, rel=0.01)
+        assert s["catastrophic_failure_rate"] == pytest.approx(
+            2 / 3, rel=0.01
+        )
         assert s["catastrophe_counts"]["looping"] == 2
         assert s["catastrophe_counts"]["non_termination"] == 1
 
@@ -113,7 +117,9 @@ class TestCheckpointPath:
             output_dir=Path("/tmp/results"),
         )
         path = _checkpoint_path(cfg)
-        assert path == Path("/tmp/results/snapkv/MyModel_0.500_100p.ckpt.jsonl")
+        assert path == Path(
+            "/tmp/results/snapkv/MyModel_0.500_100p.ckpt.jsonl"
+        )
 
     def test_different_configs_different_paths(self):
         cfg1 = ExperimentConfig(compression_ratio=0.5)
@@ -163,7 +169,7 @@ class TestCheckpointRoundTrip:
 class TestBuildSweepConfigs:
     def test_total_configs(self):
         configs = build_sweep_configs()
-        # ratio=0.0 gives 1 config (press="none"), each other ratio gives len(SWEEP_METHODS)
+        # ratio=0.0 → 1 config ("none"); others → len(SWEEP_METHODS) each
         nonzero_ratios = [r for r in SWEEP_RATIOS if r > 0]
         expected = 1 + len(nonzero_ratios) * len(SWEEP_METHODS)
         assert len(configs) == expected

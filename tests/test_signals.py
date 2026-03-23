@@ -78,11 +78,11 @@ class TestReturnStructure:
 
 
 class TestFirstToken:
-    def test_temporal_features_are_none(self):
+    def test_temporal_features_are_nan(self):
         signals, _ = extract_signals(_uniform_logits())
-        assert signals.delta_h is None
-        assert signals.kl_div is None
-        assert signals.top10_jaccard is None
+        assert math.isnan(signals.delta_h)
+        assert math.isnan(signals.kl_div)
+        assert math.isnan(signals.top10_jaccard)
         assert signals.delta_h_valid is False
 
     def test_non_temporal_features_are_populated(self):
@@ -230,7 +230,7 @@ class TestTemporalFeatures:
     def test_delta_h_computed(self):
         _, state1 = extract_signals(_uniform_logits())
         signals2, _ = extract_signals(_peaked_logits(), prev=state1)
-        assert signals2.delta_h is not None
+        assert not math.isnan(signals2.delta_h)
         assert signals2.delta_h_valid is True
         # Peaked has lower entropy → delta_h should be negative
         assert signals2.delta_h < 0
@@ -244,7 +244,7 @@ class TestTemporalFeatures:
     def test_kl_div_nonnegative(self):
         _, state1 = extract_signals(_uniform_logits())
         signals2, _ = extract_signals(_peaked_logits(), prev=state1)
-        assert signals2.kl_div is not None
+        assert not math.isnan(signals2.kl_div)
         assert signals2.kl_div >= 0
 
     def test_kl_div_zero_same_distribution(self):
@@ -256,7 +256,7 @@ class TestTemporalFeatures:
     def test_kl_div_large_for_different_distributions(self):
         _, state1 = extract_signals(_uniform_logits())
         signals2, _ = extract_signals(_peaked_logits(peak=50.0), prev=state1)
-        assert signals2.kl_div is not None
+        assert not math.isnan(signals2.kl_div)
         assert signals2.kl_div > 1.0
 
     def test_jaccard_one_for_identical(self):
@@ -273,13 +273,13 @@ class TestTemporalFeatures:
         logits_b[50:60] = 20.0  # tokens 50-59 dominate
         _, state_a = extract_signals(logits_a)
         signals_b, _ = extract_signals(logits_b, prev=state_a)
-        assert signals_b.top10_jaccard is not None
+        assert not math.isnan(signals_b.top10_jaccard)
         assert signals_b.top10_jaccard < 0.1
 
     def test_jaccard_between_zero_and_one(self):
         _, state1 = extract_signals(_uniform_logits())
         signals2, _ = extract_signals(_peaked_logits(), prev=state1)
-        assert signals2.top10_jaccard is not None
+        assert not math.isnan(signals2.top10_jaccard)
         assert 0.0 <= signals2.top10_jaccard <= 1.0
 
 
@@ -298,16 +298,16 @@ class TestStateChaining:
             signals, state = extract_signals(logits, prev=state)
             all_signals.append(signals)
 
-        # First token: no temporal
-        assert all_signals[0].delta_h is None
-        assert all_signals[0].kl_div is None
-        assert all_signals[0].top10_jaccard is None
+        # First token: temporal features are NaN
+        assert math.isnan(all_signals[0].delta_h)
+        assert math.isnan(all_signals[0].kl_div)
+        assert math.isnan(all_signals[0].top10_jaccard)
 
         # Second and third: temporal features present
         for sig in all_signals[1:]:
-            assert sig.delta_h is not None
-            assert sig.kl_div is not None
-            assert sig.top10_jaccard is not None
+            assert not math.isnan(sig.delta_h)
+            assert not math.isnan(sig.kl_div)
+            assert not math.isnan(sig.top10_jaccard)
             assert sig.delta_h_valid is True
 
     def test_state_log_probs_detached(self):

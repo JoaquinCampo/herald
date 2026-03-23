@@ -1,11 +1,11 @@
 """Tests for herald.config — Pydantic models."""
 
+import math
 from pathlib import Path
 
 import pytest
 
 from herald.config import ExperimentConfig, RunResult, TokenSignals
-
 
 # ---------------------------------------------------------------------------
 # ExperimentConfig
@@ -61,10 +61,10 @@ class TestTokenSignals:
         assert sig.top5_logprobs == []
         assert sig.h_alts == 0.0
         assert sig.avg_logp == 0.0
-        assert sig.delta_h is None
+        assert math.isnan(sig.delta_h)
         assert sig.delta_h_valid is False
-        assert sig.kl_div is None
-        assert sig.top10_jaccard is None
+        assert math.isnan(sig.kl_div)
+        assert math.isnan(sig.top10_jaccard)
         assert sig.eff_vocab_size == 0.0
         assert sig.tail_mass == 0.0
         assert sig.logit_range == 0.0
@@ -91,11 +91,22 @@ class TestTokenSignals:
 
     def test_serialization_roundtrip(self):
         sig = TokenSignals(
-            entropy=1.5, top1_prob=0.6, top5_prob=0.95, delta_h=0.1, delta_h_valid=True
+            entropy=1.5,
+            top1_prob=0.6,
+            top5_prob=0.95,
+            delta_h=0.1,
+            delta_h_valid=True,
         )
         json_str = sig.model_dump_json()
         restored = TokenSignals.model_validate_json(json_str)
-        assert restored == sig
+        # NaN fields need special comparison (NaN != NaN)
+        for field in TokenSignals.model_fields:
+            orig = getattr(sig, field)
+            rest = getattr(restored, field)
+            if isinstance(orig, float) and math.isnan(orig):
+                assert math.isnan(rest), field
+            else:
+                assert orig == rest, field
 
 
 # ---------------------------------------------------------------------------

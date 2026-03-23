@@ -16,7 +16,9 @@ class TestFormatChat:
         assert result[0]["content"] == SYSTEM_PROMPT
 
     def test_user_message_second(self):
-        question = "If Sally has 3 apples and buys 2 more, how many does she have?"
+        question = (
+            "If Sally has 3 apples and buys 2 more, how many does she have?"
+        )
         result = format_chat(question)
         assert result[1]["role"] == "user"
         assert result[1]["content"] == question

@@ -1,4 +1,5 @@
-"""Experiment runner: load model, compress KV cache, generate, extract signals, detect catastrophes."""
+"""Experiment runner: load model, compress KV cache,
+generate, extract signals, detect catastrophes."""
 
 import gc
 import json
@@ -8,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 import torch
-import torch.nn.functional as F
 from loguru import logger
 from transformers import (
     AutoModelForCausalLM,
@@ -18,7 +18,11 @@ from transformers import (
 )
 
 from herald.config import ExperimentConfig, RunResult
-from herald.detectors import detect_all, detect_catastrophe_onsets, parse_gsm8k_answer
+from herald.detectors import (
+    detect_all,
+    detect_catastrophe_onsets,
+    parse_gsm8k_answer,
+)
 from herald.prompts import format_chat, load_gsm8k
 from herald.signals import extract_signals
 
@@ -27,7 +31,10 @@ def _checkpoint_path(config: ExperimentConfig) -> Path:
     output_dir = config.output_dir / config.press_name
     model_short = config.model_name.split("/")[-1]
     ratio_str = f"{config.compression_ratio:.3f}"
-    return output_dir / f"{model_short}_{ratio_str}_{config.num_prompts}p.ckpt.jsonl"
+    return (
+        output_dir
+        / f"{model_short}_{ratio_str}_{config.num_prompts}p.ckpt.jsonl"
+    )
 
 
 def _load_checkpoint(config: ExperimentConfig) -> list[RunResult]:
@@ -62,19 +69,25 @@ def get_press(name: str, compression_ratio: float) -> Any:  # noqa: ANN201
 
     from kvpress import (
         ExpectedAttentionPress,
-        ObservedAttentionPress,
+        KnormPress,
+        RandomPress,
         SnapKVPress,
         StreamingLLMPress,
+        TOVAPress,
     )
 
     presses = {
         "streaming_llm": StreamingLLMPress,
-        "observed_attention": ObservedAttentionPress,
         "snapkv": SnapKVPress,
+        "knorm": KnormPress,
         "expected_attention": ExpectedAttentionPress,
+        "tova": TOVAPress,
+        "random": RandomPress,
     }
     if name not in presses:
-        raise ValueError(f"Unknown press: {name}. Available: {list(presses.keys())}")
+        raise ValueError(
+            f"Unknown press: {name}. Available: {list(presses.keys())}"
+        )
     return presses[name](compression_ratio=compression_ratio)
 
 
@@ -85,11 +98,9 @@ def load_model(
     device = config.resolve_device()
     logger.info(f"Loading {config.model_name} on {device}...")
 
-    kwargs: dict[str, Any] = {"dtype": torch.float16}
-    if config.press_name == "observed_attention":
-        kwargs["attn_implementation"] = "eager"
-
-    model = AutoModelForCausalLM.from_pretrained(config.model_name, **kwargs)
+    model = AutoModelForCausalLM.from_pretrained(
+        config.model_name, torch_dtype=torch.float16
+    )
     model = model.to(device)  # type: ignore[arg-type]
     model.eval()
 
@@ -114,8 +125,9 @@ class _TimeoutCriteria(StoppingCriteria):
         input_ids: torch.LongTensor,
         scores: torch.FloatTensor,
         **kwargs: Any,
-    ) -> bool:
-        return (time.time() - self.start_time) > self.timeout
+    ) -> torch.Tensor:
+        exceeded = (time.time() - self.start_time) > self.timeout
+        return torch.tensor([exceeded], dtype=torch.bool)
 
 
 def run_single(
@@ -135,7 +147,9 @@ def run_single(
     input_len = inputs["input_ids"].shape[1]
 
     ctx = press(model) if press is not None else nullcontext()  # type: ignore[operator]
-    stopping = StoppingCriteriaList([_TimeoutCriteria(config.prompt_timeout_seconds)])
+    stopping = StoppingCriteriaList(
+        [_TimeoutCriteria(config.prompt_timeout_seconds)]
+    )
 
     with torch.no_grad(), ctx:
         outputs = model.generate(  # type: ignore[attr-defined]
@@ -153,49 +167,38 @@ def run_single(
     )
 
     eos_id = tokenizer.eos_token_id  # type: ignore[attr-defined]
+    eos_ids = set(eos_id) if isinstance(eos_id, list) else {eos_id}
+    hit_eos = len(generated_ids) > 0 and generated_ids[-1] in eos_ids
     hit_max = len(generated_ids) >= config.max_new_tokens
-    hit_eos = len(generated_ids) > 0 and generated_ids[-1] == eos_id
-    stop_reason = "max_tokens" if (hit_max and not hit_eos) else "eos"
 
-    # Extract per-token signals, tracking state for temporal features
+    if hit_eos:
+        stop_reason = "eos"
+    elif hit_max:
+        stop_reason = "max_tokens"
+    else:
+        stop_reason = "timeout"
+
+    # Extract per-token signals, threading StepState between calls
     signals = []
-    prev_entropy: float | None = None
-    prev_log_probs: torch.Tensor | None = None
-    prev_top10_ids: set[int] | None = None
-
+    state = None
     for score in outputs.scores:
-        logits = score[0]  # remove batch dim
-        sig = extract_signals(
-            logits,
-            tokenizer,
-            prev_entropy=prev_entropy,
-            prev_log_probs=prev_log_probs,
-            prev_top10_ids=prev_top10_ids,
-        )
-        # Update state for next step
-        prev_entropy = sig.entropy
-        prev_log_probs = F.log_softmax(logits.float(), dim=-1)
-        k10 = min(10, logits.shape[-1])
-        prev_top10_ids = set(torch.topk(prev_log_probs, k=k10).indices.tolist())
-
+        sig, state = extract_signals(score[0], prev=state)
         signals.append(sig)
 
     catastrophes = detect_all(
-        generated_text, generated_ids, stop_reason, prompt_data["ground_truth"]
+        generated_text,
+        generated_ids,
+        stop_reason,
+        prompt_data["ground_truth"],
     )
     catastrophe_onsets = detect_catastrophe_onsets(
         generated_ids, stop_reason, catastrophes
     )
 
     predicted = parse_gsm8k_answer(generated_text)
-    try:
-        correct = (
-            float(predicted) == float(prompt_data["ground_truth"])
-            if predicted
-            else None
-        )
-    except ValueError:
-        correct = None
+    correct = (
+        "wrong_answer" not in catastrophes if predicted is not None else None
+    )
 
     return RunResult(
         prompt_id=prompt_data["id"],
@@ -212,7 +215,6 @@ def run_single(
         stop_reason=stop_reason,
         catastrophes=catastrophes,
         num_tokens_generated=len(generated_ids),
-        cache_size_after_prefill=None,
         catastrophe_onsets=catastrophe_onsets,
         signals=signals,
     )
@@ -238,7 +240,9 @@ def summarize(results: list[RunResult]) -> dict[str, Any]:
         "accuracy": round(correct / n, 4),
         "catastrophic_failure_rate": round(has_catastrophe / n, 4),
         "catastrophe_counts": cat_counts,
-        "avg_tokens": round(sum(r.num_tokens_generated for r in results) / n, 1),
+        "avg_tokens": round(
+            sum(r.num_tokens_generated for r in results) / n, 1
+        ),
     }
 
 
@@ -271,19 +275,24 @@ def run_prompts(
     config: ExperimentConfig,
     press: object | None,
 ) -> list[RunResult]:
-    """Run all prompts with a pre-loaded model. Supports per-prompt checkpointing."""
+    """Run all prompts with a pre-loaded model.
+
+    Supports per-prompt checkpointing.
+    """
     results = _load_checkpoint(config)
     completed_ids = {r.prompt_id for r in results}
     if completed_ids:
         logger.info(
-            f"Resuming from checkpoint: {len(completed_ids)}/{len(prompts)} prompts done"
+            f"Resuming from checkpoint: "
+            f"{len(completed_ids)}/{len(prompts)} done"
         )
 
     n_failed = 0
     for i, prompt_data in enumerate(prompts):
         if prompt_data["id"] in completed_ids:
             logger.info(
-                f"[{i + 1}/{len(prompts)}] {prompt_data['id']} — skipped (checkpoint)"
+                f"[{i + 1}/{len(prompts)}] "
+                f"{prompt_data['id']} — skipped (ckpt)"
             )
             continue
 
@@ -291,7 +300,9 @@ def run_prompts(
         t0 = time.time()
 
         try:
-            result = run_single(model, tokenizer, device, prompt_data, config, press)
+            result = run_single(
+                model, tokenizer, device, prompt_data, config, press
+            )
         except Exception as e:
             logger.error(f"  FAILED: {e}")
             n_failed += 1
@@ -299,8 +310,14 @@ def run_prompts(
 
         elapsed = time.time() - t0
         timed_out = elapsed >= config.prompt_timeout_seconds * 0.95
-        status = "TIMEOUT" if timed_out else ("CORRECT" if result.correct else "WRONG")
-        cats = ", ".join(result.catastrophes) if result.catastrophes else "none"
+        status = (
+            "TIMEOUT"
+            if timed_out
+            else ("CORRECT" if result.correct else "WRONG")
+        )
+        cats = (
+            ", ".join(result.catastrophes) if result.catastrophes else "none"
+        )
         logger.info(
             f"  {status} | tokens={result.num_tokens_generated} "
             f"| catastrophes=[{cats}] | {elapsed:.1f}s"
@@ -317,7 +334,8 @@ def run_prompts(
 
     if n_failed > 0:
         logger.warning(
-            f"{n_failed}/{len(prompts)} prompts failed and were excluded from results"
+            f"{n_failed}/{len(prompts)} prompts failed "
+            f"and were excluded from results"
         )
 
     return results
@@ -327,7 +345,9 @@ def print_summary(results: list[RunResult], config: ExperimentConfig) -> None:
     """Log a summary of results for one configuration."""
     s = summarize(results)
     logger.info("=" * 60)
-    logger.info(f"CONFIG: {config.press_name} @ ratio={config.compression_ratio}")
+    logger.info(
+        f"CONFIG: {config.press_name} @ ratio={config.compression_ratio}"
+    )
     if s["total"] > 0:
         logger.info(
             f"SUMMARY: {s['total']} prompts | accuracy={s['accuracy']:.1%}"
@@ -342,9 +362,11 @@ def print_summary(results: list[RunResult], config: ExperimentConfig) -> None:
 
 
 def run_experiment(config: ExperimentConfig) -> list[RunResult]:
-    """Run the full experiment: load model, iterate prompts, collect results."""
+    """Run the full experiment: load model, iterate
+    prompts, collect results."""
     logger.info(
-        f"Experiment: {config.press_name} @ compression_ratio={config.compression_ratio}"
+        f"Experiment: {config.press_name} "
+        f"@ compression_ratio={config.compression_ratio}"
     )
 
     model, tokenizer, device = load_model(config)
@@ -365,7 +387,14 @@ def result_exists(config: ExperimentConfig) -> bool:
 
 
 SWEEP_RATIOS = [0.0, 0.25, 0.5, 0.625, 0.75, 0.875]
-SWEEP_METHODS = ["streaming_llm", "snapkv", "expected_attention"]
+SWEEP_METHODS = [
+    "streaming_llm",
+    "snapkv",
+    "knorm",
+    "expected_attention",
+    "tova",
+    "random",
+]
 
 
 def build_sweep_configs(
@@ -418,10 +447,7 @@ def run_sweep(
     skip_existing: bool = True,
     prompt_timeout_seconds: float = 300.0,
 ) -> None:
-    """Run the full compression sweep, reusing models across configs.
-
-    Groups configurations by attention implementation to minimize reloads.
-    """
+    """Run the full compression sweep, reusing the model across configs."""
     configs = build_sweep_configs(
         num_prompts=num_prompts,
         seed=seed,
@@ -431,52 +457,36 @@ def run_sweep(
         prompt_timeout_seconds=prompt_timeout_seconds,
     )
 
-    default_configs = [c for c in configs if c.press_name != "observed_attention"]
-    eager_configs = [c for c in configs if c.press_name == "observed_attention"]
+    pending = [c for c in configs if not (skip_existing and result_exists(c))]
+    skipped = len(configs) - len(pending)
+    if skipped:
+        logger.info(f"Skipping {skipped} existing results")
+    if not pending:
+        logger.info("All configs already completed.")
+        return
 
     prompts = load_gsm8k(num_prompts, seed)
+    model, tokenizer, device = load_model(pending[0])
 
-    total = len(configs)
-    done = 0
-
-    for group_name, group_configs in [
-        ("default", default_configs),
-        ("eager", eager_configs),
-    ]:
-        if not group_configs:
-            continue
-
-        pending = [c for c in group_configs if not (skip_existing and result_exists(c))]
-        skipped = len(group_configs) - len(pending)
-        if skipped:
-            logger.info(f"Skipping {skipped} existing results in {group_name} group")
-            done += skipped
-
-        if not pending:
-            continue
-
+    for i, config in enumerate(pending, 1):
+        logger.info(f"\n{'#' * 60}")
         logger.info(
-            f"Loading model for {group_name} attention group ({len(pending)} configs)..."
+            f"SWEEP [{i}/{len(pending)}] "
+            f"{config.press_name} @ {config.compression_ratio}"
         )
-        model, tokenizer, device = load_model(pending[0])
+        logger.info(f"{'#' * 60}")
 
-        for config in pending:
-            done += 1
-            logger.info(f"\n{'#' * 60}")
-            logger.info(
-                f"SWEEP [{done}/{total}] {config.press_name} @ {config.compression_ratio}"
-            )
-            logger.info(f"{'#' * 60}")
+        press = get_press(config.press_name, config.compression_ratio)
+        results = run_prompts(
+            model, tokenizer, device, prompts, config, press
+        )
+        print_summary(results, config)
+        save_results(results, config)
 
-            press = get_press(config.press_name, config.compression_ratio)
-            results = run_prompts(model, tokenizer, device, prompts, config, press)
-            print_summary(results, config)
-            save_results(results, config)
-
-        del model
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-        if torch.backends.mps.is_available():
-            torch.mps.synchronize()
-            torch.mps.empty_cache()
+    del model
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    if torch.backends.mps.is_available():
+        torch.mps.synchronize()
+        torch.mps.empty_cache()

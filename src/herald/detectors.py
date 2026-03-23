@@ -13,7 +13,8 @@ Future work — additional catastrophe types not yet implemented:
 - Coherence collapse: output becomes gibberish mid-generation (not looping).
   Could detect via sustained high entropy in the generated token sequence.
 - Format failure: model stops following the few-shot format entirely (no ####,
-  no chain-of-thought structure). Different from just getting the wrong number.
+  no chain-of-thought structure). Different from just
+  getting the wrong number.
 """
 
 import math
@@ -21,8 +22,8 @@ import re
 
 
 def detect_non_termination(stop_reason: str) -> bool:
-    """Generation hit max_tokens without producing an EOS."""
-    return stop_reason == "max_tokens"
+    """Generation ended without producing an EOS."""
+    return stop_reason in {"max_tokens", "timeout"}
 
 
 def detect_looping(
@@ -30,7 +31,8 @@ def detect_looping(
 ) -> bool:
     """Detect repeated token windows in the output.
 
-    Returns True if any window of `window_size` tokens appears >= `min_repeats` times.
+    Returns True if any window of `window_size` tokens
+    appears >= `min_repeats` times.
     """
     if len(token_ids) < window_size * min_repeats:
         return False
@@ -49,10 +51,11 @@ def detect_looping_onset(
 ) -> int | None:
     """Find the token position where looping begins.
 
-    Returns the start index of the first window whose occurrence count reaches
-    `min_repeats`, or None if no looping is detected. The onset is the start of
-    the second occurrence — the first time the model repeats instead of producing
-    new content.
+    Returns the start index of the first window whose
+    occurrence count reaches `min_repeats`, or None if
+    no looping is detected. The onset is the start of
+    the second occurrence — the first time the model
+    repeats instead of producing new content.
     """
     if len(token_ids) < window_size * min_repeats:
         return None
@@ -75,7 +78,8 @@ def detect_catastrophe_onsets(
 ) -> dict[str, int]:
     """Determine the onset position for each detected catastrophe.
 
-    Returns a dict mapping catastrophe type to the token index where it begins.
+    Returns a dict mapping catastrophe type to the token
+    index where it begins.
     """
     onsets: dict[str, int] = {}
 
@@ -123,7 +127,9 @@ def detect_answer_failure(generated_text: str, ground_truth: str) -> bool:
     if predicted is None:
         return True  # no answer found at all
     try:
-        return not math.isclose(float(predicted), float(ground_truth), rel_tol=1e-5)
+        return not math.isclose(
+            float(predicted), float(ground_truth), rel_tol=1e-5
+        )
     except ValueError:
         return True
 
