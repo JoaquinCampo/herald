@@ -41,9 +41,21 @@ poe setup               # Sync deps + install pre-commit hooks
 - `X | None` — not `Optional[X]`.
 - Pydantic models for structured data. Keep flat and simple.
 - Functions over classes. Classes only when state management is genuinely needed.
-- Line length: 100 characters (ruff enforces).
+- Line length: 78 characters (ruff enforces).
 - Imports sorted by ruff.
 - Flat package structure — no subpackages under `src/herald/`.
+
+## Experiment Environment
+
+- **GPU server**: `ssh orion` (user runs experiments manually)
+- **Local**: Apple Silicon Mac, 16GB RAM (MPS) — used for analysis and paper writing, not training
+- **Python env**: managed by `uv` — use `uv run` for all commands
+- **Sweep command**: `uv run herald sweep --num-prompts 500 --model "Qwen/Qwen2.5-7B-Instruct"`
+- **Train command**: `uv run herald train --results-dir results --output-dir models`
+- **Results dir**: `results/` (gitignored)
+- **Models dir**: `models/` (gitignored)
+- **DO NOT run GPU experiments locally** — user handles experiments on orion
+- **Overnight pipeline**: analyze-results → paper-figure → paper-plan → paper-write → paper-compile → auto-review
 
 ## Boundaries
 
