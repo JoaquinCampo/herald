@@ -10,9 +10,11 @@ dependencies = [
   "loguru>=0.7.3",
   "pydantic>=2.12.5",
   "pydantic-settings>=2.13.1",
+  "scikit-learn>=1.6.0",
   "torch>=2.10.0",
   "transformers>=5.3.0",
   "typer>=0.24.1",
+  "xgboost>=3.0.0",
 ]
 
 [project.scripts]
@@ -55,7 +57,7 @@ include = "poe_tasks.toml"
 testpaths = ["tests"]
 
 [tool.ruff]
-line-length = 100
+line-length = 78
 target-version = "py312"
 
 [tool.ruff.lint]
