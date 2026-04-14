@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from herald.train import (
+    _baseline_cv,
     _cv_metrics,
     _train_single_horizon,
     train_predictor,
@@ -27,6 +28,8 @@ def _synthetic_dataset(
 
     random.seed(42)
     feat_names = [f"feat_{i}" for i in range(n_features)]
+    # Use a real feature name so baseline can find it
+    feat_names[1] = "entropy_mean_8"
     X: list[list[float]] = []
     y: list[int] = []
     run_ids: list[str] = []
@@ -47,6 +50,7 @@ def _synthetic_dataset(
             # to event
             if onset is not None and t > onset - 10:
                 features[0] += 2.0  # make feature 0 predictive
+                features[1] += 1.5  # entropy_mean_8 baseline signal
             X.append(features)
             label = 1 if (onset is not None and t >= onset - 5) else 0
             y.append(label)
@@ -55,6 +59,29 @@ def _synthetic_dataset(
             pre_onset.append(is_pre)
 
     return X, y, run_ids, feat_names, pre_onset
+
+
+class TestBaselineCV:
+    def test_returns_metrics(self):
+        X, y, run_ids, feat_names, pre_onset = _synthetic_dataset()
+        result = _baseline_cv(
+            X, y, run_ids, feat_names, pre_onset
+        )
+
+        assert result["feature"] == "entropy_mean_8"
+        assert "auroc_mean" in result
+        assert "auprc_mean" in result
+        assert len(result["fold_aurocs"]) == 5  # type: ignore[arg-type]
+        # Pre-onset track present
+        assert "pre_onset" in result
+
+    def test_missing_feature_returns_empty(self):
+        X, y, run_ids, _, pre_onset = _synthetic_dataset()
+        fake_names = [f"other_{i}" for i in range(30)]
+        result = _baseline_cv(
+            X, y, run_ids, fake_names, pre_onset
+        )
+        assert result == {}
 
 
 class TestCVMetrics:

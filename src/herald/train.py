@@ -203,6 +203,94 @@ def _train_single_horizon(
 
 
 # ---------------------------------------------------------------
+# Rolling entropy baseline
+# ---------------------------------------------------------------
+
+BASELINE_FEATURE = "entropy_mean_8"
+
+
+def _baseline_cv(
+    X: list[list[float]],
+    y: list[int],
+    run_ids: list[str],
+    feat_names: list[str],
+    pre_onset: list[bool] | None = None,
+    n_splits: int = 5,
+) -> dict[str, object]:
+    """Baseline: use rolling entropy mean as the sole predictor.
+
+    No training; just uses entropy_mean_8 as the score
+    (higher entropy = more likely catastrophe). Evaluated on
+    the same GroupKFold splits for fair comparison with XGBoost.
+    """
+    if BASELINE_FEATURE not in feat_names:
+        logger.warning(
+            f"Baseline feature {BASELINE_FEATURE!r} "
+            f"not found in feat_names"
+        )
+        return {}
+
+    feat_idx = feat_names.index(BASELINE_FEATURE)
+
+    gkf = GroupKFold(n_splits=n_splits)
+    fold_aurocs: list[float | None] = []
+    fold_auprcs: list[float | None] = []
+    fold_pre_aurocs: list[float | None] = []
+    fold_pre_auprcs: list[float | None] = []
+
+    for _, val_idx in gkf.split(X, y, groups=run_ids):
+        y_val = [y[i] for i in val_idx]
+        scores = [X[i][feat_idx] for i in val_idx]
+
+        ev = _eval_metrics(y_val, scores)
+        fold_aurocs.append(ev["auroc"])
+        fold_auprcs.append(ev["auprc"])
+
+        if pre_onset is not None:
+            val_pre = [pre_onset[i] for i in val_idx]
+            y_val_pre = [
+                y_val[j] for j, p in enumerate(val_pre) if p
+            ]
+            scores_pre = [
+                scores[j] for j, p in enumerate(val_pre) if p
+            ]
+            ev_pre = _eval_metrics(y_val_pre, scores_pre)
+            fold_pre_aurocs.append(ev_pre["auroc"])
+            fold_pre_auprcs.append(ev_pre["auprc"])
+
+    auroc_mean, auroc_std = _mean_std(fold_aurocs)
+    auprc_mean, auprc_std = _mean_std(fold_auprcs)
+
+    result: dict[str, object] = {
+        "feature": BASELINE_FEATURE,
+        "fold_aurocs": fold_aurocs,
+        "fold_auprcs": fold_auprcs,
+        "auroc_mean": auroc_mean,
+        "auroc_std": auroc_std,
+        "auprc_mean": auprc_mean,
+        "auprc_std": auprc_std,
+    }
+
+    if fold_pre_aurocs:
+        pre_auroc_mean, pre_auroc_std = _mean_std(
+            fold_pre_aurocs
+        )
+        pre_auprc_mean, pre_auprc_std = _mean_std(
+            fold_pre_auprcs
+        )
+        result["pre_onset"] = {
+            "fold_aurocs": fold_pre_aurocs,
+            "fold_auprcs": fold_pre_auprcs,
+            "auroc_mean": pre_auroc_mean,
+            "auroc_std": pre_auroc_std,
+            "auprc_mean": pre_auprc_mean,
+            "auprc_std": pre_auprc_std,
+        }
+
+    return result
+
+
+# ---------------------------------------------------------------
 # Leave-one-compressor-out cross-validation
 # ---------------------------------------------------------------
 
@@ -320,6 +408,26 @@ def train_predictor(
             horizon,
             output_dir,
         )
+
+        # Rolling entropy baseline
+        logger.info(f"H={horizon}: running baseline...")
+        baseline = _baseline_cv(
+            ds.X, ds.y, ds.run_ids, ds.feat_names, ds.pre_onset
+        )
+        if baseline:
+            metrics["baseline"] = baseline
+            logger.info(
+                f"H={horizon} baseline: "
+                f"AUROC={baseline.get('auroc_mean')}, "
+                f"AUPRC={baseline.get('auprc_mean')}"
+            )
+            bl_pre = baseline.get("pre_onset")
+            if isinstance(bl_pre, dict):
+                logger.info(
+                    f"H={horizon} baseline pre-onset: "
+                    f"AUROC={bl_pre.get('auroc_mean')}, "
+                    f"AUPRC={bl_pre.get('auprc_mean')}"
+                )
 
         # Leave-one-compressor-out CV
         logger.info(f"H={horizon}: running LOCO CV...")
