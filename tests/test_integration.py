@@ -36,22 +36,16 @@ def _make_signal(t: int, catastrophe_near: bool) -> TokenSignals:
         entropy=round(entropy, 4),
         top1_prob=round(max(0.01, 0.5 - entropy * 0.05), 4),
         top5_prob=round(min(0.99, 0.85 + noise * 0.1), 4),
-        top5_logprobs=[
-            round(-0.5 - k * 0.5 + noise, 3) for k in range(5)
-        ],
+        top5_logprobs=[round(-0.5 - k * 0.5 + noise, 3) for k in range(5)],
         h_alts=round(max(0, 0.8 + noise), 4),
         avg_logp=round(-5.0 + noise, 4),
         delta_h=0.0 if t == 0 else round(random.gauss(0, 0.2), 4),
         delta_h_valid=t > 0,
         kl_div=(
-            0.0
-            if t == 0
-            else round(max(0, random.gauss(0.05, 0.05)), 4)
+            0.0 if t == 0 else round(max(0, random.gauss(0.05, 0.05)), 4)
         ),
         top10_jaccard=(
-            0.0
-            if t == 0
-            else round(max(0, min(1, 0.7 + noise)), 4)
+            0.0 if t == 0 else round(max(0, min(1, 0.7 + noise)), 4)
         ),
         eff_vocab_size=round(math.exp(entropy), 2),
         tail_mass=round(max(0, 0.05 + noise * 0.02), 4),
@@ -94,9 +88,7 @@ def _create_sweep_results(
                 ]
 
                 cats = ["looping"] if has_cat else []
-                onsets = (
-                    {"looping": onset_pos} if onset_pos else {}
-                )
+                onsets = {"looping": onset_pos} if onset_pos else {}
 
                 results.append(
                     RunResult(
@@ -110,9 +102,7 @@ def _create_sweep_results(
                         ground_truth="4",
                         predicted_answer="4",
                         correct=not has_cat,
-                        stop_reason=(
-                            "max_tokens" if has_cat else "eos"
-                        ),
+                        stop_reason=("max_tokens" if has_cat else "eos"),
                         catastrophes=cats,
                         num_tokens_generated=n_tok,
                         catastrophe_onsets=onsets,
@@ -120,18 +110,14 @@ def _create_sweep_results(
                     )
                 )
 
-            fname = (
-                f"test-model_{ratio:.3f}_{n_prompts}p.json"
-            )
+            fname = f"test-model_{ratio:.3f}_{n_prompts}p.json"
             data = {
                 "config": {
                     "press_name": press,
                     "compression_ratio": ratio,
                 },
                 "summary": {},
-                "results": [
-                    r.model_dump(mode="json") for r in results
-                ],
+                "results": [r.model_dump(mode="json") for r in results],
             }
             (press_dir / fname).write_text(json.dumps(data))
 
@@ -217,37 +203,63 @@ class TestBuildDataset:
         return results_dir
 
     def test_returns_correct_structure(self, sweep_dir: Path):
-        X, y, run_ids, press_ids, feat_names = build_dataset(
-            sweep_dir, horizon=10
+        ds = build_dataset(sweep_dir, horizon=10)
+        assert (
+            len(ds.X)
+            == len(ds.y)
+            == len(ds.run_ids)
+            == len(ds.press_ids)
+            == len(ds.pre_onset)
+            == len(ds.seq_ids)
         )
-        assert len(X) == len(y) == len(run_ids) == len(press_ids)
-        assert len(X) > 0
-        assert len(feat_names) == 30
-        assert all(len(row) == 30 for row in X)
+        assert len(ds.X) > 0
+        assert len(ds.feat_names) == 30
+        assert all(len(row) == 30 for row in ds.X)
 
     def test_labels_are_binary(self, sweep_dir: Path):
-        _, y, _, _, _ = build_dataset(sweep_dir, horizon=10)
-        assert set(y).issubset({0, 1})
+        ds = build_dataset(sweep_dir, horizon=10)
+        assert set(ds.y).issubset({0, 1})
 
     def test_has_both_classes(self, sweep_dir: Path):
-        _, y, _, _, _ = build_dataset(sweep_dir, horizon=10)
-        assert 0 in y and 1 in y
+        ds = build_dataset(sweep_dir, horizon=10)
+        assert 0 in ds.y and 1 in ds.y
 
     def test_press_ids_match_dirs(self, sweep_dir: Path):
-        _, _, _, press_ids, _ = build_dataset(
-            sweep_dir, horizon=10
-        )
-        assert set(press_ids) == {
+        ds = build_dataset(sweep_dir, horizon=10)
+        assert set(ds.press_ids) == {
             "streaming_llm",
             "snapkv",
             "knorm",
         }
 
     def test_all_features_finite(self, sweep_dir: Path):
-        X, _, _, _, _ = build_dataset(sweep_dir, horizon=10)
-        for row in X:
+        ds = build_dataset(sweep_dir, horizon=10)
+        for row in ds.X:
             for v in row:
                 assert math.isfinite(v)
+
+    def test_pre_onset_mask(self, sweep_dir: Path):
+        ds = build_dataset(sweep_dir, horizon=10)
+        # Censored sequences: all tokens pre-onset
+        for sid, onset in ds.seq_onsets.items():
+            idxs = [i for i, s in enumerate(ds.seq_ids) if s == sid]
+            if onset is None:
+                assert all(ds.pre_onset[i] for i in idxs)
+            else:
+                # Tokens before onset are pre-onset
+                for i in idxs:
+                    t = i - idxs[0]
+                    if t < onset:
+                        assert ds.pre_onset[i]
+                    else:
+                        assert not ds.pre_onset[i]
+
+    def test_seq_onsets_populated(self, sweep_dir: Path):
+        ds = build_dataset(sweep_dir, horizon=10)
+        assert len(ds.seq_onsets) > 0
+        # Some sequences should have catastrophes
+        has_cat = any(v is not None for v in ds.seq_onsets.values())
+        assert has_cat
 
 
 # -------------------------------------------------------------------
@@ -267,9 +279,7 @@ class TestFullPipeline:
         )
 
         output_dir = tmp_path / "models"
-        metrics = train_predictor(
-            results_dir, output_dir, horizons=[5, 10]
-        )
+        metrics = train_predictor(results_dir, output_dir, horizons=[5, 10])
 
         # Both horizons trained
         assert "H5" in metrics
@@ -280,12 +290,14 @@ class TestFullPipeline:
         assert (output_dir / "hazard_H10.json").exists()
         assert (output_dir / "metrics.json").exists()
 
-        # Metrics are populated
+        # Metrics are populated (5-fold CV)
         for key in ("H5", "H10"):
             m = metrics[key]
-            assert m["auroc"] is not None  # type: ignore[index]
-            assert m["auprc"] is not None  # type: ignore[index]
-            assert m["auroc"] > 0.5  # type: ignore[operator]
+            assert m["auroc_mean"] is not None  # type: ignore[index]
+            assert m["auprc_mean"] is not None  # type: ignore[index]
+            assert m["auroc_mean"] > 0.5  # type: ignore[operator]
+            assert "fold_aurocs" in m  # type: ignore[operator]
+            assert len(m["fold_aurocs"]) == 5  # type: ignore[arg-type]
 
         # LOCO CV ran (3 presses → 3 folds)
         h5 = metrics["H5"]
@@ -295,8 +307,6 @@ class TestFullPipeline:
         assert loco["mean_auroc"] is not None  # type: ignore[index]
 
         # metrics.json is valid
-        saved = json.loads(
-            (output_dir / "metrics.json").read_text()
-        )
+        saved = json.loads((output_dir / "metrics.json").read_text())
         assert "H5" in saved
         assert "H10" in saved

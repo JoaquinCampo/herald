@@ -11,8 +11,24 @@ import math
 from collections import deque
 from pathlib import Path
 
+from pydantic import BaseModel
+
 from herald.config import RunResult, TokenSignals
 from herald.labeling import create_horizon_labels, earliest_onset
+
+
+class DatasetBundle(BaseModel):
+    """ML-ready dataset with onset metadata for evaluation."""
+
+    X: list[list[float]]
+    y: list[int]
+    run_ids: list[str]
+    press_ids: list[str]
+    feat_names: list[str]
+    pre_onset: list[bool]
+    seq_ids: list[str]
+    seq_onsets: dict[str, int | None]
+
 
 ROLLING_TARGETS = [
     "entropy",
@@ -116,26 +132,19 @@ def build_dataset(
     results_dir: Path,
     horizon: int = 10,
     nt_onset_frac: float = 0.75,
-) -> tuple[
-    list[list[float]],
-    list[int],
-    list[str],
-    list[str],
-    list[str],
-]:
+) -> DatasetBundle:
     """Load sweep results and build ML-ready dataset.
 
-    Returns (X, y, run_ids, press_ids, feature_names) where:
-      X: list of feature vectors (one per token)
-      y: list of binary labels
-      run_ids: list of prompt_id per token (for GroupKFold)
-      press_ids: list of press name per token (for LOCO CV)
-      feature_names: ordered feature column names
+    Returns a DatasetBundle with feature vectors, labels,
+    grouping IDs, and onset metadata for evaluation.
     """
     all_x: list[list[float]] = []
     all_y: list[int] = []
     all_run_ids: list[str] = []
     all_press: list[str] = []
+    all_pre_onset: list[bool] = []
+    all_seq_ids: list[str] = []
+    seq_onsets: dict[str, int | None] = {}
     names: list[str] = []
 
     for json_path in sorted(results_dir.rglob("*.json")):
@@ -165,13 +174,32 @@ def build_dataset(
                 len(result.signals), onset, horizon
             )
 
+            seq_id = (
+                f"{result.prompt_id}"
+                f"__{result.press}"
+                f"__{result.compression_ratio}"
+            )
+            seq_onsets[seq_id] = onset
+
             if not names and rows:
                 names = list(rows[0].keys())
 
-            for row, label in zip(rows, labels):
+            for t, (row, label) in enumerate(zip(rows, labels)):
                 all_x.append(list(row.values()))
                 all_y.append(label)
                 all_run_ids.append(result.prompt_id)
                 all_press.append(result.press)
+                all_seq_ids.append(seq_id)
+                is_pre = onset is None or t < onset
+                all_pre_onset.append(is_pre)
 
-    return all_x, all_y, all_run_ids, all_press, names
+    return DatasetBundle(
+        X=all_x,
+        y=all_y,
+        run_ids=all_run_ids,
+        press_ids=all_press,
+        feat_names=names,
+        pre_onset=all_pre_onset,
+        seq_ids=all_seq_ids,
+        seq_onsets=seq_onsets,
+    )

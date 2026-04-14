@@ -3,7 +3,11 @@
 import json
 from pathlib import Path
 
-from herald.train import _train_single_horizon, train_predictor
+from herald.train import (
+    _cv_metrics,
+    _train_single_horizon,
+    train_predictor,
+)
 
 
 def _synthetic_dataset(
@@ -11,7 +15,13 @@ def _synthetic_dataset(
     tokens_per_seq: int = 50,
     n_features: int = 30,
     event_rate: float = 0.3,
-) -> tuple[list[list[float]], list[int], list[str], list[str]]:
+) -> tuple[
+    list[list[float]],
+    list[int],
+    list[str],
+    list[str],
+    list[bool],
+]:
     """Create a small synthetic dataset for testing."""
     import random
 
@@ -20,6 +30,7 @@ def _synthetic_dataset(
     X: list[list[float]] = []
     y: list[int] = []
     run_ids: list[str] = []
+    pre_onset: list[bool] = []
 
     for seq_idx in range(n_sequences):
         has_event = random.random() < event_rate
@@ -40,36 +51,72 @@ def _synthetic_dataset(
             label = 1 if (onset is not None and t >= onset - 5) else 0
             y.append(label)
             run_ids.append(run_id)
+            is_pre = onset is None or t < onset
+            pre_onset.append(is_pre)
 
-    return X, y, run_ids, feat_names
+    return X, y, run_ids, feat_names, pre_onset
+
+
+class TestCVMetrics:
+    def test_returns_fold_metrics(self):
+        X, y, run_ids, feat_names, pre_onset = _synthetic_dataset()
+        cv = _cv_metrics(X, y, run_ids, feat_names, pre_onset)
+
+        assert "fold_aurocs" in cv
+        assert "fold_auprcs" in cv
+        assert len(cv["fold_aurocs"]) == 5  # type: ignore[arg-type]
+        assert len(cv["fold_auprcs"]) == 5  # type: ignore[arg-type]
+        assert "auroc_mean" in cv
+        assert "auroc_std" in cv
+        assert "auprc_mean" in cv
+        assert "auprc_std" in cv
+        assert "best_iteration" in cv
+        # Pre-onset evaluation track
+        assert "pre_onset" in cv
+        pre = cv["pre_onset"]
+        assert "auroc_mean" in pre  # type: ignore[operator]
+        assert "auprc_mean" in pre  # type: ignore[operator]
 
 
 class TestTrainSingleHorizon:
     def test_produces_model_and_metrics(self, tmp_path: Path):
-        X, y, run_ids, feat_names = _synthetic_dataset()
+        X, y, run_ids, feat_names, pre_onset = _synthetic_dataset()
         metrics = _train_single_horizon(
-            X, y, run_ids, feat_names, horizon=10, output_dir=tmp_path
+            X,
+            y,
+            run_ids,
+            feat_names,
+            pre_onset,
+            horizon=10,
+            output_dir=tmp_path,
         )
 
         # Model file created
         model_path = tmp_path / "hazard_H10.json"
         assert model_path.exists()
 
-        # Metrics populated
+        # 5-fold CV metrics populated
         assert metrics["horizon"] == 10
-        assert "n_train" in metrics
-        assert "n_val" in metrics
-        assert "auroc" in metrics
-        assert "auprc" in metrics
+        assert "n_samples" in metrics
+        assert "auroc_mean" in metrics
+        assert "auprc_mean" in metrics
+        assert "fold_aurocs" in metrics
+        assert len(metrics["fold_aurocs"]) == 5  # type: ignore[arg-type]
 
     def test_metrics_are_reasonable(self, tmp_path: Path):
-        X, y, run_ids, feat_names = _synthetic_dataset()
+        X, y, run_ids, feat_names, pre_onset = _synthetic_dataset()
         metrics = _train_single_horizon(
-            X, y, run_ids, feat_names, horizon=10, output_dir=tmp_path
+            X,
+            y,
+            run_ids,
+            feat_names,
+            pre_onset,
+            horizon=10,
+            output_dir=tmp_path,
         )
         # With synthetic signal, should do better than random
-        if metrics["auroc"] is not None:
-            assert metrics["auroc"] > 0.5
+        if metrics["auroc_mean"] is not None:
+            assert metrics["auroc_mean"] > 0.5
 
 
 class TestTrainPredictor:
@@ -149,6 +196,10 @@ class TestTrainPredictor:
         assert (output_dir / "hazard_H5.json").exists()
         assert (output_dir / "metrics.json").exists()
 
-        # LOCO CV should have run with 3 presses
+        # 5-fold CV metrics present
         h5 = metrics["H5"]
+        assert "auroc_mean" in h5  # type: ignore[operator]
+        assert "fold_aurocs" in h5  # type: ignore[operator]
+
+        # LOCO CV should have run with 3 presses
         assert "loco_cv" in h5  # type: ignore[operator]

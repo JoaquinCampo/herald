@@ -34,6 +34,14 @@ help = "Run full compression sweep"
 cmd = "uv run herald train --results-dir results --output-dir models"
 help = "Train hazard predictor"
 
+[tool.poe.tasks.evaluate]
+cmd = "uv run herald evaluate --model-dir models --results-dir results"
+help = "Evaluate trained models with full metrics"
+
+[tool.poe.tasks.nt-sensitivity]
+cmd = "uv run herald nt-sensitivity --results-dir results"
+help = "Run NT onset sensitivity analysis"
+
 [tool.poe.tasks.figures]
 cmd = "uv run python scripts/generate_figures.py"
 help = "Generate paper figures"

@@ -1,6 +1,7 @@
 """XGBoost hazard predictor training and evaluation."""
 
 import json
+import math
 from pathlib import Path
 
 import xgboost as xgb
@@ -43,60 +44,161 @@ def _eval_metrics(
     return {"auroc": None, "auprc": None}
 
 
+def _mean_std(
+    values: list[float | None],
+) -> tuple[float | None, float | None]:
+    """Mean and std of non-None values."""
+    valid = [v for v in values if v is not None]
+    if not valid:
+        return None, None
+    mean = sum(valid) / len(valid)
+    if len(valid) < 2:
+        return round(mean, 4), None
+    var = sum((v - mean) ** 2 for v in valid) / (len(valid) - 1)
+    return round(mean, 4), round(math.sqrt(var), 4)
+
+
+def _cv_metrics(
+    X: list[list[float]],
+    y: list[int],
+    run_ids: list[str],
+    feat_names: list[str],
+    pre_onset: list[bool] | None = None,
+    n_splits: int = 5,
+) -> dict[str, object]:
+    """Run GroupKFold CV and return per-fold + aggregate metrics.
+
+    Trains on all tokens but reports two evaluation tracks:
+    - overall: all validation tokens
+    - pre_onset: only tokens before catastrophe onset
+      (the real early-warning metric)
+
+    Returns fold metrics, aggregates, and best_iteration (median).
+    """
+    gkf = GroupKFold(n_splits=n_splits)
+    fold_aurocs: list[float | None] = []
+    fold_auprcs: list[float | None] = []
+    fold_pre_aurocs: list[float | None] = []
+    fold_pre_auprcs: list[float | None] = []
+    best_iters: list[int] = []
+
+    for train_idx, val_idx in gkf.split(X, y, groups=run_ids):
+        X_train = [X[i] for i in train_idx]
+        y_train = [y[i] for i in train_idx]
+        X_val = [X[i] for i in val_idx]
+        y_val = [y[i] for i in val_idx]
+
+        n_pos = sum(y_train)
+        n_neg = len(y_train) - n_pos
+        params = {
+            **XGB_PARAMS,
+            "scale_pos_weight": float(n_neg / max(n_pos, 1)),
+        }
+
+        dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feat_names)
+        dval = xgb.DMatrix(X_val, label=y_val, feature_names=feat_names)
+
+        model = xgb.train(
+            params,
+            dtrain,
+            num_boost_round=1000,
+            evals=[(dval, "val")],
+            early_stopping_rounds=50,
+            verbose_eval=0,
+        )
+
+        y_pred = model.predict(dval).tolist()
+
+        # Overall metrics
+        ev = _eval_metrics(y_val, y_pred)
+        fold_aurocs.append(ev["auroc"])
+        fold_auprcs.append(ev["auprc"])
+        best_iters.append(model.best_iteration)
+
+        # Pre-onset metrics (early-warning evaluation)
+        if pre_onset is not None:
+            val_pre = [pre_onset[i] for i in val_idx]
+            y_val_pre = [y_val[j] for j, p in enumerate(val_pre) if p]
+            y_pred_pre = [y_pred[j] for j, p in enumerate(val_pre) if p]
+            ev_pre = _eval_metrics(y_val_pre, y_pred_pre)
+            fold_pre_aurocs.append(ev_pre["auroc"])
+            fold_pre_auprcs.append(ev_pre["auprc"])
+
+    auroc_mean, auroc_std = _mean_std(fold_aurocs)
+    auprc_mean, auprc_std = _mean_std(fold_auprcs)
+
+    result: dict[str, object] = {
+        "fold_aurocs": fold_aurocs,
+        "fold_auprcs": fold_auprcs,
+        "auroc_mean": auroc_mean,
+        "auroc_std": auroc_std,
+        "auprc_mean": auprc_mean,
+        "auprc_std": auprc_std,
+        "best_iteration": int(sorted(best_iters)[len(best_iters) // 2]),
+    }
+
+    if fold_pre_aurocs:
+        pre_auroc_mean, pre_auroc_std = _mean_std(fold_pre_aurocs)
+        pre_auprc_mean, pre_auprc_std = _mean_std(fold_pre_auprcs)
+        result["pre_onset"] = {
+            "fold_aurocs": fold_pre_aurocs,
+            "fold_auprcs": fold_pre_auprcs,
+            "auroc_mean": pre_auroc_mean,
+            "auroc_std": pre_auroc_std,
+            "auprc_mean": pre_auprc_mean,
+            "auprc_std": pre_auprc_std,
+        }
+
+    return result
+
+
 def _train_single_horizon(
     X: list[list[float]],
     y: list[int],
     run_ids: list[str],
     feat_names: list[str],
+    pre_onset: list[bool],
     horizon: int,
     output_dir: Path,
 ) -> dict[str, object]:
-    """Train one XGBoost model for a single horizon value."""
-    gkf = GroupKFold(n_splits=5)
-    splits = list(gkf.split(X, y, groups=run_ids))
-    train_idx, val_idx = splits[0]
+    """Train one XGBoost model for a single horizon value.
 
-    X_train = [X[i] for i in train_idx]
-    y_train = [y[i] for i in train_idx]
-    X_val = [X[i] for i in val_idx]
-    y_val = [y[i] for i in val_idx]
+    Runs 5-fold GroupKFold CV for metrics, then retrains
+    on full data for the saved model.
+    """
+    n_pos = sum(y)
+    n_total = len(y)
+    event_rate = round(n_pos / max(n_total, 1), 6)
 
-    n_pos = sum(y_train)
-    n_neg = len(y_train) - n_pos
+    # 5-fold CV for evaluation metrics
+    cv = _cv_metrics(X, y, run_ids, feat_names, pre_onset)
 
+    # Retrain on full data for the production model
+    n_neg = n_total - n_pos
     params = {
         **XGB_PARAMS,
         "scale_pos_weight": float(n_neg / max(n_pos, 1)),
     }
+    best_round = max(cv["best_iteration"], 10)  # type: ignore[call-overload]
 
-    dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=feat_names)
-    dval = xgb.DMatrix(X_val, label=y_val, feature_names=feat_names)
-
+    dtrain = xgb.DMatrix(X, label=y, feature_names=feat_names)
     model = xgb.train(
         params,
         dtrain,
-        num_boost_round=1000,
-        evals=[(dtrain, "train"), (dval, "val")],
-        early_stopping_rounds=50,
-        verbose_eval=100,
+        num_boost_round=best_round,
+        verbose_eval=0,
     )
-
-    y_pred = model.predict(dval).tolist()
-
-    metrics: dict[str, object] = {
-        "horizon": horizon,
-        "n_train": len(y_train),
-        "n_val": len(y_val),
-        "event_rate_train": round(n_pos / max(len(y_train), 1), 6),
-        "event_rate_val": round(sum(y_val) / max(len(y_val), 1), 6),
-        "best_iteration": model.best_iteration,
-        **_eval_metrics(y_val, y_pred),
-    }
 
     model_path = output_dir / f"hazard_H{horizon}.json"
     model.save_model(str(model_path))
     logger.info(f"H={horizon}: model saved to {model_path}")
 
+    metrics: dict[str, object] = {
+        "horizon": horizon,
+        "n_samples": n_total,
+        "event_rate": event_rate,
+        **cv,
+    }
     return metrics
 
 
@@ -196,32 +298,40 @@ def train_predictor(
 
     for horizon in horizons:
         logger.info(f"Building dataset for H={horizon}...")
-        X, y, run_ids, press_ids, feat_names = build_dataset(
-            results_dir, horizon=horizon
-        )
+        ds = build_dataset(results_dir, horizon=horizon)
 
-        if not X:
-            logger.warning(f"H={horizon}: no data found in {results_dir}")
+        if not ds.X:
+            logger.warning(f"H={horizon}: no data in {results_dir}")
             continue
 
+        n_pos = sum(ds.y)
         logger.info(
-            f"H={horizon}: {len(X)} samples, "
-            f"{sum(y)} positive ({sum(y) / len(X):.2%})"
+            f"H={horizon}: {len(ds.X)} samples, "
+            f"{n_pos} positive "
+            f"({n_pos / len(ds.X):.2%})"
         )
 
         metrics = _train_single_horizon(
-            X, y, run_ids, feat_names, horizon, output_dir
+            ds.X,
+            ds.y,
+            ds.run_ids,
+            ds.feat_names,
+            ds.pre_onset,
+            horizon,
+            output_dir,
         )
 
         # Leave-one-compressor-out CV
         logger.info(f"H={horizon}: running LOCO CV...")
-        loco = _loco_cv(X, y, press_ids, feat_names)
+        loco = _loco_cv(ds.X, ds.y, ds.press_ids, ds.feat_names)
         if loco:
-            aurocs = [f["auroc"] for f in loco if f.get("auroc") is not None]
+            aurocs: list[float] = [
+                f["auroc"]  # type: ignore[misc]
+                for f in loco
+                if f.get("auroc") is not None
+            ]
             mean_auroc = (
-                round(sum(aurocs) / len(aurocs), 4)  # type: ignore[arg-type]
-                if aurocs
-                else None
+                round(sum(aurocs) / len(aurocs), 4) if aurocs else None
             )
             metrics["loco_cv"] = {
                 "folds": loco,
@@ -232,9 +342,17 @@ def train_predictor(
         all_metrics[f"H{horizon}"] = metrics
 
         logger.info(
-            f"H={horizon}: AUROC={metrics.get('auroc')}, "
-            f"AUPRC={metrics.get('auprc')}"
+            f"H={horizon}: "
+            f"AUROC={metrics.get('auroc_mean')}, "
+            f"AUPRC={metrics.get('auprc_mean')}"
         )
+        pre = metrics.get("pre_onset")
+        if isinstance(pre, dict):
+            logger.info(
+                f"H={horizon} pre-onset: "
+                f"AUROC={pre.get('auroc_mean')}, "
+                f"AUPRC={pre.get('auprc_mean')}"
+            )
 
     metrics_path = output_dir / "metrics.json"
     metrics_path.write_text(json.dumps(all_metrics, indent=2))
