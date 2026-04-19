@@ -1,8 +1,8 @@
 """Feature engineering: TokenSignals → ML-ready feature vectors.
 
-Produces 30 features per token:
+Produces 42 features per token:
   17 raw numeric (from TokenSignals)
-  12 rolling statistics (8-token causal window)
+  24 rolling statistics (8-token and 32-token causal windows)
    1 positional (token_position)
 """
 
@@ -39,6 +39,8 @@ ROLLING_TARGETS = [
     "top10_jaccard",
 ]
 ROLLING_WINDOW = 8
+ROLLING_WINDOW_LONG = 32
+ROLLING_WINDOWS = (ROLLING_WINDOW, ROLLING_WINDOW_LONG)
 
 
 def flatten_signals(
@@ -91,32 +93,36 @@ def flatten_signals(
 def add_rolling_features(
     rows: list[dict[str, float]],
 ) -> list[dict[str, float]]:
-    """Add 8-token causal rolling mean and std for key signals.
+    """Add causal rolling mean and std for each ROLLING_WINDOWS.
 
-    Adds {name}_mean_8 and {name}_std_8 for each target.
-    First tokens use partial windows (min_periods=1).
+    Adds {name}_mean_{w} and {name}_std_{w} for each target
+    and each window size. First tokens use partial windows
+    (min_periods=1). Short window catches local shocks;
+    long window captures drift.
     """
-    # Pre-build windows per target
-    windows: dict[str, deque[float]] = {
-        name: deque(maxlen=ROLLING_WINDOW) for name in ROLLING_TARGETS
+    windows: dict[tuple[str, int], deque[float]] = {
+        (name, w): deque(maxlen=w)
+        for name in ROLLING_TARGETS
+        for w in ROLLING_WINDOWS
     }
 
     for row in rows:
         for name in ROLLING_TARGETS:
             val = row[name]
-            win = windows[name]
-            win.append(val)
+            for w in ROLLING_WINDOWS:
+                win = windows[(name, w)]
+                win.append(val)
 
-            vals = list(win)
-            n = len(vals)
-            mean = sum(vals) / n
-            row[f"{name}_mean_{ROLLING_WINDOW}"] = mean
+                vals = list(win)
+                n = len(vals)
+                mean = sum(vals) / n
+                row[f"{name}_mean_{w}"] = mean
 
-            if n < 2:
-                row[f"{name}_std_{ROLLING_WINDOW}"] = 0.0
-            else:
-                variance = sum((v - mean) ** 2 for v in vals) / (n - 1)
-                row[f"{name}_std_{ROLLING_WINDOW}"] = math.sqrt(variance)
+                if n < 2:
+                    row[f"{name}_std_{w}"] = 0.0
+                else:
+                    variance = sum((v - mean) ** 2 for v in vals) / (n - 1)
+                    row[f"{name}_std_{w}"] = math.sqrt(variance)
 
     return rows
 

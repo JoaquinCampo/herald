@@ -21,10 +21,10 @@ from herald.config import ExperimentConfig, RunResult
 from herald.detectors import (
     detect_all,
     detect_catastrophe_onsets,
-    parse_gsm8k_answer,
 )
-from herald.prompts import format_chat, load_gsm8k
-from herald.signals import extract_signals
+from herald.prompts import format_chat
+from herald.signals import compute_lookback_ratios, extract_signals
+from herald.tasks import DEFAULT_TASK, Task
 
 
 def _checkpoint_path(config: ExperimentConfig) -> Path:
@@ -127,7 +127,12 @@ class _TimeoutCriteria(StoppingCriteria):
         **kwargs: Any,
     ) -> torch.Tensor:
         exceeded = (time.time() - self.start_time) > self.timeout
-        return torch.tensor([exceeded], dtype=torch.bool)
+        return torch.full(
+            (input_ids.shape[0],),
+            exceeded,
+            dtype=torch.bool,
+            device=input_ids.device,
+        )
 
 
 def run_single(
@@ -137,6 +142,7 @@ def run_single(
     prompt_data: dict[str, Any],
     config: ExperimentConfig,
     press: object | None,
+    task: Task = DEFAULT_TASK,
 ) -> RunResult:
     """Run generation for a single prompt and extract signals."""
     messages = format_chat(prompt_data["question"])
@@ -157,6 +163,7 @@ def run_single(
             max_new_tokens=config.max_new_tokens,
             do_sample=False,
             output_scores=True,
+            output_attentions=config.capture_attention,
             return_dict_in_generate=True,
             stopping_criteria=stopping,
         )
@@ -185,17 +192,25 @@ def run_single(
         sig, state = extract_signals(score[0], prev=state)
         signals.append(sig)
 
+    if config.capture_attention and outputs.attentions is not None:
+        lookbacks = compute_lookback_ratios(
+            outputs.attentions, input_len=input_len
+        )
+        for sig, lb in zip(signals, lookbacks):
+            sig.lookback_ratio = lb
+
     catastrophes = detect_all(
         generated_text,
         generated_ids,
         stop_reason,
         prompt_data["ground_truth"],
+        is_wrong_fn=task.is_wrong,
     )
     catastrophe_onsets = detect_catastrophe_onsets(
         generated_ids, stop_reason, catastrophes
     )
 
-    predicted = parse_gsm8k_answer(generated_text)
+    predicted = task.parse_answer(generated_text)
     correct = (
         "wrong_answer" not in catastrophes if predicted is not None else None
     )
@@ -274,6 +289,7 @@ def run_prompts(
     prompts: list[dict[str, Any]],
     config: ExperimentConfig,
     press: object | None,
+    task: Task = DEFAULT_TASK,
 ) -> list[RunResult]:
     """Run all prompts with a pre-loaded model.
 
@@ -301,7 +317,7 @@ def run_prompts(
 
         try:
             result = run_single(
-                model, tokenizer, device, prompt_data, config, press
+                model, tokenizer, device, prompt_data, config, press, task
             )
         except Exception as e:
             logger.error(f"  FAILED: {e}")
@@ -361,7 +377,9 @@ def print_summary(results: list[RunResult], config: ExperimentConfig) -> None:
     logger.info("=" * 60)
 
 
-def run_experiment(config: ExperimentConfig) -> list[RunResult]:
+def run_experiment(
+    config: ExperimentConfig, task: Task = DEFAULT_TASK
+) -> list[RunResult]:
     """Run the full experiment: load model, iterate
     prompts, collect results."""
     logger.info(
@@ -371,8 +389,10 @@ def run_experiment(config: ExperimentConfig) -> list[RunResult]:
 
     model, tokenizer, device = load_model(config)
     press = get_press(config.press_name, config.compression_ratio)
-    prompts = load_gsm8k(config.num_prompts, config.seed)
-    results = run_prompts(model, tokenizer, device, prompts, config, press)
+    prompts = task.load(config.num_prompts, config.seed)
+    results = run_prompts(
+        model, tokenizer, device, prompts, config, press, task
+    )
     print_summary(results, config)
     return results
 
@@ -446,6 +466,7 @@ def run_sweep(
     model_name: str = "Qwen/Qwen2.5-7B-Instruct",
     skip_existing: bool = True,
     prompt_timeout_seconds: float = 300.0,
+    task: Task = DEFAULT_TASK,
 ) -> None:
     """Run the full compression sweep, reusing the model across configs."""
     configs = build_sweep_configs(
@@ -465,7 +486,7 @@ def run_sweep(
         logger.info("All configs already completed.")
         return
 
-    prompts = load_gsm8k(num_prompts, seed)
+    prompts = task.load(num_prompts, seed)
     model, tokenizer, device = load_model(pending[0])
 
     for i, config in enumerate(pending, 1):
@@ -478,7 +499,7 @@ def run_sweep(
 
         press = get_press(config.press_name, config.compression_ratio)
         results = run_prompts(
-            model, tokenizer, device, prompts, config, press
+            model, tokenizer, device, prompts, config, press, task
         )
         print_summary(results, config)
         save_results(results, config)

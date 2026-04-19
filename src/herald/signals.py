@@ -113,3 +113,35 @@ def extract_signals(
         entropy=entropy, log_probs=log_probs.detach(), top10_ids=top10_ids
     )
     return signals, state
+
+
+def compute_lookback_ratios(
+    attentions: tuple[tuple[torch.Tensor, ...], ...],
+    input_len: int,
+) -> list[float]:
+    """Per-token lookback ratio from generation attentions.
+
+    Each entry of `attentions` is one decode step: a tuple of
+    layer attention tensors of shape (batch, heads, q, k).
+    For step t, the new token attends to positions [0, k);
+    lookback ratio = mean attention to context [0, input_len)
+    divided by total attention. Averaged across layers and
+    heads. Returns one float per generated token.
+
+    Reference: Chuang et al., "Lookback Lens" (2024).
+    """
+    out: list[float] = []
+    for step_attns in attentions:
+        per_layer: list[float] = []
+        for layer_attn in step_attns:
+            # layer_attn: (batch=1, heads, q, k)
+            # The newly generated token is the last query row
+            row = layer_attn[0, :, -1, :]  # (heads, k)
+            k = row.shape[-1]
+            ctx_end = min(input_len, k)
+            attn_ctx = row[:, :ctx_end].sum(dim=-1)  # (heads,)
+            attn_total = row.sum(dim=-1).clamp_min(1e-12)
+            ratio = (attn_ctx / attn_total).mean().item()
+            per_layer.append(ratio)
+        out.append(round(sum(per_layer) / len(per_layer), 4))
+    return out

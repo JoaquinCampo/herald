@@ -6,7 +6,11 @@ import pytest
 import torch
 
 from herald.config import TokenSignals
-from herald.signals import StepState, extract_signals
+from herald.signals import (
+    StepState,
+    compute_lookback_ratios,
+    extract_signals,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -61,6 +65,7 @@ class TestReturnStructure:
             "eff_vocab_size",
             "tail_mass",
             "logit_range",
+            "lookback_ratio",
         }
         actual_fields = set(signals.model_fields.keys())
         assert expected_fields == actual_fields
@@ -347,3 +352,47 @@ class TestEdgeCases:
         signals, _ = extract_signals(logits)
         assert signals.entropy > 0
         assert signals.top1_prob > 0
+
+
+# ---------------------------------------------------------------------------
+# compute_lookback_ratios
+# ---------------------------------------------------------------------------
+
+
+class TestLookbackRatios:
+    def test_all_attention_to_context_returns_one(self):
+        # 1 layer, 1 head; attention concentrated on context
+        # input_len=2, generated 1 token (k=3, last is the new token)
+        attn = torch.tensor([[[[0.5, 0.5, 0.0]]]])  # all on ctx
+        out = compute_lookback_ratios(((attn,),), input_len=2)
+        assert out == [1.0]
+
+    def test_all_attention_to_generated_returns_zero(self):
+        # New token attends entirely to a previously generated
+        # token (position 2 is the prior generated, position 3
+        # is itself with 0 weight)
+        attn = torch.tensor([[[[0.0, 0.0, 1.0, 0.0]]]])
+        out = compute_lookback_ratios(((attn,),), input_len=2)
+        assert out == [0.0]
+
+    def test_mixed_attention_returns_proportion(self):
+        # Half on context, half on generated
+        attn = torch.tensor([[[[0.25, 0.25, 0.5]]]])
+        out = compute_lookback_ratios(((attn,),), input_len=2)
+        assert abs(out[0] - 0.5) < 1e-4
+
+    def test_averages_across_heads_and_layers(self):
+        # 2 heads, 2 layers; head A all-ctx, head B all-gen.
+        # Per-layer ratio = (1.0 + 0.0) / 2 = 0.5; both layers
+        # equal → final = 0.5
+        head_a = torch.tensor([[1.0, 0.0, 0.0]])  # (q=1, k=3)
+        head_b = torch.tensor([[0.0, 0.0, 1.0]])
+        layer = torch.stack([head_a, head_b]).unsqueeze(0)  # (1,2,1,3)
+        out = compute_lookback_ratios(((layer, layer),), input_len=2)
+        assert abs(out[0] - 0.5) < 1e-4
+
+    def test_multiple_steps_returns_list(self):
+        a1 = torch.tensor([[[[1.0, 0.0]]]])  # input_len=2
+        a2 = torch.tensor([[[[0.5, 0.5, 0.0]]]])  # next step
+        out = compute_lookback_ratios(((a1,), (a2,)), input_len=2)
+        assert len(out) == 2

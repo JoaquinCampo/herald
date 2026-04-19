@@ -27,6 +27,10 @@ class ExperimentConfig(BaseSettings):
     device: str = "auto"
     output_dir: Path = Path("results")
     prompt_timeout_seconds: float = 300.0
+    # Iteration-2 prep: enable to also capture lookback_ratio
+    # via model.generate(output_attentions=True). Off by
+    # default — adds ~quadratic memory in seq length.
+    capture_attention: bool = False
 
     def resolve_device(self) -> str:
         if self.device != "auto":
@@ -54,6 +58,9 @@ class TokenSignals(BaseModel):
     eff_vocab_size: float = 0.0
     tail_mass: float = 0.0
     logit_range: float = 0.0
+    # Iteration-2 attention-derived feature. NaN if
+    # ExperimentConfig.capture_attention was False.
+    lookback_ratio: NanFloat = float("nan")
 
 
 class RunResult(BaseModel):

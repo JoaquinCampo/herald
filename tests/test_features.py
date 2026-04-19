@@ -4,6 +4,7 @@ from herald.config import TokenSignals
 from herald.features import (
     ROLLING_TARGETS,
     ROLLING_WINDOW,
+    ROLLING_WINDOWS,
     add_rolling_features,
     flatten_signals,
 )
@@ -115,8 +116,9 @@ class TestAddRollingFeatures:
         rows = flatten_signals(sigs)
         rows = add_rolling_features(rows)
         for name in ROLLING_TARGETS:
-            assert f"{name}_mean_{ROLLING_WINDOW}" in rows[0]
-            assert f"{name}_std_{ROLLING_WINDOW}" in rows[0]
+            for w in ROLLING_WINDOWS:
+                assert f"{name}_mean_{w}" in rows[0]
+                assert f"{name}_std_{w}" in rows[0]
 
     def test_rolling_count(self):
         sigs = _make_signals(10)
@@ -124,16 +126,19 @@ class TestAddRollingFeatures:
         n_before = len(rows[0])
         rows = add_rolling_features(rows)
         n_after = len(rows[0])
-        assert n_after - n_before == len(ROLLING_TARGETS) * 2
+        assert n_after - n_before == len(ROLLING_TARGETS) * 2 * len(
+            ROLLING_WINDOWS
+        )
 
     def test_single_token_std_is_zero(self):
         sigs = _make_signals(1)
         rows = flatten_signals(sigs)
         rows = add_rolling_features(rows)
         for name in ROLLING_TARGETS:
-            assert rows[0][f"{name}_std_{ROLLING_WINDOW}"] == 0.0
+            for w in ROLLING_WINDOWS:
+                assert rows[0][f"{name}_std_{w}"] == 0.0
 
-    def test_mean_correctness(self):
+    def test_mean_correctness_short_window(self):
         sigs = _make_signals(3)
         rows = flatten_signals(sigs)
         rows = add_rolling_features(rows)
@@ -142,8 +147,21 @@ class TestAddRollingFeatures:
         mean_key = f"entropy_mean_{ROLLING_WINDOW}"
         assert abs(rows[2][mean_key] - 1.1) < 1e-6
 
-    def test_total_feature_count_is_30(self):
+    def test_long_window_captures_more(self):
+        # With 40 tokens and window 32, long window average
+        # differs from short window average (drift)
+        sigs = _make_signals(40)
+        rows = flatten_signals(sigs)
+        rows = add_rolling_features(rows)
+        short = rows[-1]["entropy_mean_8"]
+        long = rows[-1]["entropy_mean_32"]
+        assert short != long
+
+    def test_total_feature_count_is_42(self):
         sigs = _make_signals(10)
         rows = flatten_signals(sigs)
         rows = add_rolling_features(rows)
-        assert len(rows[0]) == 30
+        # 17 raw + 1 delta_h_valid isn't separate, it's raw +
+        # 5 logprobs + 1 position = 18 raw; 6 targets x 2 stats
+        # x 2 windows = 24 rolling; total = 42
+        assert len(rows[0]) == 42

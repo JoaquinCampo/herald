@@ -225,8 +225,7 @@ def _baseline_cv(
     """
     if BASELINE_FEATURE not in feat_names:
         logger.warning(
-            f"Baseline feature {BASELINE_FEATURE!r} "
-            f"not found in feat_names"
+            f"Baseline feature {BASELINE_FEATURE!r} not found in feat_names"
         )
         return {}
 
@@ -248,12 +247,8 @@ def _baseline_cv(
 
         if pre_onset is not None:
             val_pre = [pre_onset[i] for i in val_idx]
-            y_val_pre = [
-                y_val[j] for j, p in enumerate(val_pre) if p
-            ]
-            scores_pre = [
-                scores[j] for j, p in enumerate(val_pre) if p
-            ]
+            y_val_pre = [y_val[j] for j, p in enumerate(val_pre) if p]
+            scores_pre = [scores[j] for j, p in enumerate(val_pre) if p]
             ev_pre = _eval_metrics(y_val_pre, scores_pre)
             fold_pre_aurocs.append(ev_pre["auroc"])
             fold_pre_auprcs.append(ev_pre["auprc"])
@@ -272,12 +267,8 @@ def _baseline_cv(
     }
 
     if fold_pre_aurocs:
-        pre_auroc_mean, pre_auroc_std = _mean_std(
-            fold_pre_aurocs
-        )
-        pre_auprc_mean, pre_auprc_std = _mean_std(
-            fold_pre_auprcs
-        )
+        pre_auroc_mean, pre_auroc_std = _mean_std(fold_pre_aurocs)
+        pre_auprc_mean, pre_auprc_std = _mean_std(fold_pre_auprcs)
         result["pre_onset"] = {
             "fold_aurocs": fold_pre_aurocs,
             "fold_auprcs": fold_pre_auprcs,

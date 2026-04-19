@@ -64,9 +64,7 @@ def _synthetic_dataset(
 class TestBaselineCV:
     def test_returns_metrics(self):
         X, y, run_ids, feat_names, pre_onset = _synthetic_dataset()
-        result = _baseline_cv(
-            X, y, run_ids, feat_names, pre_onset
-        )
+        result = _baseline_cv(X, y, run_ids, feat_names, pre_onset)
 
         assert result["feature"] == "entropy_mean_8"
         assert "auroc_mean" in result
@@ -78,9 +76,7 @@ class TestBaselineCV:
     def test_missing_feature_returns_empty(self):
         X, y, run_ids, _, pre_onset = _synthetic_dataset()
         fake_names = [f"other_{i}" for i in range(30)]
-        result = _baseline_cv(
-            X, y, run_ids, fake_names, pre_onset
-        )
+        result = _baseline_cv(X, y, run_ids, fake_names, pre_onset)
         assert result == {}
 
 

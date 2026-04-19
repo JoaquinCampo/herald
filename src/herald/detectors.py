@@ -19,6 +19,7 @@ Future work — additional catastrophe types not yet implemented:
 
 import math
 import re
+from collections.abc import Callable
 
 
 def detect_non_termination(stop_reason: str) -> bool:
@@ -139,13 +140,18 @@ def detect_all(
     token_ids: list[int],
     stop_reason: str,
     ground_truth: str,
+    is_wrong_fn: Callable[[str, str], bool] = detect_answer_failure,
 ) -> list[str]:
-    """Run all detectors and return list of detected catastrophe types."""
+    """Run all detectors and return list of detected catastrophe types.
+
+    `is_wrong_fn` lets callers swap the wrong-answer test for
+    a task-specific scorer. Default keeps GSM8K behavior.
+    """
     catastrophes = []
     if detect_non_termination(stop_reason):
         catastrophes.append("non_termination")
     if detect_looping(token_ids):
         catastrophes.append("looping")
-    if detect_answer_failure(generated_text, ground_truth):
+    if is_wrong_fn(generated_text, ground_truth):
         catastrophes.append("wrong_answer")
     return catastrophes
