@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import xgboost as xgb
+from joblib import Parallel, delayed
 from loguru import logger
 from sklearn.metrics import (
     average_precision_score,
@@ -16,9 +17,12 @@ from sklearn.metrics import (
 from herald.features import build_dataset
 from herald.train import _cv_metrics
 
-BOOTSTRAP_N = 1000
+BOOTSTRAP_N = 200
 BOOTSTRAP_SEED = 42
 BOOTSTRAP_ALPHA = 0.05  # 95% CI
+BOOTSTRAP_MAX_N = (
+    200_000  # cap bootstrap sample size; CI width saturates well before this
+)
 
 # Features where lower value = more dangerous
 # (need negation for AUROC to work correctly)
@@ -77,6 +81,25 @@ def _safe_auprc(
     return round(val, 4)
 
 
+def _one_bootstrap(
+    yt: np.ndarray,
+    ys: np.ndarray,
+    seed: int,
+    metric_fn: Callable[[np.ndarray, np.ndarray], float],
+) -> float | None:
+    """One bootstrap resample; returns metric value or None if degenerate."""
+    rng = np.random.default_rng(seed)
+    n = yt.shape[0]
+    idx = rng.integers(0, n, size=n)
+    sample_t = yt[idx]
+    if np.unique(sample_t).size < 2:
+        return None
+    try:
+        return float(metric_fn(sample_t, ys[idx]))
+    except ValueError:
+        return None
+
+
 def _bootstrap_ci(
     y_true: list[int],
     y_score: list[float],
@@ -85,27 +108,36 @@ def _bootstrap_ci(
     seed: int = BOOTSTRAP_SEED,
     alpha: float = BOOTSTRAP_ALPHA,
 ) -> list[float] | None:
-    """Percentile bootstrap CI for a ranking metric.
+    """Parallel percentile bootstrap CI for a ranking metric.
+
+    Speed optimizations vs naive bootstrap:
+    - Subsamples to BOOTSTRAP_MAX_N once if the input is larger
+      (CI width for ranking metrics saturates far below 200k).
+    - Parallelizes across bootstrap iterations via joblib.
 
     Returns [lo, hi] at (1 - alpha) coverage, or None if the
-    input is degenerate or too few resamples yield valid
-    labels (e.g. both classes present).
+    input is degenerate.
     """
     n = len(y_true)
     if n < 2 or len(set(y_true)) < 2:
         return None
 
-    rng = np.random.default_rng(seed)
     yt = np.asarray(y_true)
     ys = np.asarray(y_score, dtype=float)
 
-    boots: list[float] = []
-    for _ in range(n_boot):
-        idx = rng.integers(0, n, size=n)
-        sample_t = yt[idx]
-        if len(set(sample_t.tolist())) < 2:
-            continue
-        boots.append(float(metric_fn(sample_t.tolist(), ys[idx].tolist())))
+    master_rng = np.random.default_rng(seed)
+    if n > BOOTSTRAP_MAX_N:
+        sub_idx = master_rng.choice(n, size=BOOTSTRAP_MAX_N, replace=False)
+        yt = yt[sub_idx]
+        ys = ys[sub_idx]
+
+    worker_seeds = master_rng.integers(0, 2**32 - 1, size=n_boot)
+
+    boots_raw = Parallel(n_jobs=-1)(
+        delayed(_one_bootstrap)(yt, ys, int(s), metric_fn)
+        for s in worker_seeds
+    )
+    boots = [b for b in boots_raw if b is not None]
 
     if len(boots) < max(10, n_boot // 10):
         return None

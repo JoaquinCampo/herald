@@ -128,13 +128,13 @@ def _create_sweep_results(
 
 
 class TestFeaturesPipeline:
-    def test_flatten_then_rolling_produces_30_features(self):
+    def test_flatten_then_rolling_produces_42_features(self):
         random.seed(0)
         sigs = [_make_signal(t, False) for t in range(50)]
         rows = flatten_signals(sigs, max_new_tokens=512)
         rows = add_rolling_features(rows)
         assert len(rows) == 50
-        assert len(rows[0]) == 30
+        assert len(rows[0]) == 42
         # All values are finite floats
         for row in rows:
             for k, v in row.items():
@@ -213,8 +213,8 @@ class TestBuildDataset:
             == len(ds.seq_ids)
         )
         assert len(ds.X) > 0
-        assert len(ds.feat_names) == 30
-        assert all(len(row) == 30 for row in ds.X)
+        assert len(ds.feat_names) == 42
+        assert all(len(row) == 42 for row in ds.X)
 
     def test_labels_are_binary(self, sweep_dir: Path):
         ds = build_dataset(sweep_dir, horizon=10)

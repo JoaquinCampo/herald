@@ -8,11 +8,14 @@ from pathlib import Path
 
 import typer
 
+from herald.analysis.cli import app as analyze_app
+
 app = typer.Typer(
     name="herald",
     help="Predict catastrophic failures in KV-cache "
     "compression from logit signals.",
 )
+app.add_typer(analyze_app, name="analyze")
 
 
 @app.command()

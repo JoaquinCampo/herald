@@ -42,6 +42,10 @@ help = "Evaluate trained models with full metrics"
 cmd = "uv run herald nt-sensitivity --results-dir results"
 help = "Run NT onset sensitivity analysis"
 
+[tool.poe.tasks.analyze]
+cmd = "uv run herald analyze all"
+help = "Run every post-training analysis (per-press, per-ratio, calibration, errors, importances, qualitative, cost, NT-sensitivity)"
+
 [tool.poe.tasks.figures]
 cmd = "uv run python scripts/generate_figures.py"
 help = "Generate paper figures"

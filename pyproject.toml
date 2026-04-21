@@ -46,6 +46,8 @@ module = [
   "transformers.*",
   "xgboost.*",
   "sklearn.*",
+  "joblib",
+  "joblib.*",
 ]
 ignore_missing_imports = true
 

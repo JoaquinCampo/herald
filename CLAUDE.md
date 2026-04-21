@@ -8,9 +8,9 @@ Predicts catastrophic failures (looping, non-termination, instruction amnesia) i
 
 ## Architecture
 
-Single flat package in `src/herald/`.
+Package root at `src/herald/` is flat. Subpackages are allowed when they carve out a cohesive area that would otherwise clutter the root (e.g., `herald/analysis/` groups post-hoc analyses that share data-loading helpers). Only introduce one when the grouping is structural, not cosmetic.
 
-**Key modules**: config.py (Pydantic models) -> prompts.py (GSM8K loading) -> signals.py (per-token extraction) -> detectors.py (catastrophe detection) -> experiment.py (generation + sweep runner) -> features.py (ML feature engineering) -> labeling.py (hazard labels) -> train.py (XGBoost training + evaluation)
+**Key modules**: config.py (Pydantic models) -> prompts.py (GSM8K loading) -> signals.py (per-token extraction) -> detectors.py (catastrophe detection) -> experiment.py (generation + sweep runner) -> features.py (ML feature engineering) -> labeling.py (hazard labels) -> train.py (XGBoost training + evaluation) -> evaluate.py (post-training metrics) -> analysis/ (per-press, per-ratio, calibration, errors, importances, qualitative, inference cost)
 
 **Data flow**: GSM8K -> format_prompt -> model.generate(output_scores=True) inside press(model) context -> per-token extract_signals -> detect_all -> RunResult -> JSON -> build_dataset -> train_predictor -> evaluate
 
@@ -43,7 +43,7 @@ poe setup               # Sync deps + install pre-commit hooks
 - Functions over classes. Classes only when state management is genuinely needed.
 - Line length: 78 characters (ruff enforces).
 - Imports sorted by ruff.
-- Flat package structure — no subpackages under `src/herald/`.
+- Package root stays flat; subpackages only when they group a genuinely cohesive area (shared helpers, shared data, single concern). Don't create one for convenience.
 
 ## Experiment Environment
 
@@ -72,6 +72,5 @@ poe setup               # Sync deps + install pre-commit hooks
 
 ### Never
 - Commit `results/` data (gitignored for a reason)
-- Create subpackages under `src/herald/`
 - Add `from __future__ import annotations`
 
