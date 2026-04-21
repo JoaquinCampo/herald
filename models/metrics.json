@@ -1,0 +1,692 @@
+{
+  "H1": {
+    "horizon": 1,
+    "n_samples": 5143068,
+    "event_rate": 0.200193,
+    "fold_aurocs": [
+      0.9773,
+      0.9781,
+      0.9788,
+      0.976,
+      0.9739
+    ],
+    "fold_auprcs": [
+      0.9468,
+      0.946,
+      0.9495,
+      0.943,
+      0.9386
+    ],
+    "auroc_mean": 0.9768,
+    "auroc_std": 0.0019,
+    "auprc_mean": 0.9448,
+    "auprc_std": 0.0042,
+    "best_iteration": 990,
+    "pre_onset": {
+      "fold_aurocs": [
+        0.8857,
+        0.8781,
+        0.8857,
+        0.8871,
+        0.8876
+      ],
+      "fold_auprcs": [
+        0.0107,
+        0.0104,
+        0.0107,
+        0.0093,
+        0.0093
+      ],
+      "auroc_mean": 0.8848,
+      "auroc_std": 0.0039,
+      "auprc_mean": 0.0101,
+      "auprc_std": 0.0007
+    },
+    "baseline": {
+      "feature": "entropy_mean_8",
+      "fold_aurocs": [
+        0.5316,
+        0.5377,
+        0.5477,
+        0.5324,
+        0.5289
+      ],
+      "fold_auprcs": [
+        0.3517,
+        0.3531,
+        0.3712,
+        0.3392,
+        0.3478
+      ],
+      "auroc_mean": 0.5357,
+      "auroc_std": 0.0074,
+      "auprc_mean": 0.3526,
+      "auprc_std": 0.0117,
+      "pre_onset": {
+        "fold_aurocs": [
+          0.5377,
+          0.5293,
+          0.5376,
+          0.537,
+          0.5414
+        ],
+        "fold_auprcs": [
+          0.0016,
+          0.0021,
+          0.0018,
+          0.0024,
+          0.0019
+        ],
+        "auroc_mean": 0.5366,
+        "auroc_std": 0.0044,
+        "auprc_mean": 0.002,
+        "auprc_std": 0.0003
+      }
+    },
+    "loco_cv": {
+      "folds": [
+        {
+          "held_out_press": "expected_attention",
+          "n_train": 4377444,
+          "n_val": 765624,
+          "event_rate_val": 0.0233,
+          "auroc": 0.9704,
+          "auprc": 0.6506
+        },
+        {
+          "held_out_press": "knorm",
+          "n_train": 4298942,
+          "n_val": 844126,
+          "event_rate_val": 0.0999,
+          "auroc": 0.9819,
+          "auprc": 0.9151
+        },
+        {
+          "held_out_press": "random",
+          "n_train": 4301567,
+          "n_val": 841501,
+          "event_rate_val": 0.1784,
+          "auroc": 0.9545,
+          "auprc": 0.8777
+        },
+        {
+          "held_out_press": "snapkv",
+          "n_train": 4201699,
+          "n_val": 941369,
+          "event_rate_val": 0.7253,
+          "auroc": 0.9699,
+          "auprc": 0.9892
+        },
+        {
+          "held_out_press": "streaming_llm",
+          "n_train": 4332403,
+          "n_val": 810665,
+          "event_rate_val": 0.0604,
+          "auroc": 0.9482,
+          "auprc": 0.6919
+        },
+        {
+          "held_out_press": "tova",
+          "n_train": 4352859,
+          "n_val": 790209,
+          "event_rate_val": 0.0563,
+          "auroc": 0.9653,
+          "auprc": 0.7671
+        }
+      ],
+      "mean_auroc": 0.965
+    }
+  },
+  "H5": {
+    "horizon": 5,
+    "n_samples": 5143068,
+    "event_rate": 0.203252,
+    "fold_aurocs": [
+      0.9759,
+      0.9766,
+      0.9775,
+      0.9746,
+      0.9725
+    ],
+    "fold_auprcs": [
+      0.9444,
+      0.9434,
+      0.9474,
+      0.9406,
+      0.9367
+    ],
+    "auroc_mean": 0.9754,
+    "auroc_std": 0.0019,
+    "auprc_mean": 0.9425,
+    "auprc_std": 0.0041,
+    "best_iteration": 997,
+    "pre_onset": {
+      "fold_aurocs": [
+        0.8799,
+        0.8749,
+        0.8787,
+        0.8825,
+        0.8814
+      ],
+      "fold_auprcs": [
+        0.0494,
+        0.0456,
+        0.0496,
+        0.042,
+        0.0502
+      ],
+      "auroc_mean": 0.8795,
+      "auroc_std": 0.0029,
+      "auprc_mean": 0.0474,
+      "auprc_std": 0.0035
+    },
+    "baseline": {
+      "feature": "entropy_mean_8",
+      "fold_aurocs": [
+        0.5318,
+        0.538,
+        0.548,
+        0.5329,
+        0.5294
+      ],
+      "fold_auprcs": [
+        0.3535,
+        0.3549,
+        0.373,
+        0.3414,
+        0.3502
+      ],
+      "auroc_mean": 0.536,
+      "auroc_std": 0.0074,
+      "auprc_mean": 0.3546,
+      "auprc_std": 0.0115,
+      "pre_onset": {
+        "fold_aurocs": [
+          0.5392,
+          0.5423,
+          0.551,
+          0.5501,
+          0.5504
+        ],
+        "fold_auprcs": [
+          0.0067,
+          0.0083,
+          0.0077,
+          0.0108,
+          0.0088
+        ],
+        "auroc_mean": 0.5466,
+        "auroc_std": 0.0055,
+        "auprc_mean": 0.0085,
+        "auprc_std": 0.0015
+      }
+    },
+    "loco_cv": {
+      "folds": [
+        {
+          "held_out_press": "expected_attention",
+          "n_train": 4377444,
+          "n_val": 765624,
+          "event_rate_val": 0.0239,
+          "auroc": 0.9686,
+          "auprc": 0.6453
+        },
+        {
+          "held_out_press": "knorm",
+          "n_train": 4298942,
+          "n_val": 844126,
+          "event_rate_val": 0.1083,
+          "auroc": 0.9727,
+          "auprc": 0.8939
+        },
+        {
+          "held_out_press": "random",
+          "n_train": 4301567,
+          "n_val": 841501,
+          "event_rate_val": 0.1824,
+          "auroc": 0.9519,
+          "auprc": 0.875
+        },
+        {
+          "held_out_press": "snapkv",
+          "n_train": 4201699,
+          "n_val": 941369,
+          "event_rate_val": 0.7273,
+          "auroc": 0.9706,
+          "auprc": 0.9895
+        },
+        {
+          "held_out_press": "streaming_llm",
+          "n_train": 4332403,
+          "n_val": 810665,
+          "event_rate_val": 0.0621,
+          "auroc": 0.9454,
+          "auprc": 0.6859
+        },
+        {
+          "held_out_press": "tova",
+          "n_train": 4352859,
+          "n_val": 790209,
+          "event_rate_val": 0.0582,
+          "auroc": 0.9621,
+          "auprc": 0.7589
+        }
+      ],
+      "mean_auroc": 0.9619
+    }
+  },
+  "H10": {
+    "horizon": 10,
+    "n_samples": 5143068,
+    "event_rate": 0.207047,
+    "fold_aurocs": [
+      0.9741,
+      0.9745,
+      0.9756,
+      0.9728,
+      0.9706
+    ],
+    "fold_auprcs": [
+      0.9416,
+      0.9401,
+      0.9445,
+      0.9374,
+      0.934
+    ],
+    "auroc_mean": 0.9735,
+    "auroc_std": 0.0019,
+    "auprc_mean": 0.9395,
+    "auprc_std": 0.004,
+    "best_iteration": 979,
+    "pre_onset": {
+      "fold_aurocs": [
+        0.8792,
+        0.8734,
+        0.8764,
+        0.8818,
+        0.8789
+      ],
+      "fold_auprcs": [
+        0.087,
+        0.0777,
+        0.0851,
+        0.0739,
+        0.0873
+      ],
+      "auroc_mean": 0.8779,
+      "auroc_std": 0.0032,
+      "auprc_mean": 0.0822,
+      "auprc_std": 0.0061
+    },
+    "baseline": {
+      "feature": "entropy_mean_8",
+      "fold_aurocs": [
+        0.533,
+        0.5392,
+        0.549,
+        0.5344,
+        0.5309
+      ],
+      "fold_auprcs": [
+        0.3562,
+        0.3575,
+        0.3756,
+        0.3445,
+        0.3532
+      ],
+      "auroc_mean": 0.5373,
+      "auroc_std": 0.0072,
+      "auprc_mean": 0.3574,
+      "auprc_std": 0.0114,
+      "pre_onset": {
+        "fold_aurocs": [
+          0.558,
+          0.5619,
+          0.5696,
+          0.5726,
+          0.5699
+        ],
+        "fold_auprcs": [
+          0.0135,
+          0.0156,
+          0.0148,
+          0.0187,
+          0.0167
+        ],
+        "auroc_mean": 0.5664,
+        "auroc_std": 0.0062,
+        "auprc_mean": 0.0159,
+        "auprc_std": 0.002
+      }
+    },
+    "loco_cv": {
+      "folds": [
+        {
+          "held_out_press": "expected_attention",
+          "n_train": 4377444,
+          "n_val": 765624,
+          "event_rate_val": 0.0247,
+          "auroc": 0.9669,
+          "auprc": 0.6354
+        },
+        {
+          "held_out_press": "knorm",
+          "n_train": 4298942,
+          "n_val": 844126,
+          "event_rate_val": 0.1188,
+          "auroc": 0.9621,
+          "auprc": 0.8706
+        },
+        {
+          "held_out_press": "random",
+          "n_train": 4301567,
+          "n_val": 841501,
+          "event_rate_val": 0.1873,
+          "auroc": 0.9489,
+          "auprc": 0.8717
+        },
+        {
+          "held_out_press": "snapkv",
+          "n_train": 4201699,
+          "n_val": 941369,
+          "event_rate_val": 0.7296,
+          "auroc": 0.971,
+          "auprc": 0.9898
+        },
+        {
+          "held_out_press": "streaming_llm",
+          "n_train": 4332403,
+          "n_val": 810665,
+          "event_rate_val": 0.0642,
+          "auroc": 0.9426,
+          "auprc": 0.6829
+        },
+        {
+          "held_out_press": "tova",
+          "n_train": 4352859,
+          "n_val": 790209,
+          "event_rate_val": 0.0606,
+          "auroc": 0.9581,
+          "auprc": 0.7503
+        }
+      ],
+      "mean_auroc": 0.9583
+    }
+  },
+  "H25": {
+    "horizon": 25,
+    "n_samples": 5143068,
+    "event_rate": 0.218308,
+    "fold_aurocs": [
+      0.9687,
+      0.969,
+      0.9703,
+      0.9675,
+      0.965
+    ],
+    "fold_auprcs": [
+      0.9337,
+      0.9311,
+      0.9369,
+      0.9288,
+      0.9267
+    ],
+    "auroc_mean": 0.9681,
+    "auroc_std": 0.002,
+    "auprc_mean": 0.9314,
+    "auprc_std": 0.004,
+    "best_iteration": 999,
+    "pre_onset": {
+      "fold_aurocs": [
+        0.8754,
+        0.8712,
+        0.8721,
+        0.8752,
+        0.8694
+      ],
+      "fold_auprcs": [
+        0.1835,
+        0.1625,
+        0.1743,
+        0.1541,
+        0.1801
+      ],
+      "auroc_mean": 0.8727,
+      "auroc_std": 0.0026,
+      "auprc_mean": 0.1709,
+      "auprc_std": 0.0123
+    },
+    "baseline": {
+      "feature": "entropy_mean_8",
+      "fold_aurocs": [
+        0.536,
+        0.541,
+        0.5513,
+        0.5375,
+        0.5337
+      ],
+      "fold_auprcs": [
+        0.3643,
+        0.3649,
+        0.3831,
+        0.3527,
+        0.3623
+      ],
+      "auroc_mean": 0.5399,
+      "auroc_std": 0.0069,
+      "auprc_mean": 0.3655,
+      "auprc_std": 0.011,
+      "pre_onset": {
+        "fold_aurocs": [
+          0.5679,
+          0.5613,
+          0.5752,
+          0.5757,
+          0.5707
+        ],
+        "fold_auprcs": [
+          0.0339,
+          0.0353,
+          0.0345,
+          0.0363,
+          0.0388
+        ],
+        "auroc_mean": 0.5702,
+        "auroc_std": 0.0059,
+        "auprc_mean": 0.0358,
+        "auprc_std": 0.0019
+      }
+    },
+    "loco_cv": {
+      "folds": [
+        {
+          "held_out_press": "expected_attention",
+          "n_train": 4377444,
+          "n_val": 765624,
+          "event_rate_val": 0.0271,
+          "auroc": 0.9613,
+          "auprc": 0.6134
+        },
+        {
+          "held_out_press": "knorm",
+          "n_train": 4298942,
+          "n_val": 844126,
+          "event_rate_val": 0.1503,
+          "auroc": 0.9392,
+          "auprc": 0.8319
+        },
+        {
+          "held_out_press": "random",
+          "n_train": 4301567,
+          "n_val": 841501,
+          "event_rate_val": 0.2022,
+          "auroc": 0.9384,
+          "auprc": 0.8602
+        },
+        {
+          "held_out_press": "snapkv",
+          "n_train": 4201699,
+          "n_val": 941369,
+          "event_rate_val": 0.736,
+          "auroc": 0.9709,
+          "auprc": 0.9901
+        },
+        {
+          "held_out_press": "streaming_llm",
+          "n_train": 4332403,
+          "n_val": 810665,
+          "event_rate_val": 0.0706,
+          "auroc": 0.9333,
+          "auprc": 0.6621
+        },
+        {
+          "held_out_press": "tova",
+          "n_train": 4352859,
+          "n_val": 790209,
+          "event_rate_val": 0.0679,
+          "auroc": 0.9463,
+          "auprc": 0.7229
+        }
+      ],
+      "mean_auroc": 0.9482
+    }
+  },
+  "H50": {
+    "horizon": 50,
+    "n_samples": 5143068,
+    "event_rate": 0.236829,
+    "fold_aurocs": [
+      0.959,
+      0.958,
+      0.9599,
+      0.9568,
+      0.9542
+    ],
+    "fold_auprcs": [
+      0.9212,
+      0.9158,
+      0.9234,
+      0.9138,
+      0.9137
+    ],
+    "auroc_mean": 0.9576,
+    "auroc_std": 0.0022,
+    "auprc_mean": 0.9176,
+    "auprc_std": 0.0045,
+    "best_iteration": 999,
+    "pre_onset": {
+      "fold_aurocs": [
+        0.8594,
+        0.8531,
+        0.8529,
+        0.8529,
+        0.8488
+      ],
+      "fold_auprcs": [
+        0.2755,
+        0.2409,
+        0.2564,
+        0.2304,
+        0.2617
+      ],
+      "auroc_mean": 0.8534,
+      "auroc_std": 0.0038,
+      "auprc_mean": 0.253,
+      "auprc_std": 0.0177
+    },
+    "baseline": {
+      "feature": "entropy_mean_8",
+      "fold_aurocs": [
+        0.5363,
+        0.5397,
+        0.5512,
+        0.5359,
+        0.5329
+      ],
+      "fold_auprcs": [
+        0.3774,
+        0.3756,
+        0.3947,
+        0.3633,
+        0.3746
+      ],
+      "auroc_mean": 0.5392,
+      "auroc_std": 0.0071,
+      "auprc_mean": 0.3771,
+      "auprc_std": 0.0113,
+      "pre_onset": {
+        "fold_aurocs": [
+          0.5507,
+          0.5418,
+          0.5588,
+          0.5459,
+          0.5455
+        ],
+        "fold_auprcs": [
+          0.0647,
+          0.0611,
+          0.0628,
+          0.0609,
+          0.0655
+        ],
+        "auroc_mean": 0.5485,
+        "auroc_std": 0.0065,
+        "auprc_mean": 0.063,
+        "auprc_std": 0.0021
+      }
+    },
+    "loco_cv": {
+      "folds": [
+        {
+          "held_out_press": "expected_attention",
+          "n_train": 4377444,
+          "n_val": 765624,
+          "event_rate_val": 0.031,
+          "auroc": 0.9523,
+          "auprc": 0.5792
+        },
+        {
+          "held_out_press": "knorm",
+          "n_train": 4298942,
+          "n_val": 844126,
+          "event_rate_val": 0.2028,
+          "auroc": 0.9074,
+          "auprc": 0.8014
+        },
+        {
+          "held_out_press": "random",
+          "n_train": 4301567,
+          "n_val": 841501,
+          "event_rate_val": 0.2265,
+          "auroc": 0.9212,
+          "auprc": 0.8448
+        },
+        {
+          "held_out_press": "snapkv",
+          "n_train": 4201699,
+          "n_val": 941369,
+          "event_rate_val": 0.7458,
+          "auroc": 0.9703,
+          "auprc": 0.9904
+        },
+        {
+          "held_out_press": "streaming_llm",
+          "n_train": 4332403,
+          "n_val": 810665,
+          "event_rate_val": 0.0811,
+          "auroc": 0.9189,
+          "auprc": 0.6382
+        },
+        {
+          "held_out_press": "tova",
+          "n_train": 4352859,
+          "n_val": 790209,
+          "event_rate_val": 0.0801,
+          "auroc": 0.9247,
+          "auprc": 0.6799
+        }
+      ],
+      "mean_auroc": 0.9325
+    }
+  }
+}

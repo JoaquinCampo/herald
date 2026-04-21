@@ -1,0 +1,1402 @@
+{
+  "horizons": [
+    1,
+    5,
+    10,
+    25,
+    50
+  ],
+  "nt_onset_frac": 0.75,
+  "by_horizon": {
+    "H1": {
+      "0.25": {
+        "compression_ratio": 0.25,
+        "n_tokens": 903636,
+        "n_sequences": 2992,
+        "n_catastrophic": 302,
+        "token": {
+          "all": {
+            "auroc": 0.9825,
+            "auprc": 0.874,
+            "auroc_ci": [
+              0.9815,
+              0.9839
+            ],
+            "auprc_ci": [
+              0.871,
+              0.8821
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9111,
+            "auprc": 0.0049,
+            "auroc_ci": [
+              0.8993,
+              0.9469
+            ],
+            "auprc_ci": [
+              0.0045,
+              0.0129
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.6526,
+          "seq_auprc": 0.154,
+          "seq_auroc_ci": [
+            0.6133,
+            0.6824
+          ],
+          "seq_auprc_ci": [
+            0.1288,
+            0.1796
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 302
+        }
+      },
+      "0.5": {
+        "compression_ratio": 0.5,
+        "n_tokens": 985892,
+        "n_sequences": 2992,
+        "n_catastrophic": 764,
+        "token": {
+          "all": {
+            "auroc": 0.9929,
+            "auprc": 0.9791,
+            "auroc_ci": [
+              0.9923,
+              0.9931
+            ],
+            "auprc_ci": [
+              0.9779,
+              0.9796
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9055,
+            "auprc": 0.0106,
+            "auroc_ci": [
+              0.8829,
+              0.9225
+            ],
+            "auprc_ci": [
+              0.0084,
+              0.0151
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.5718,
+          "seq_auprc": 0.3087,
+          "seq_auroc_ci": [
+            0.5452,
+            0.5945
+          ],
+          "seq_auprc_ci": [
+            0.2833,
+            0.3321
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 764
+        }
+      },
+      "0.625": {
+        "compression_ratio": 0.625,
+        "n_tokens": 1021837,
+        "n_sequences": 2992,
+        "n_catastrophic": 1075,
+        "token": {
+          "all": {
+            "auroc": 0.9888,
+            "auprc": 0.9736,
+            "auroc_ci": [
+              0.989,
+              0.9898
+            ],
+            "auprc_ci": [
+              0.9741,
+              0.9757
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8899,
+            "auprc": 0.0112,
+            "auroc_ci": [
+              0.8635,
+              0.899
+            ],
+            "auprc_ci": [
+              0.0084,
+              0.014
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.5593,
+          "seq_auprc": 0.3946,
+          "seq_auroc_ci": [
+            0.5384,
+            0.5799
+          ],
+          "seq_auprc_ci": [
+            0.3688,
+            0.4193
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 1075
+        }
+      },
+      "0.75": {
+        "compression_ratio": 0.75,
+        "n_tokens": 1042598,
+        "n_sequences": 2992,
+        "n_catastrophic": 1373,
+        "token": {
+          "all": {
+            "auroc": 0.9828,
+            "auprc": 0.9643,
+            "auroc_ci": [
+              0.9822,
+              0.9832
+            ],
+            "auprc_ci": [
+              0.9634,
+              0.9652
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8894,
+            "auprc": 0.0152,
+            "auroc_ci": [
+              0.8827,
+              0.9092
+            ],
+            "auprc_ci": [
+              0.0133,
+              0.0254
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.593,
+          "seq_auprc": 0.5044,
+          "seq_auroc_ci": [
+            0.5722,
+            0.6138
+          ],
+          "seq_auprc_ci": [
+            0.4808,
+            0.529
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 1373
+        }
+      },
+      "0.875": {
+        "compression_ratio": 0.875,
+        "n_tokens": 1039531,
+        "n_sequences": 2992,
+        "n_catastrophic": 1696,
+        "token": {
+          "all": {
+            "auroc": 0.9698,
+            "auprc": 0.9455,
+            "auroc_ci": [
+              0.9686,
+              0.97
+            ],
+            "auprc_ci": [
+              0.9437,
+              0.946
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8932,
+            "auprc": 0.0227,
+            "auroc_ci": [
+              0.8739,
+              0.8987
+            ],
+            "auprc_ci": [
+              0.0176,
+              0.0247
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.5845,
+          "seq_auprc": 0.6278,
+          "seq_auroc_ci": [
+            0.5617,
+            0.6084
+          ],
+          "seq_auprc_ci": [
+            0.6043,
+            0.6554
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 1696
+        }
+      },
+      "0.0": {
+        "compression_ratio": 0.0,
+        "n_tokens": 149574,
+        "n_sequences": 500,
+        "n_catastrophic": 6,
+        "token": {
+          "all": {
+            "auroc": 0.9867,
+            "auprc": 0.5064,
+            "auroc_ci": [
+              0.9853,
+              0.9879
+            ],
+            "auprc_ci": [
+              0.4833,
+              0.5356
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9745,
+            "auprc": 0.0051,
+            "auroc_ci": [
+              0.9467,
+              0.9922
+            ],
+            "auprc_ci": [
+              0.0005,
+              0.0417
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.7922,
+          "seq_auprc": 0.051,
+          "seq_auroc_ci": [
+            0.5604,
+            0.9338
+          ],
+          "seq_auprc_ci": [
+            0.0096,
+            0.2229
+          ],
+          "n_sequences": 500,
+          "n_catastrophic": 6
+        }
+      }
+    },
+    "H5": {
+      "0.25": {
+        "compression_ratio": 0.25,
+        "n_tokens": 903636,
+        "n_sequences": 2992,
+        "n_catastrophic": 302,
+        "token": {
+          "all": {
+            "auroc": 0.9801,
+            "auprc": 0.8646,
+            "auroc_ci": [
+              0.9786,
+              0.981
+            ],
+            "auprc_ci": [
+              0.8602,
+              0.871
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9068,
+            "auprc": 0.0236,
+            "auroc_ci": [
+              0.9025,
+              0.928
+            ],
+            "auprc_ci": [
+              0.0236,
+              0.0434
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.6868,
+          "seq_auprc": 0.1759,
+          "seq_auroc_ci": [
+            0.6546,
+            0.7168
+          ],
+          "seq_auprc_ci": [
+            0.1477,
+            0.2037
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 302
+        }
+      },
+      "0.5": {
+        "compression_ratio": 0.5,
+        "n_tokens": 985892,
+        "n_sequences": 2992,
+        "n_catastrophic": 764,
+        "token": {
+          "all": {
+            "auroc": 0.992,
+            "auprc": 0.9772,
+            "auroc_ci": [
+              0.9914,
+              0.9922
+            ],
+            "auprc_ci": [
+              0.976,
+              0.9776
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9173,
+            "auprc": 0.0499,
+            "auroc_ci": [
+              0.9049,
+              0.9234
+            ],
+            "auprc_ci": [
+              0.0448,
+              0.0615
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.5879,
+          "seq_auprc": 0.328,
+          "seq_auroc_ci": [
+            0.5614,
+            0.6092
+          ],
+          "seq_auprc_ci": [
+            0.2981,
+            0.3543
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 764
+        }
+      },
+      "0.625": {
+        "compression_ratio": 0.625,
+        "n_tokens": 1021837,
+        "n_sequences": 2992,
+        "n_catastrophic": 1075,
+        "token": {
+          "all": {
+            "auroc": 0.9875,
+            "auprc": 0.9715,
+            "auroc_ci": [
+              0.9878,
+              0.9887
+            ],
+            "auprc_ci": [
+              0.9721,
+              0.9737
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8978,
+            "auprc": 0.0562,
+            "auroc_ci": [
+              0.8856,
+              0.9041
+            ],
+            "auprc_ci": [
+              0.0504,
+              0.0621
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.5777,
+          "seq_auprc": 0.4134,
+          "seq_auroc_ci": [
+            0.5573,
+            0.5983
+          ],
+          "seq_auprc_ci": [
+            0.3867,
+            0.4418
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 1075
+        }
+      },
+      "0.75": {
+        "compression_ratio": 0.75,
+        "n_tokens": 1042598,
+        "n_sequences": 2992,
+        "n_catastrophic": 1373,
+        "token": {
+          "all": {
+            "auroc": 0.9813,
+            "auprc": 0.9621,
+            "auroc_ci": [
+              0.9805,
+              0.9815
+            ],
+            "auprc_ci": [
+              0.961,
+              0.9629
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8904,
+            "auprc": 0.0676,
+            "auroc_ci": [
+              0.8821,
+              0.8967
+            ],
+            "auprc_ci": [
+              0.0584,
+              0.0731
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.6079,
+          "seq_auprc": 0.52,
+          "seq_auroc_ci": [
+            0.589,
+            0.6278
+          ],
+          "seq_auprc_ci": [
+            0.496,
+            0.5458
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 1373
+        }
+      },
+      "0.875": {
+        "compression_ratio": 0.875,
+        "n_tokens": 1039531,
+        "n_sequences": 2992,
+        "n_catastrophic": 1696,
+        "token": {
+          "all": {
+            "auroc": 0.9675,
+            "auprc": 0.943,
+            "auroc_ci": [
+              0.9664,
+              0.9677
+            ],
+            "auprc_ci": [
+              0.9413,
+              0.9436
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8832,
+            "auprc": 0.0969,
+            "auroc_ci": [
+              0.8769,
+              0.8889
+            ],
+            "auprc_ci": [
+              0.0881,
+              0.1038
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.5937,
+          "seq_auprc": 0.6421,
+          "seq_auroc_ci": [
+            0.5716,
+            0.6172
+          ],
+          "seq_auprc_ci": [
+            0.6169,
+            0.6695
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 1696
+        }
+      },
+      "0.0": {
+        "compression_ratio": 0.0,
+        "n_tokens": 149574,
+        "n_sequences": 500,
+        "n_catastrophic": 6,
+        "token": {
+          "all": {
+            "auroc": 0.9854,
+            "auprc": 0.4954,
+            "auroc_ci": [
+              0.9839,
+              0.9868
+            ],
+            "auprc_ci": [
+              0.471,
+              0.5222
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9622,
+            "auprc": 0.0063,
+            "auroc_ci": [
+              0.942,
+              0.9783
+            ],
+            "auprc_ci": [
+              0.0032,
+              0.0171
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.8067,
+          "seq_auprc": 0.0526,
+          "seq_auroc_ci": [
+            0.5906,
+            0.9346
+          ],
+          "seq_auprc_ci": [
+            0.0103,
+            0.2125
+          ],
+          "n_sequences": 500,
+          "n_catastrophic": 6
+        }
+      }
+    },
+    "H10": {
+      "0.25": {
+        "compression_ratio": 0.25,
+        "n_tokens": 903636,
+        "n_sequences": 2992,
+        "n_catastrophic": 302,
+        "token": {
+          "all": {
+            "auroc": 0.9768,
+            "auprc": 0.8526,
+            "auroc_ci": [
+              0.9751,
+              0.978
+            ],
+            "auprc_ci": [
+              0.8482,
+              0.8601
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.898,
+            "auprc": 0.0404,
+            "auroc_ci": [
+              0.8883,
+              0.9102
+            ],
+            "auprc_ci": [
+              0.0366,
+              0.0536
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.6992,
+          "seq_auprc": 0.1857,
+          "seq_auroc_ci": [
+            0.6675,
+            0.7303
+          ],
+          "seq_auprc_ci": [
+            0.1569,
+            0.22
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 302
+        }
+      },
+      "0.5": {
+        "compression_ratio": 0.5,
+        "n_tokens": 985892,
+        "n_sequences": 2992,
+        "n_catastrophic": 764,
+        "token": {
+          "all": {
+            "auroc": 0.9908,
+            "auprc": 0.9747,
+            "auroc_ci": [
+              0.9901,
+              0.991
+            ],
+            "auprc_ci": [
+              0.9732,
+              0.975
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9142,
+            "auprc": 0.0885,
+            "auroc_ci": [
+              0.9062,
+              0.9206
+            ],
+            "auprc_ci": [
+              0.082,
+              0.1014
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.5933,
+          "seq_auprc": 0.3442,
+          "seq_auroc_ci": [
+            0.5646,
+            0.6202
+          ],
+          "seq_auprc_ci": [
+            0.3131,
+            0.3726
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 764
+        }
+      },
+      "0.625": {
+        "compression_ratio": 0.625,
+        "n_tokens": 1021837,
+        "n_sequences": 2992,
+        "n_catastrophic": 1075,
+        "token": {
+          "all": {
+            "auroc": 0.986,
+            "auprc": 0.9689,
+            "auroc_ci": [
+              0.9862,
+              0.9871
+            ],
+            "auprc_ci": [
+              0.9692,
+              0.971
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8975,
+            "auprc": 0.0971,
+            "auroc_ci": [
+              0.8915,
+              0.9041
+            ],
+            "auprc_ci": [
+              0.091,
+              0.1069
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.5836,
+          "seq_auprc": 0.4247,
+          "seq_auroc_ci": [
+            0.5628,
+            0.6037
+          ],
+          "seq_auprc_ci": [
+            0.3973,
+            0.4558
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 1075
+        }
+      },
+      "0.75": {
+        "compression_ratio": 0.75,
+        "n_tokens": 1042598,
+        "n_sequences": 2992,
+        "n_catastrophic": 1373,
+        "token": {
+          "all": {
+            "auroc": 0.9795,
+            "auprc": 0.9596,
+            "auroc_ci": [
+              0.9787,
+              0.9799
+            ],
+            "auprc_ci": [
+              0.9584,
+              0.9604
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8919,
+            "auprc": 0.1172,
+            "auroc_ci": [
+              0.8834,
+              0.8939
+            ],
+            "auprc_ci": [
+              0.1079,
+              0.1241
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.611,
+          "seq_auprc": 0.5276,
+          "seq_auroc_ci": [
+            0.5908,
+            0.6305
+          ],
+          "seq_auprc_ci": [
+            0.5024,
+            0.5574
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 1373
+        }
+      },
+      "0.875": {
+        "compression_ratio": 0.875,
+        "n_tokens": 1039531,
+        "n_sequences": 2992,
+        "n_catastrophic": 1696,
+        "token": {
+          "all": {
+            "auroc": 0.965,
+            "auprc": 0.9405,
+            "auroc_ci": [
+              0.9638,
+              0.9653
+            ],
+            "auprc_ci": [
+              0.9387,
+              0.941
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8838,
+            "auprc": 0.1621,
+            "auroc_ci": [
+              0.8802,
+              0.8888
+            ],
+            "auprc_ci": [
+              0.1566,
+              0.1748
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.601,
+          "seq_auprc": 0.6505,
+          "seq_auroc_ci": [
+            0.5788,
+            0.6228
+          ],
+          "seq_auprc_ci": [
+            0.6254,
+            0.6782
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 1696
+        }
+      },
+      "0.0": {
+        "compression_ratio": 0.0,
+        "n_tokens": 149574,
+        "n_sequences": 500,
+        "n_catastrophic": 6,
+        "token": {
+          "all": {
+            "auroc": 0.9837,
+            "auprc": 0.4829,
+            "auroc_ci": [
+              0.9821,
+              0.9852
+            ],
+            "auprc_ci": [
+              0.4591,
+              0.5106
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9578,
+            "auprc": 0.0081,
+            "auroc_ci": [
+              0.9455,
+              0.9673
+            ],
+            "auprc_ci": [
+              0.0056,
+              0.0145
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.7787,
+          "seq_auprc": 0.0442,
+          "seq_auroc_ci": [
+            0.5321,
+            0.9244
+          ],
+          "seq_auprc_ci": [
+            0.0094,
+            0.1599
+          ],
+          "n_sequences": 500,
+          "n_catastrophic": 6
+        }
+      }
+    },
+    "H25": {
+      "0.25": {
+        "compression_ratio": 0.25,
+        "n_tokens": 903636,
+        "n_sequences": 2992,
+        "n_catastrophic": 302,
+        "token": {
+          "all": {
+            "auroc": 0.9664,
+            "auprc": 0.8191,
+            "auroc_ci": [
+              0.9643,
+              0.9679
+            ],
+            "auprc_ci": [
+              0.8142,
+              0.8259
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8777,
+            "auprc": 0.0757,
+            "auroc_ci": [
+              0.8723,
+              0.887
+            ],
+            "auprc_ci": [
+              0.071,
+              0.0869
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.7147,
+          "seq_auprc": 0.1981,
+          "seq_auroc_ci": [
+            0.683,
+            0.7455
+          ],
+          "seq_auprc_ci": [
+            0.1682,
+            0.2366
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 302
+        }
+      },
+      "0.5": {
+        "compression_ratio": 0.5,
+        "n_tokens": 985892,
+        "n_sequences": 2992,
+        "n_catastrophic": 764,
+        "token": {
+          "all": {
+            "auroc": 0.9873,
+            "auprc": 0.9677,
+            "auroc_ci": [
+              0.9865,
+              0.9876
+            ],
+            "auprc_ci": [
+              0.9661,
+              0.9682
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9099,
+            "auprc": 0.1769,
+            "auroc_ci": [
+              0.9086,
+              0.9184
+            ],
+            "auprc_ci": [
+              0.1723,
+              0.191
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.5889,
+          "seq_auprc": 0.356,
+          "seq_auroc_ci": [
+            0.5602,
+            0.6137
+          ],
+          "seq_auprc_ci": [
+            0.324,
+            0.3831
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 764
+        }
+      },
+      "0.625": {
+        "compression_ratio": 0.625,
+        "n_tokens": 1021837,
+        "n_sequences": 2992,
+        "n_catastrophic": 1075,
+        "token": {
+          "all": {
+            "auroc": 0.9814,
+            "auprc": 0.9619,
+            "auroc_ci": [
+              0.9817,
+              0.9828
+            ],
+            "auprc_ci": [
+              0.9624,
+              0.9642
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8922,
+            "auprc": 0.1959,
+            "auroc_ci": [
+              0.8872,
+              0.8954
+            ],
+            "auprc_ci": [
+              0.1858,
+              0.2042
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.583,
+          "seq_auprc": 0.4395,
+          "seq_auroc_ci": [
+            0.5614,
+            0.6062
+          ],
+          "seq_auprc_ci": [
+            0.4091,
+            0.4713
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 1075
+        }
+      },
+      "0.75": {
+        "compression_ratio": 0.75,
+        "n_tokens": 1042598,
+        "n_sequences": 2992,
+        "n_catastrophic": 1373,
+        "token": {
+          "all": {
+            "auroc": 0.9745,
+            "auprc": 0.9532,
+            "auroc_ci": [
+              0.9737,
+              0.975
+            ],
+            "auprc_ci": [
+              0.9519,
+              0.9541
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8897,
+            "auprc": 0.2346,
+            "auroc_ci": [
+              0.8841,
+              0.8907
+            ],
+            "auprc_ci": [
+              0.2263,
+              0.2428
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.6167,
+          "seq_auprc": 0.5431,
+          "seq_auroc_ci": [
+            0.5978,
+            0.6349
+          ],
+          "seq_auprc_ci": [
+            0.5182,
+            0.5717
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 1373
+        }
+      },
+      "0.875": {
+        "compression_ratio": 0.875,
+        "n_tokens": 1039531,
+        "n_sequences": 2992,
+        "n_catastrophic": 1696,
+        "token": {
+          "all": {
+            "auroc": 0.9592,
+            "auprc": 0.9356,
+            "auroc_ci": [
+              0.9582,
+              0.9597
+            ],
+            "auprc_ci": [
+              0.934,
+              0.9367
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8833,
+            "auprc": 0.3125,
+            "auroc_ci": [
+              0.8812,
+              0.8874
+            ],
+            "auprc_ci": [
+              0.3113,
+              0.327
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.6066,
+          "seq_auprc": 0.6661,
+          "seq_auroc_ci": [
+            0.5846,
+            0.6265
+          ],
+          "seq_auprc_ci": [
+            0.6409,
+            0.6922
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 1696
+        }
+      },
+      "0.0": {
+        "compression_ratio": 0.0,
+        "n_tokens": 149574,
+        "n_sequences": 500,
+        "n_catastrophic": 6,
+        "token": {
+          "all": {
+            "auroc": 0.9788,
+            "auprc": 0.4607,
+            "auroc_ci": [
+              0.9765,
+              0.9809
+            ],
+            "auprc_ci": [
+              0.4386,
+              0.4887
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9391,
+            "auprc": 0.0137,
+            "auroc_ci": [
+              0.9272,
+              0.9512
+            ],
+            "auprc_ci": [
+              0.011,
+              0.0193
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.7534,
+          "seq_auprc": 0.0438,
+          "seq_auroc_ci": [
+            0.4911,
+            0.9221
+          ],
+          "seq_auprc_ci": [
+            0.008,
+            0.1861
+          ],
+          "n_sequences": 500,
+          "n_catastrophic": 6
+        }
+      }
+    },
+    "H50": {
+      "0.25": {
+        "compression_ratio": 0.25,
+        "n_tokens": 903636,
+        "n_sequences": 2992,
+        "n_catastrophic": 302,
+        "token": {
+          "all": {
+            "auroc": 0.9467,
+            "auprc": 0.7688,
+            "auroc_ci": [
+              0.9444,
+              0.9486
+            ],
+            "auprc_ci": [
+              0.7632,
+              0.7767
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8493,
+            "auprc": 0.1097,
+            "auroc_ci": [
+              0.8461,
+              0.8571
+            ],
+            "auprc_ci": [
+              0.105,
+              0.1205
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.7026,
+          "seq_auprc": 0.2054,
+          "seq_auroc_ci": [
+            0.6677,
+            0.7338
+          ],
+          "seq_auprc_ci": [
+            0.1718,
+            0.2482
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 302
+        }
+      },
+      "0.5": {
+        "compression_ratio": 0.5,
+        "n_tokens": 985892,
+        "n_sequences": 2992,
+        "n_catastrophic": 764,
+        "token": {
+          "all": {
+            "auroc": 0.9797,
+            "auprc": 0.9545,
+            "auroc_ci": [
+              0.9787,
+              0.9801
+            ],
+            "auprc_ci": [
+              0.9527,
+              0.9551
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8881,
+            "auprc": 0.2477,
+            "auroc_ci": [
+              0.888,
+              0.8954
+            ],
+            "auprc_ci": [
+              0.2457,
+              0.2638
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.572,
+          "seq_auprc": 0.3633,
+          "seq_auroc_ci": [
+            0.5433,
+            0.5981
+          ],
+          "seq_auprc_ci": [
+            0.3278,
+            0.3921
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 764
+        }
+      },
+      "0.625": {
+        "compression_ratio": 0.625,
+        "n_tokens": 1021837,
+        "n_sequences": 2992,
+        "n_catastrophic": 1075,
+        "token": {
+          "all": {
+            "auroc": 0.9719,
+            "auprc": 0.9489,
+            "auroc_ci": [
+              0.9719,
+              0.9734
+            ],
+            "auprc_ci": [
+              0.9491,
+              0.9513
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8698,
+            "auprc": 0.2754,
+            "auroc_ci": [
+              0.8647,
+              0.8712
+            ],
+            "auprc_ci": [
+              0.2659,
+              0.2826
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.5658,
+          "seq_auprc": 0.4416,
+          "seq_auroc_ci": [
+            0.545,
+            0.5881
+          ],
+          "seq_auprc_ci": [
+            0.4116,
+            0.4714
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 1075
+        }
+      },
+      "0.75": {
+        "compression_ratio": 0.75,
+        "n_tokens": 1042598,
+        "n_sequences": 2992,
+        "n_catastrophic": 1373,
+        "token": {
+          "all": {
+            "auroc": 0.9647,
+            "auprc": 0.9422,
+            "auroc_ci": [
+              0.964,
+              0.9655
+            ],
+            "auprc_ci": [
+              0.9409,
+              0.9434
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8722,
+            "auprc": 0.3404,
+            "auroc_ci": [
+              0.8663,
+              0.8721
+            ],
+            "auprc_ci": [
+              0.3337,
+              0.3488
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.6026,
+          "seq_auprc": 0.5483,
+          "seq_auroc_ci": [
+            0.582,
+            0.6201
+          ],
+          "seq_auprc_ci": [
+            0.5227,
+            0.576
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 1373
+        }
+      },
+      "0.875": {
+        "compression_ratio": 0.875,
+        "n_tokens": 1039531,
+        "n_sequences": 2992,
+        "n_catastrophic": 1696,
+        "token": {
+          "all": {
+            "auroc": 0.949,
+            "auprc": 0.9285,
+            "auroc_ci": [
+              0.948,
+              0.9498
+            ],
+            "auprc_ci": [
+              0.9272,
+              0.9296
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8653,
+            "auprc": 0.4317,
+            "auroc_ci": [
+              0.8643,
+              0.8697
+            ],
+            "auprc_ci": [
+              0.431,
+              0.4455
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.5993,
+          "seq_auprc": 0.6747,
+          "seq_auroc_ci": [
+            0.5744,
+            0.6162
+          ],
+          "seq_auprc_ci": [
+            0.6489,
+            0.7024
+          ],
+          "n_sequences": 2992,
+          "n_catastrophic": 1696
+        }
+      },
+      "0.0": {
+        "compression_ratio": 0.0,
+        "n_tokens": 149574,
+        "n_sequences": 500,
+        "n_catastrophic": 6,
+        "token": {
+          "all": {
+            "auroc": 0.9658,
+            "auprc": 0.4274,
+            "auroc_ci": [
+              0.9619,
+              0.9689
+            ],
+            "auprc_ci": [
+              0.4075,
+              0.4539
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9129,
+            "auprc": 0.0185,
+            "auroc_ci": [
+              0.8993,
+              0.9268
+            ],
+            "auprc_ci": [
+              0.0159,
+              0.0223
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.8047,
+          "seq_auprc": 0.0436,
+          "seq_auroc_ci": [
+            0.6588,
+            0.921
+          ],
+          "seq_auprc_ci": [
+            0.0127,
+            0.166
+          ],
+          "n_sequences": 500,
+          "n_catastrophic": 6
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "horizon": 10,
+  "note": "Partial NT-sensitivity at H=10. Fracs 0.5-0.8 completed before orion login-node reboot at ~11:12 killed the job. frac=0.9 started 10:52 but did not finish. AUROC/AUPRC are 5-fold CV means.",
+  "by_frac": {
+    "0.5": {
+      "nt_onset_frac": 0.5,
+      "auroc_mean": 0.9677,
+      "auprc_mean": 0.9275,
+      "source": "reconstructed from pipeline.log (orion reboot truncated full JSON write)"
+    },
+    "0.6": {
+      "nt_onset_frac": 0.6,
+      "auroc_mean": 0.9733,
+      "auprc_mean": 0.9379,
+      "source": "reconstructed from pipeline.log (orion reboot truncated full JSON write)"
+    },
+    "0.7": {
+      "nt_onset_frac": 0.7,
+      "auroc_mean": 0.9742,
+      "auprc_mean": 0.9408,
+      "source": "reconstructed from pipeline.log (orion reboot truncated full JSON write)"
+    },
+    "0.75": {
+      "nt_onset_frac": 0.75,
+      "auroc_mean": 0.9735,
+      "auprc_mean": 0.9395,
+      "source": "reconstructed from pipeline.log (orion reboot truncated full JSON write)"
+    },
+    "0.8": {
+      "nt_onset_frac": 0.8,
+      "auroc_mean": 0.9724,
+      "auprc_mean": 0.9369,
+      "source": "reconstructed from pipeline.log (orion reboot truncated full JSON write)"
+    }
+  },
+  "completed_fracs": [
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.75",
+    "0.8"
+  ],
+  "missing_fracs": [
+    "0.9"
+  ]
+}

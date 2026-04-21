@@ -1,0 +1,99 @@
+2026-04-20 17:19:09.060 | INFO     | herald.train:train_predictor:379 - Building dataset for H=1...
+2026-04-20 17:21:14.911 | INFO     | herald.train:train_predictor:387 - H=1: 5143068 samples, 1029604 positive (20.02%)
+2026-04-20 17:54:12.814 | INFO     | herald.train:_train_single_horizon:194 - H=1: model saved to models/hazard_H1.json
+2026-04-20 17:54:12.817 | INFO     | herald.train:train_predictor:404 - H=1: running baseline...
+2026-04-20 17:54:18.177 | INFO     | herald.train:train_predictor:410 - H=1 baseline: AUROC=0.5357, AUPRC=0.3526
+2026-04-20 17:54:18.177 | INFO     | herald.train:train_predictor:417 - H=1 baseline pre-onset: AUROC=0.5366, AUPRC=0.002
+2026-04-20 17:54:18.177 | INFO     | herald.train:train_predictor:424 - H=1: running LOCO CV...
+2026-04-20 17:57:41.788 | INFO     | herald.train:_loco_cv:350 -   LOCO expected_attention: AUROC=0.9704, AUPRC=0.6506
+2026-04-20 18:00:57.055 | INFO     | herald.train:_loco_cv:350 -   LOCO knorm: AUROC=0.9819, AUPRC=0.9151
+2026-04-20 18:04:26.554 | INFO     | herald.train:_loco_cv:350 -   LOCO random: AUROC=0.9545, AUPRC=0.8777
+2026-04-20 18:06:39.575 | INFO     | herald.train:_loco_cv:350 -   LOCO snapkv: AUROC=0.9699, AUPRC=0.9892
+2026-04-20 18:07:11.237 | INFO     | herald.train:_loco_cv:350 -   LOCO streaming_llm: AUROC=0.9482, AUPRC=0.6919
+2026-04-20 18:10:26.829 | INFO     | herald.train:_loco_cv:350 -   LOCO tova: AUROC=0.9653, AUPRC=0.7671
+2026-04-20 18:10:26.857 | INFO     | herald.train:train_predictor:439 - H=1: LOCO mean AUROC=0.965
+2026-04-20 18:10:26.857 | INFO     | herald.train:train_predictor:443 - H=1: AUROC=0.9768, AUPRC=0.9448
+2026-04-20 18:10:26.857 | INFO     | herald.train:train_predictor:450 - H=1 pre-onset: AUROC=0.8848, AUPRC=0.0101
+2026-04-20 18:10:26.857 | INFO     | herald.train:train_predictor:379 - Building dataset for H=5...
+2026-04-20 18:12:38.339 | INFO     | herald.train:train_predictor:387 - H=5: 5143068 samples, 1045337 positive (20.33%)
+2026-04-20 18:44:53.908 | INFO     | herald.train:_train_single_horizon:194 - H=5: model saved to models/hazard_H5.json
+2026-04-20 18:44:53.911 | INFO     | herald.train:train_predictor:404 - H=5: running baseline...
+2026-04-20 18:44:59.306 | INFO     | herald.train:train_predictor:410 - H=5 baseline: AUROC=0.536, AUPRC=0.3546
+2026-04-20 18:44:59.306 | INFO     | herald.train:train_predictor:417 - H=5 baseline pre-onset: AUROC=0.5466, AUPRC=0.0085
+2026-04-20 18:44:59.306 | INFO     | herald.train:train_predictor:424 - H=5: running LOCO CV...
+2026-04-20 18:48:26.846 | INFO     | herald.train:_loco_cv:350 -   LOCO expected_attention: AUROC=0.9686, AUPRC=0.6453
+2026-04-20 18:51:53.442 | INFO     | herald.train:_loco_cv:350 -   LOCO knorm: AUROC=0.9727, AUPRC=0.8939
+2026-04-20 18:55:18.234 | INFO     | herald.train:_loco_cv:350 -   LOCO random: AUROC=0.9519, AUPRC=0.875
+2026-04-20 18:57:25.390 | INFO     | herald.train:_loco_cv:350 -   LOCO snapkv: AUROC=0.9706, AUPRC=0.9895
+2026-04-20 18:57:59.084 | INFO     | herald.train:_loco_cv:350 -   LOCO streaming_llm: AUROC=0.9454, AUPRC=0.6859
+2026-04-20 19:01:24.320 | INFO     | herald.train:_loco_cv:350 -   LOCO tova: AUROC=0.9621, AUPRC=0.7589
+2026-04-20 19:01:24.346 | INFO     | herald.train:train_predictor:439 - H=5: LOCO mean AUROC=0.9619
+2026-04-20 19:01:24.346 | INFO     | herald.train:train_predictor:443 - H=5: AUROC=0.9754, AUPRC=0.9425
+2026-04-20 19:01:24.346 | INFO     | herald.train:train_predictor:450 - H=5 pre-onset: AUROC=0.8795, AUPRC=0.0474
+2026-04-20 19:01:24.346 | INFO     | herald.train:train_predictor:379 - Building dataset for H=10...
+2026-04-20 19:03:32.663 | INFO     | herald.train:train_predictor:387 - H=10: 5143068 samples, 1064858 positive (20.70%)
+2026-04-20 19:34:34.415 | INFO     | herald.train:_train_single_horizon:194 - H=10: model saved to models/hazard_H10.json
+2026-04-20 19:34:34.418 | INFO     | herald.train:train_predictor:404 - H=10: running baseline...
+2026-04-20 19:34:39.851 | INFO     | herald.train:train_predictor:410 - H=10 baseline: AUROC=0.5373, AUPRC=0.3574
+2026-04-20 19:34:39.851 | INFO     | herald.train:train_predictor:417 - H=10 baseline pre-onset: AUROC=0.5664, AUPRC=0.0159
+2026-04-20 19:34:39.851 | INFO     | herald.train:train_predictor:424 - H=10: running LOCO CV...
+2026-04-20 19:38:09.616 | INFO     | herald.train:_loco_cv:350 -   LOCO expected_attention: AUROC=0.9669, AUPRC=0.6354
+2026-04-20 19:41:22.646 | INFO     | herald.train:_loco_cv:350 -   LOCO knorm: AUROC=0.9621, AUPRC=0.8706
+2026-04-20 19:44:58.284 | INFO     | herald.train:_loco_cv:350 -   LOCO random: AUROC=0.9489, AUPRC=0.8717
+2026-04-20 19:46:49.629 | INFO     | herald.train:_loco_cv:350 -   LOCO snapkv: AUROC=0.971, AUPRC=0.9898
+2026-04-20 19:47:12.689 | INFO     | herald.train:_loco_cv:350 -   LOCO streaming_llm: AUROC=0.9426, AUPRC=0.6829
+2026-04-20 19:50:36.549 | INFO     | herald.train:_loco_cv:350 -   LOCO tova: AUROC=0.9581, AUPRC=0.7503
+2026-04-20 19:50:36.577 | INFO     | herald.train:train_predictor:439 - H=10: LOCO mean AUROC=0.9583
+2026-04-20 19:50:36.577 | INFO     | herald.train:train_predictor:443 - H=10: AUROC=0.9735, AUPRC=0.9395
+2026-04-20 19:50:36.577 | INFO     | herald.train:train_predictor:450 - H=10 pre-onset: AUROC=0.8779, AUPRC=0.0822
+2026-04-20 19:50:36.577 | INFO     | herald.train:train_predictor:379 - Building dataset for H=25...
+2026-04-20 19:52:46.530 | INFO     | herald.train:train_predictor:387 - H=25: 5143068 samples, 1122774 positive (21.83%)
+2026-04-20 20:22:40.620 | INFO     | herald.train:_train_single_horizon:194 - H=25: model saved to models/hazard_H25.json
+2026-04-20 20:22:40.623 | INFO     | herald.train:train_predictor:404 - H=25: running baseline...
+2026-04-20 20:22:46.042 | INFO     | herald.train:train_predictor:410 - H=25 baseline: AUROC=0.5399, AUPRC=0.3655
+2026-04-20 20:22:46.042 | INFO     | herald.train:train_predictor:417 - H=25 baseline pre-onset: AUROC=0.5702, AUPRC=0.0358
+2026-04-20 20:22:46.042 | INFO     | herald.train:train_predictor:424 - H=25: running LOCO CV...
+2026-04-20 20:26:08.175 | INFO     | herald.train:_loco_cv:350 -   LOCO expected_attention: AUROC=0.9613, AUPRC=0.6134
+2026-04-20 20:29:26.420 | INFO     | herald.train:_loco_cv:350 -   LOCO knorm: AUROC=0.9392, AUPRC=0.8319
+2026-04-20 20:32:58.888 | INFO     | herald.train:_loco_cv:350 -   LOCO random: AUROC=0.9384, AUPRC=0.8602
+2026-04-20 20:33:54.995 | INFO     | herald.train:_loco_cv:350 -   LOCO snapkv: AUROC=0.9709, AUPRC=0.9901
+2026-04-20 20:34:27.525 | INFO     | herald.train:_loco_cv:350 -   LOCO streaming_llm: AUROC=0.9333, AUPRC=0.6621
+2026-04-20 20:37:46.675 | INFO     | herald.train:_loco_cv:350 -   LOCO tova: AUROC=0.9463, AUPRC=0.7229
+2026-04-20 20:37:46.702 | INFO     | herald.train:train_predictor:439 - H=25: LOCO mean AUROC=0.9482
+2026-04-20 20:37:46.702 | INFO     | herald.train:train_predictor:443 - H=25: AUROC=0.9681, AUPRC=0.9314
+2026-04-20 20:37:46.702 | INFO     | herald.train:train_predictor:450 - H=25 pre-onset: AUROC=0.8727, AUPRC=0.1709
+2026-04-20 20:37:46.702 | INFO     | herald.train:train_predictor:379 - Building dataset for H=50...
+2026-04-20 20:39:57.034 | INFO     | herald.train:train_predictor:387 - H=50: 5143068 samples, 1218027 positive (23.68%)
+2026-04-20 21:08:29.023 | INFO     | herald.train:_train_single_horizon:194 - H=50: model saved to models/hazard_H50.json
+2026-04-20 21:08:29.026 | INFO     | herald.train:train_predictor:404 - H=50: running baseline...
+2026-04-20 21:08:34.426 | INFO     | herald.train:train_predictor:410 - H=50 baseline: AUROC=0.5392, AUPRC=0.3771
+2026-04-20 21:08:34.426 | INFO     | herald.train:train_predictor:417 - H=50 baseline pre-onset: AUROC=0.5485, AUPRC=0.063
+2026-04-20 21:08:34.426 | INFO     | herald.train:train_predictor:424 - H=50: running LOCO CV...
+2026-04-20 21:11:58.884 | INFO     | herald.train:_loco_cv:350 -   LOCO expected_attention: AUROC=0.9523, AUPRC=0.5792
+2026-04-20 21:15:09.445 | INFO     | herald.train:_loco_cv:350 -   LOCO knorm: AUROC=0.9074, AUPRC=0.8014
+2026-04-20 21:18:24.682 | INFO     | herald.train:_loco_cv:350 -   LOCO random: AUROC=0.9212, AUPRC=0.8448
+2026-04-20 21:19:58.006 | INFO     | herald.train:_loco_cv:350 -   LOCO snapkv: AUROC=0.9703, AUPRC=0.9904
+2026-04-20 21:20:20.839 | INFO     | herald.train:_loco_cv:350 -   LOCO streaming_llm: AUROC=0.9189, AUPRC=0.6382
+2026-04-20 21:23:46.452 | INFO     | herald.train:_loco_cv:350 -   LOCO tova: AUROC=0.9247, AUPRC=0.6799
+2026-04-20 21:23:46.479 | INFO     | herald.train:train_predictor:439 - H=50: LOCO mean AUROC=0.9325
+2026-04-20 21:23:46.479 | INFO     | herald.train:train_predictor:443 - H=50: AUROC=0.9576, AUPRC=0.9176
+2026-04-20 21:23:46.479 | INFO     | herald.train:train_predictor:450 - H=50 pre-onset: AUROC=0.8534, AUPRC=0.253
+2026-04-20 21:23:46.496 | INFO     | herald.train:train_predictor:458 - All metrics saved to models/metrics.json
+2026-04-20 21:23:48.636 | INFO     | herald.evaluate:evaluate_all_horizons:470 - Evaluating H=1...
+2026-04-21 07:39:10.134 | INFO     | herald.evaluate:evaluate_all_horizons:470 - Evaluating H=1...
+2026-04-21 08:10:11.412 | INFO     | herald.evaluate:evaluate_all_horizons:499 - Evaluating H=1...
+2026-04-21 08:14:36.873 | INFO     | herald.evaluate:evaluate_all_horizons:499 - Evaluating H=5...
+2026-04-21 08:18:58.416 | INFO     | herald.evaluate:evaluate_all_horizons:499 - Evaluating H=10...
+2026-04-21 08:23:21.843 | INFO     | herald.evaluate:evaluate_all_horizons:499 - Evaluating H=25...
+2026-04-21 08:27:46.589 | INFO     | herald.evaluate:evaluate_all_horizons:499 - Evaluating H=50...
+2026-04-21 08:32:13.094 | INFO     | herald.evaluate:nt_sensitivity:532 - NT sensitivity: frac=0.5, H=10
+2026-04-21 08:58:25.834 | INFO     | herald.evaluate:nt_sensitivity:551 -   frac=0.5: AUROC=0.9677, AUPRC=0.9275
+2026-04-21 08:58:25.834 | INFO     | herald.evaluate:nt_sensitivity:532 - NT sensitivity: frac=0.6, H=10
+2026-04-21 09:24:56.085 | INFO     | herald.evaluate:nt_sensitivity:551 -   frac=0.6: AUROC=0.9733, AUPRC=0.9379
+2026-04-21 09:24:56.085 | INFO     | herald.evaluate:nt_sensitivity:532 - NT sensitivity: frac=0.7, H=10
+2026-04-21 09:52:16.881 | INFO     | herald.evaluate:nt_sensitivity:551 -   frac=0.7: AUROC=0.9742, AUPRC=0.9408
+2026-04-21 09:52:16.882 | INFO     | herald.evaluate:nt_sensitivity:532 - NT sensitivity: frac=0.75, H=10
+2026-04-21 10:20:56.960 | INFO     | herald.evaluate:nt_sensitivity:551 -   frac=0.75: AUROC=0.9735, AUPRC=0.9395
+2026-04-21 10:20:56.960 | INFO     | herald.evaluate:nt_sensitivity:532 - NT sensitivity: frac=0.8, H=10
+2026-04-21 10:52:19.595 | INFO     | herald.evaluate:nt_sensitivity:551 -   frac=0.8: AUROC=0.9724, AUPRC=0.9369
+2026-04-21 10:52:19.595 | INFO     | herald.evaluate:nt_sensitivity:532 - NT sensitivity: frac=0.9, H=10

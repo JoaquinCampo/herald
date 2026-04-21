@@ -1,0 +1,2606 @@
+{
+  "horizons": [
+    1,
+    5,
+    10,
+    25,
+    50
+  ],
+  "importance_types": [
+    "gain",
+    "weight",
+    "cover"
+  ],
+  "by_horizon": {
+    "H1": {
+      "gain": {
+        "ranked": [
+          {
+            "feature": "kl_div_std_32",
+            "value": 7433.854492
+          },
+          {
+            "feature": "token_position",
+            "value": 4664.922363
+          },
+          {
+            "feature": "delta_h_valid",
+            "value": 2258.420166
+          },
+          {
+            "feature": "kl_div_mean_32",
+            "value": 2120.756104
+          },
+          {
+            "feature": "top10_jaccard_mean_32",
+            "value": 1324.679688
+          },
+          {
+            "feature": "h_alts_std_32",
+            "value": 1087.064209
+          },
+          {
+            "feature": "avg_logp",
+            "value": 560.036499
+          },
+          {
+            "feature": "h_alts_mean_32",
+            "value": 374.127472
+          },
+          {
+            "feature": "entropy_std_32",
+            "value": 333.957794
+          },
+          {
+            "feature": "entropy_std_8",
+            "value": 332.563324
+          },
+          {
+            "feature": "h_alts",
+            "value": 326.889374
+          },
+          {
+            "feature": "delta_h_mean_32",
+            "value": 310.154297
+          },
+          {
+            "feature": "top1_prob_std_32",
+            "value": 268.387024
+          },
+          {
+            "feature": "top10_jaccard_mean_8",
+            "value": 249.837204
+          },
+          {
+            "feature": "delta_h_std_32",
+            "value": 239.106445
+          },
+          {
+            "feature": "top10_jaccard_std_32",
+            "value": 224.394379
+          },
+          {
+            "feature": "top1_prob_std_8",
+            "value": 206.2435
+          },
+          {
+            "feature": "logprob_4",
+            "value": 177.998108
+          },
+          {
+            "feature": "top1_prob_mean_32",
+            "value": 161.17186
+          },
+          {
+            "feature": "h_alts_mean_8",
+            "value": 154.440765
+          },
+          {
+            "feature": "top1_prob_mean_8",
+            "value": 139.428635
+          },
+          {
+            "feature": "logit_range",
+            "value": 137.177094
+          },
+          {
+            "feature": "h_alts_std_8",
+            "value": 131.366943
+          },
+          {
+            "feature": "top10_jaccard",
+            "value": 109.237091
+          },
+          {
+            "feature": "entropy_mean_32",
+            "value": 102.026917
+          },
+          {
+            "feature": "kl_div",
+            "value": 97.301605
+          },
+          {
+            "feature": "entropy_mean_8",
+            "value": 97.291946
+          },
+          {
+            "feature": "kl_div_mean_8",
+            "value": 95.573898
+          },
+          {
+            "feature": "top5_prob",
+            "value": 82.835808
+          },
+          {
+            "feature": "tail_mass",
+            "value": 76.632729
+          },
+          {
+            "feature": "top10_jaccard_std_8",
+            "value": 74.383247
+          },
+          {
+            "feature": "logprob_3",
+            "value": 69.703743
+          },
+          {
+            "feature": "kl_div_std_8",
+            "value": 68.074532
+          },
+          {
+            "feature": "delta_h_std_8",
+            "value": 66.306091
+          },
+          {
+            "feature": "top1_prob",
+            "value": 65.370697
+          },
+          {
+            "feature": "logprob_0",
+            "value": 61.928417
+          },
+          {
+            "feature": "delta_h_mean_8",
+            "value": 60.26067
+          },
+          {
+            "feature": "logprob_1",
+            "value": 59.920319
+          },
+          {
+            "feature": "delta_h",
+            "value": 54.846355
+          },
+          {
+            "feature": "eff_vocab_size",
+            "value": 50.054077
+          },
+          {
+            "feature": "entropy",
+            "value": 48.94199
+          },
+          {
+            "feature": "logprob_2",
+            "value": 36.761681
+          }
+        ]
+      },
+      "weight": {
+        "ranked": [
+          {
+            "feature": "token_position",
+            "value": 5834.0
+          },
+          {
+            "feature": "h_alts_std_32",
+            "value": 3732.0
+          },
+          {
+            "feature": "top10_jaccard_std_32",
+            "value": 3473.0
+          },
+          {
+            "feature": "kl_div_mean_32",
+            "value": 3172.0
+          },
+          {
+            "feature": "kl_div_std_32",
+            "value": 3013.0
+          },
+          {
+            "feature": "h_alts_mean_32",
+            "value": 2716.0
+          },
+          {
+            "feature": "top10_jaccard_mean_32",
+            "value": 2589.0
+          },
+          {
+            "feature": "entropy_std_32",
+            "value": 2456.0
+          },
+          {
+            "feature": "top1_prob_std_32",
+            "value": 2421.0
+          },
+          {
+            "feature": "delta_h_std_32",
+            "value": 2203.0
+          },
+          {
+            "feature": "entropy_mean_32",
+            "value": 1804.0
+          },
+          {
+            "feature": "top1_prob_mean_32",
+            "value": 1714.0
+          },
+          {
+            "feature": "avg_logp",
+            "value": 1451.0
+          },
+          {
+            "feature": "top10_jaccard_std_8",
+            "value": 1447.0
+          },
+          {
+            "feature": "kl_div_mean_8",
+            "value": 1434.0
+          },
+          {
+            "feature": "kl_div_std_8",
+            "value": 1274.0
+          },
+          {
+            "feature": "h_alts_std_8",
+            "value": 1186.0
+          },
+          {
+            "feature": "h_alts_mean_8",
+            "value": 1170.0
+          },
+          {
+            "feature": "top10_jaccard_mean_8",
+            "value": 1048.0
+          },
+          {
+            "feature": "entropy_mean_8",
+            "value": 1011.0
+          },
+          {
+            "feature": "kl_div",
+            "value": 973.0
+          },
+          {
+            "feature": "top1_prob_std_8",
+            "value": 916.0
+          },
+          {
+            "feature": "delta_h_mean_32",
+            "value": 846.0
+          },
+          {
+            "feature": "logit_range",
+            "value": 827.0
+          },
+          {
+            "feature": "entropy_std_8",
+            "value": 826.0
+          },
+          {
+            "feature": "delta_h_std_8",
+            "value": 795.0
+          },
+          {
+            "feature": "top1_prob_mean_8",
+            "value": 690.0
+          },
+          {
+            "feature": "h_alts",
+            "value": 631.0
+          },
+          {
+            "feature": "logprob_4",
+            "value": 579.0
+          },
+          {
+            "feature": "tail_mass",
+            "value": 424.0
+          },
+          {
+            "feature": "logprob_3",
+            "value": 391.0
+          },
+          {
+            "feature": "logprob_2",
+            "value": 389.0
+          },
+          {
+            "feature": "logprob_1",
+            "value": 374.0
+          },
+          {
+            "feature": "delta_h_mean_8",
+            "value": 363.0
+          },
+          {
+            "feature": "delta_h",
+            "value": 362.0
+          },
+          {
+            "feature": "top10_jaccard",
+            "value": 355.0
+          },
+          {
+            "feature": "top5_prob",
+            "value": 264.0
+          },
+          {
+            "feature": "entropy",
+            "value": 149.0
+          },
+          {
+            "feature": "top1_prob",
+            "value": 115.0
+          },
+          {
+            "feature": "logprob_0",
+            "value": 73.0
+          },
+          {
+            "feature": "eff_vocab_size",
+            "value": 70.0
+          },
+          {
+            "feature": "delta_h_valid",
+            "value": 14.0
+          }
+        ]
+      },
+      "cover": {
+        "ranked": [
+          {
+            "feature": "delta_h_valid",
+            "value": 198559.328125
+          },
+          {
+            "feature": "delta_h_mean_32",
+            "value": 74758.414062
+          },
+          {
+            "feature": "delta_h_mean_8",
+            "value": 71256.460938
+          },
+          {
+            "feature": "h_alts",
+            "value": 70368.609375
+          },
+          {
+            "feature": "delta_h",
+            "value": 68872.820312
+          },
+          {
+            "feature": "entropy",
+            "value": 66834.09375
+          },
+          {
+            "feature": "logprob_1",
+            "value": 66384.601562
+          },
+          {
+            "feature": "logprob_4",
+            "value": 64345.609375
+          },
+          {
+            "feature": "tail_mass",
+            "value": 63280.605469
+          },
+          {
+            "feature": "entropy_mean_32",
+            "value": 62977.152344
+          },
+          {
+            "feature": "entropy_mean_8",
+            "value": 58533.820312
+          },
+          {
+            "feature": "top1_prob_mean_32",
+            "value": 55928.101562
+          },
+          {
+            "feature": "top1_prob_std_32",
+            "value": 55775.09375
+          },
+          {
+            "feature": "kl_div_std_32",
+            "value": 53994.890625
+          },
+          {
+            "feature": "logprob_3",
+            "value": 53927.359375
+          },
+          {
+            "feature": "avg_logp",
+            "value": 52102.152344
+          },
+          {
+            "feature": "top5_prob",
+            "value": 52012.066406
+          },
+          {
+            "feature": "token_position",
+            "value": 51991.871094
+          },
+          {
+            "feature": "top1_prob_std_8",
+            "value": 51304.183594
+          },
+          {
+            "feature": "entropy_std_8",
+            "value": 48270.4375
+          },
+          {
+            "feature": "top1_prob_mean_8",
+            "value": 48110.617188
+          },
+          {
+            "feature": "delta_h_std_32",
+            "value": 46778.957031
+          },
+          {
+            "feature": "kl_div_mean_8",
+            "value": 45339.789062
+          },
+          {
+            "feature": "entropy_std_32",
+            "value": 43998.226562
+          },
+          {
+            "feature": "top10_jaccard_mean_32",
+            "value": 43851.957031
+          },
+          {
+            "feature": "top10_jaccard_mean_8",
+            "value": 42842.988281
+          },
+          {
+            "feature": "logit_range",
+            "value": 42822.980469
+          },
+          {
+            "feature": "top10_jaccard",
+            "value": 41049.6875
+          },
+          {
+            "feature": "top10_jaccard_std_8",
+            "value": 39926.539062
+          },
+          {
+            "feature": "eff_vocab_size",
+            "value": 39346.140625
+          },
+          {
+            "feature": "h_alts_std_32",
+            "value": 38154.390625
+          },
+          {
+            "feature": "kl_div_mean_32",
+            "value": 37854.296875
+          },
+          {
+            "feature": "logprob_2",
+            "value": 37029.421875
+          },
+          {
+            "feature": "h_alts_std_8",
+            "value": 34409.621094
+          },
+          {
+            "feature": "kl_div",
+            "value": 33227.617188
+          },
+          {
+            "feature": "top10_jaccard_std_32",
+            "value": 32277.597656
+          },
+          {
+            "feature": "kl_div_std_8",
+            "value": 27895.302734
+          },
+          {
+            "feature": "h_alts_mean_32",
+            "value": 27854.931641
+          },
+          {
+            "feature": "h_alts_mean_8",
+            "value": 22607.779297
+          },
+          {
+            "feature": "delta_h_std_8",
+            "value": 21405.945312
+          },
+          {
+            "feature": "top1_prob",
+            "value": 20510.027344
+          },
+          {
+            "feature": "logprob_0",
+            "value": 14407.392578
+          }
+        ]
+      }
+    },
+    "H5": {
+      "gain": {
+        "ranked": [
+          {
+            "feature": "kl_div_std_32",
+            "value": 7058.06543
+          },
+          {
+            "feature": "token_position",
+            "value": 4551.419434
+          },
+          {
+            "feature": "delta_h_valid",
+            "value": 2446.879395
+          },
+          {
+            "feature": "kl_div_mean_32",
+            "value": 2188.271729
+          },
+          {
+            "feature": "top10_jaccard_mean_32",
+            "value": 1245.561401
+          },
+          {
+            "feature": "h_alts_std_32",
+            "value": 1070.394897
+          },
+          {
+            "feature": "avg_logp",
+            "value": 592.391846
+          },
+          {
+            "feature": "entropy_std_32",
+            "value": 353.459473
+          },
+          {
+            "feature": "h_alts_mean_32",
+            "value": 343.244385
+          },
+          {
+            "feature": "h_alts",
+            "value": 314.754944
+          },
+          {
+            "feature": "entropy_std_8",
+            "value": 312.834686
+          },
+          {
+            "feature": "delta_h_mean_32",
+            "value": 298.252899
+          },
+          {
+            "feature": "top1_prob_std_32",
+            "value": 282.295807
+          },
+          {
+            "feature": "delta_h_std_32",
+            "value": 255.422379
+          },
+          {
+            "feature": "top10_jaccard_mean_8",
+            "value": 236.095581
+          },
+          {
+            "feature": "top1_prob_std_8",
+            "value": 227.651749
+          },
+          {
+            "feature": "top10_jaccard_std_32",
+            "value": 219.490768
+          },
+          {
+            "feature": "logit_range",
+            "value": 163.711914
+          },
+          {
+            "feature": "top1_prob_mean_32",
+            "value": 158.089325
+          },
+          {
+            "feature": "logprob_4",
+            "value": 143.395477
+          },
+          {
+            "feature": "h_alts_mean_8",
+            "value": 138.739319
+          },
+          {
+            "feature": "top1_prob_mean_8",
+            "value": 129.864716
+          },
+          {
+            "feature": "top10_jaccard",
+            "value": 122.102501
+          },
+          {
+            "feature": "h_alts_std_8",
+            "value": 112.743866
+          },
+          {
+            "feature": "kl_div_mean_8",
+            "value": 98.232597
+          },
+          {
+            "feature": "entropy_mean_32",
+            "value": 95.788521
+          },
+          {
+            "feature": "entropy_mean_8",
+            "value": 93.526848
+          },
+          {
+            "feature": "kl_div",
+            "value": 85.859283
+          },
+          {
+            "feature": "logprob_1",
+            "value": 80.535873
+          },
+          {
+            "feature": "logprob_0",
+            "value": 79.75592
+          },
+          {
+            "feature": "top10_jaccard_std_8",
+            "value": 72.826042
+          },
+          {
+            "feature": "tail_mass",
+            "value": 69.719597
+          },
+          {
+            "feature": "kl_div_std_8",
+            "value": 65.912659
+          },
+          {
+            "feature": "top5_prob",
+            "value": 63.789143
+          },
+          {
+            "feature": "logprob_3",
+            "value": 63.070652
+          },
+          {
+            "feature": "delta_h_mean_8",
+            "value": 62.309566
+          },
+          {
+            "feature": "delta_h_std_8",
+            "value": 61.445702
+          },
+          {
+            "feature": "entropy",
+            "value": 47.038803
+          },
+          {
+            "feature": "delta_h",
+            "value": 46.125168
+          },
+          {
+            "feature": "top1_prob",
+            "value": 44.583233
+          },
+          {
+            "feature": "eff_vocab_size",
+            "value": 37.826614
+          },
+          {
+            "feature": "logprob_2",
+            "value": 36.616863
+          }
+        ]
+      },
+      "weight": {
+        "ranked": [
+          {
+            "feature": "token_position",
+            "value": 5906.0
+          },
+          {
+            "feature": "h_alts_std_32",
+            "value": 3659.0
+          },
+          {
+            "feature": "top10_jaccard_std_32",
+            "value": 3513.0
+          },
+          {
+            "feature": "kl_div_mean_32",
+            "value": 3198.0
+          },
+          {
+            "feature": "kl_div_std_32",
+            "value": 3065.0
+          },
+          {
+            "feature": "h_alts_mean_32",
+            "value": 2686.0
+          },
+          {
+            "feature": "top10_jaccard_mean_32",
+            "value": 2658.0
+          },
+          {
+            "feature": "top1_prob_std_32",
+            "value": 2439.0
+          },
+          {
+            "feature": "entropy_std_32",
+            "value": 2273.0
+          },
+          {
+            "feature": "delta_h_std_32",
+            "value": 2228.0
+          },
+          {
+            "feature": "entropy_mean_32",
+            "value": 1771.0
+          },
+          {
+            "feature": "top1_prob_mean_32",
+            "value": 1599.0
+          },
+          {
+            "feature": "kl_div_mean_8",
+            "value": 1485.0
+          },
+          {
+            "feature": "avg_logp",
+            "value": 1457.0
+          },
+          {
+            "feature": "top10_jaccard_std_8",
+            "value": 1439.0
+          },
+          {
+            "feature": "kl_div_std_8",
+            "value": 1243.0
+          },
+          {
+            "feature": "h_alts_mean_8",
+            "value": 1209.0
+          },
+          {
+            "feature": "h_alts_std_8",
+            "value": 1197.0
+          },
+          {
+            "feature": "top10_jaccard_mean_8",
+            "value": 1106.0
+          },
+          {
+            "feature": "kl_div",
+            "value": 1008.0
+          },
+          {
+            "feature": "entropy_mean_8",
+            "value": 1005.0
+          },
+          {
+            "feature": "entropy_std_8",
+            "value": 891.0
+          },
+          {
+            "feature": "top1_prob_std_8",
+            "value": 881.0
+          },
+          {
+            "feature": "delta_h_mean_32",
+            "value": 838.0
+          },
+          {
+            "feature": "delta_h_std_8",
+            "value": 821.0
+          },
+          {
+            "feature": "logit_range",
+            "value": 779.0
+          },
+          {
+            "feature": "top1_prob_mean_8",
+            "value": 754.0
+          },
+          {
+            "feature": "h_alts",
+            "value": 596.0
+          },
+          {
+            "feature": "logprob_4",
+            "value": 583.0
+          },
+          {
+            "feature": "tail_mass",
+            "value": 433.0
+          },
+          {
+            "feature": "delta_h_mean_8",
+            "value": 386.0
+          },
+          {
+            "feature": "delta_h",
+            "value": 381.0
+          },
+          {
+            "feature": "logprob_1",
+            "value": 377.0
+          },
+          {
+            "feature": "logprob_3",
+            "value": 372.0
+          },
+          {
+            "feature": "logprob_2",
+            "value": 358.0
+          },
+          {
+            "feature": "top10_jaccard",
+            "value": 328.0
+          },
+          {
+            "feature": "top5_prob",
+            "value": 297.0
+          },
+          {
+            "feature": "entropy",
+            "value": 132.0
+          },
+          {
+            "feature": "top1_prob",
+            "value": 112.0
+          },
+          {
+            "feature": "logprob_0",
+            "value": 83.0
+          },
+          {
+            "feature": "eff_vocab_size",
+            "value": 58.0
+          },
+          {
+            "feature": "delta_h_valid",
+            "value": 13.0
+          }
+        ]
+      },
+      "cover": {
+        "ranked": [
+          {
+            "feature": "delta_h_valid",
+            "value": 209130.328125
+          },
+          {
+            "feature": "delta_h",
+            "value": 78492.804688
+          },
+          {
+            "feature": "delta_h_mean_32",
+            "value": 78404.429688
+          },
+          {
+            "feature": "delta_h_mean_8",
+            "value": 75551.351562
+          },
+          {
+            "feature": "logprob_4",
+            "value": 75473.632812
+          },
+          {
+            "feature": "h_alts",
+            "value": 72826.140625
+          },
+          {
+            "feature": "entropy_mean_32",
+            "value": 68120.117188
+          },
+          {
+            "feature": "logprob_1",
+            "value": 66840.273438
+          },
+          {
+            "feature": "top1_prob_std_32",
+            "value": 63703.539062
+          },
+          {
+            "feature": "entropy",
+            "value": 63074.535156
+          },
+          {
+            "feature": "top5_prob",
+            "value": 60452.742188
+          },
+          {
+            "feature": "entropy_mean_8",
+            "value": 59701.082031
+          },
+          {
+            "feature": "top1_prob_mean_32",
+            "value": 59595.335938
+          },
+          {
+            "feature": "tail_mass",
+            "value": 56843.625
+          },
+          {
+            "feature": "top1_prob_std_8",
+            "value": 55413.617188
+          },
+          {
+            "feature": "kl_div_std_32",
+            "value": 54546.667969
+          },
+          {
+            "feature": "avg_logp",
+            "value": 54478.71875
+          },
+          {
+            "feature": "entropy_std_32",
+            "value": 52653.371094
+          },
+          {
+            "feature": "top1_prob_mean_8",
+            "value": 52398.28125
+          },
+          {
+            "feature": "top10_jaccard",
+            "value": 51350.316406
+          },
+          {
+            "feature": "token_position",
+            "value": 51305.421875
+          },
+          {
+            "feature": "logprob_3",
+            "value": 46868.171875
+          },
+          {
+            "feature": "eff_vocab_size",
+            "value": 46325.585938
+          },
+          {
+            "feature": "kl_div_mean_8",
+            "value": 46285.570312
+          },
+          {
+            "feature": "delta_h_std_32",
+            "value": 46283.578125
+          },
+          {
+            "feature": "logit_range",
+            "value": 44691.652344
+          },
+          {
+            "feature": "entropy_std_8",
+            "value": 44262.457031
+          },
+          {
+            "feature": "top10_jaccard_mean_32",
+            "value": 42274.398438
+          },
+          {
+            "feature": "top10_jaccard_std_8",
+            "value": 40225.527344
+          },
+          {
+            "feature": "h_alts_std_32",
+            "value": 39023.179688
+          },
+          {
+            "feature": "top10_jaccard_mean_8",
+            "value": 38810.292969
+          },
+          {
+            "feature": "kl_div_mean_32",
+            "value": 37696.539062
+          },
+          {
+            "feature": "logprob_2",
+            "value": 37234.417969
+          },
+          {
+            "feature": "h_alts_std_8",
+            "value": 36281.886719
+          },
+          {
+            "feature": "kl_div",
+            "value": 33985.441406
+          },
+          {
+            "feature": "top10_jaccard_std_32",
+            "value": 32238.296875
+          },
+          {
+            "feature": "kl_div_std_8",
+            "value": 28724.964844
+          },
+          {
+            "feature": "delta_h_std_8",
+            "value": 26560.992188
+          },
+          {
+            "feature": "h_alts_mean_32",
+            "value": 26532.90625
+          },
+          {
+            "feature": "h_alts_mean_8",
+            "value": 23519.322266
+          },
+          {
+            "feature": "logprob_0",
+            "value": 13242.070312
+          },
+          {
+            "feature": "top1_prob",
+            "value": 10662.043945
+          }
+        ]
+      }
+    },
+    "H10": {
+      "gain": {
+        "ranked": [
+          {
+            "feature": "kl_div_std_32",
+            "value": 6949.009277
+          },
+          {
+            "feature": "token_position",
+            "value": 4624.706055
+          },
+          {
+            "feature": "delta_h_valid",
+            "value": 2288.440674
+          },
+          {
+            "feature": "kl_div_mean_32",
+            "value": 2221.73877
+          },
+          {
+            "feature": "top10_jaccard_mean_32",
+            "value": 1289.144287
+          },
+          {
+            "feature": "h_alts_std_32",
+            "value": 1089.486694
+          },
+          {
+            "feature": "avg_logp",
+            "value": 565.715881
+          },
+          {
+            "feature": "entropy_std_32",
+            "value": 390.5047
+          },
+          {
+            "feature": "h_alts_mean_32",
+            "value": 346.156403
+          },
+          {
+            "feature": "h_alts",
+            "value": 339.13736
+          },
+          {
+            "feature": "entropy_std_8",
+            "value": 329.27066
+          },
+          {
+            "feature": "delta_h_mean_32",
+            "value": 288.882172
+          },
+          {
+            "feature": "top1_prob_std_32",
+            "value": 275.863861
+          },
+          {
+            "feature": "delta_h_std_32",
+            "value": 258.320709
+          },
+          {
+            "feature": "top10_jaccard_mean_8",
+            "value": 238.392441
+          },
+          {
+            "feature": "top10_jaccard_std_32",
+            "value": 207.675446
+          },
+          {
+            "feature": "top1_prob_std_8",
+            "value": 186.815704
+          },
+          {
+            "feature": "logit_range",
+            "value": 160.685898
+          },
+          {
+            "feature": "top1_prob_mean_8",
+            "value": 159.492172
+          },
+          {
+            "feature": "top1_prob_mean_32",
+            "value": 142.961792
+          },
+          {
+            "feature": "h_alts_mean_8",
+            "value": 135.105515
+          },
+          {
+            "feature": "entropy_mean_32",
+            "value": 131.793793
+          },
+          {
+            "feature": "logprob_4",
+            "value": 124.11615
+          },
+          {
+            "feature": "h_alts_std_8",
+            "value": 108.531738
+          },
+          {
+            "feature": "kl_div_mean_8",
+            "value": 104.431686
+          },
+          {
+            "feature": "top10_jaccard",
+            "value": 103.670273
+          },
+          {
+            "feature": "entropy_mean_8",
+            "value": 94.659683
+          },
+          {
+            "feature": "top5_prob",
+            "value": 90.506447
+          },
+          {
+            "feature": "kl_div",
+            "value": 82.194145
+          },
+          {
+            "feature": "top10_jaccard_std_8",
+            "value": 76.607315
+          },
+          {
+            "feature": "logprob_0",
+            "value": 74.91172
+          },
+          {
+            "feature": "logprob_1",
+            "value": 67.436119
+          },
+          {
+            "feature": "tail_mass",
+            "value": 66.823303
+          },
+          {
+            "feature": "kl_div_std_8",
+            "value": 65.375473
+          },
+          {
+            "feature": "logprob_3",
+            "value": 64.888123
+          },
+          {
+            "feature": "delta_h_mean_8",
+            "value": 62.101974
+          },
+          {
+            "feature": "delta_h_std_8",
+            "value": 60.210682
+          },
+          {
+            "feature": "eff_vocab_size",
+            "value": 46.613972
+          },
+          {
+            "feature": "delta_h",
+            "value": 45.450329
+          },
+          {
+            "feature": "top1_prob",
+            "value": 43.575058
+          },
+          {
+            "feature": "entropy",
+            "value": 40.938419
+          },
+          {
+            "feature": "logprob_2",
+            "value": 38.739689
+          }
+        ]
+      },
+      "weight": {
+        "ranked": [
+          {
+            "feature": "token_position",
+            "value": 5739.0
+          },
+          {
+            "feature": "top10_jaccard_std_32",
+            "value": 3547.0
+          },
+          {
+            "feature": "h_alts_std_32",
+            "value": 3506.0
+          },
+          {
+            "feature": "kl_div_mean_32",
+            "value": 3163.0
+          },
+          {
+            "feature": "kl_div_std_32",
+            "value": 2982.0
+          },
+          {
+            "feature": "top10_jaccard_mean_32",
+            "value": 2573.0
+          },
+          {
+            "feature": "h_alts_mean_32",
+            "value": 2531.0
+          },
+          {
+            "feature": "top1_prob_std_32",
+            "value": 2386.0
+          },
+          {
+            "feature": "entropy_std_32",
+            "value": 2289.0
+          },
+          {
+            "feature": "delta_h_std_32",
+            "value": 2125.0
+          },
+          {
+            "feature": "entropy_mean_32",
+            "value": 1706.0
+          },
+          {
+            "feature": "top1_prob_mean_32",
+            "value": 1585.0
+          },
+          {
+            "feature": "kl_div_mean_8",
+            "value": 1506.0
+          },
+          {
+            "feature": "avg_logp",
+            "value": 1472.0
+          },
+          {
+            "feature": "top10_jaccard_std_8",
+            "value": 1344.0
+          },
+          {
+            "feature": "kl_div_std_8",
+            "value": 1283.0
+          },
+          {
+            "feature": "h_alts_std_8",
+            "value": 1193.0
+          },
+          {
+            "feature": "h_alts_mean_8",
+            "value": 1153.0
+          },
+          {
+            "feature": "entropy_mean_8",
+            "value": 1048.0
+          },
+          {
+            "feature": "kl_div",
+            "value": 1046.0
+          },
+          {
+            "feature": "top10_jaccard_mean_8",
+            "value": 1039.0
+          },
+          {
+            "feature": "top1_prob_std_8",
+            "value": 902.0
+          },
+          {
+            "feature": "entropy_std_8",
+            "value": 885.0
+          },
+          {
+            "feature": "delta_h_std_8",
+            "value": 884.0
+          },
+          {
+            "feature": "delta_h_mean_32",
+            "value": 848.0
+          },
+          {
+            "feature": "logit_range",
+            "value": 798.0
+          },
+          {
+            "feature": "top1_prob_mean_8",
+            "value": 719.0
+          },
+          {
+            "feature": "h_alts",
+            "value": 584.0
+          },
+          {
+            "feature": "logprob_4",
+            "value": 565.0
+          },
+          {
+            "feature": "logprob_1",
+            "value": 463.0
+          },
+          {
+            "feature": "delta_h_mean_8",
+            "value": 427.0
+          },
+          {
+            "feature": "tail_mass",
+            "value": 413.0
+          },
+          {
+            "feature": "delta_h",
+            "value": 391.0
+          },
+          {
+            "feature": "logprob_2",
+            "value": 367.0
+          },
+          {
+            "feature": "logprob_3",
+            "value": 354.0
+          },
+          {
+            "feature": "top10_jaccard",
+            "value": 339.0
+          },
+          {
+            "feature": "top5_prob",
+            "value": 265.0
+          },
+          {
+            "feature": "entropy",
+            "value": 151.0
+          },
+          {
+            "feature": "top1_prob",
+            "value": 107.0
+          },
+          {
+            "feature": "logprob_0",
+            "value": 92.0
+          },
+          {
+            "feature": "eff_vocab_size",
+            "value": 67.0
+          },
+          {
+            "feature": "delta_h_valid",
+            "value": 11.0
+          }
+        ]
+      },
+      "cover": {
+        "ranked": [
+          {
+            "feature": "delta_h_valid",
+            "value": 221382.59375
+          },
+          {
+            "feature": "delta_h",
+            "value": 81759.859375
+          },
+          {
+            "feature": "delta_h_mean_32",
+            "value": 80565.773438
+          },
+          {
+            "feature": "logprob_4",
+            "value": 78710.273438
+          },
+          {
+            "feature": "h_alts",
+            "value": 76989.195312
+          },
+          {
+            "feature": "delta_h_mean_8",
+            "value": 72057.210938
+          },
+          {
+            "feature": "top1_prob_std_32",
+            "value": 66476.664062
+          },
+          {
+            "feature": "top1_prob_mean_32",
+            "value": 66079.789062
+          },
+          {
+            "feature": "entropy_mean_32",
+            "value": 64801.144531
+          },
+          {
+            "feature": "logprob_1",
+            "value": 64314.628906
+          },
+          {
+            "feature": "top5_prob",
+            "value": 62557.582031
+          },
+          {
+            "feature": "entropy_mean_8",
+            "value": 62556.28125
+          },
+          {
+            "feature": "tail_mass",
+            "value": 57673.207031
+          },
+          {
+            "feature": "entropy",
+            "value": 57595.742188
+          },
+          {
+            "feature": "kl_div_std_32",
+            "value": 56524.738281
+          },
+          {
+            "feature": "entropy_std_32",
+            "value": 56360.53125
+          },
+          {
+            "feature": "avg_logp",
+            "value": 56013.523438
+          },
+          {
+            "feature": "token_position",
+            "value": 53789.882812
+          },
+          {
+            "feature": "top1_prob_std_8",
+            "value": 53020.53125
+          },
+          {
+            "feature": "logprob_3",
+            "value": 52779.433594
+          },
+          {
+            "feature": "top10_jaccard",
+            "value": 50749.59375
+          },
+          {
+            "feature": "top1_prob_mean_8",
+            "value": 50640.035156
+          },
+          {
+            "feature": "delta_h_std_32",
+            "value": 49945.402344
+          },
+          {
+            "feature": "entropy_std_8",
+            "value": 49794.8125
+          },
+          {
+            "feature": "top10_jaccard_mean_32",
+            "value": 44372.089844
+          },
+          {
+            "feature": "top10_jaccard_mean_8",
+            "value": 42602.398438
+          },
+          {
+            "feature": "eff_vocab_size",
+            "value": 42590.246094
+          },
+          {
+            "feature": "kl_div_mean_8",
+            "value": 42349.40625
+          },
+          {
+            "feature": "top10_jaccard_std_8",
+            "value": 41472.449219
+          },
+          {
+            "feature": "h_alts_std_32",
+            "value": 41158.339844
+          },
+          {
+            "feature": "kl_div_mean_32",
+            "value": 39778.726562
+          },
+          {
+            "feature": "logit_range",
+            "value": 37996.492188
+          },
+          {
+            "feature": "top10_jaccard_std_32",
+            "value": 33712.070312
+          },
+          {
+            "feature": "kl_div",
+            "value": 33230.289062
+          },
+          {
+            "feature": "h_alts_std_8",
+            "value": 32544.824219
+          },
+          {
+            "feature": "kl_div_std_8",
+            "value": 29795.154297
+          },
+          {
+            "feature": "logprob_2",
+            "value": 29331.318359
+          },
+          {
+            "feature": "h_alts_mean_32",
+            "value": 25925.419922
+          },
+          {
+            "feature": "delta_h_std_8",
+            "value": 25488.636719
+          },
+          {
+            "feature": "h_alts_mean_8",
+            "value": 23786.242188
+          },
+          {
+            "feature": "top1_prob",
+            "value": 6606.524414
+          },
+          {
+            "feature": "logprob_0",
+            "value": 2757.521484
+          }
+        ]
+      }
+    },
+    "H25": {
+      "gain": {
+        "ranked": [
+          {
+            "feature": "kl_div_std_32",
+            "value": 5645.130371
+          },
+          {
+            "feature": "token_position",
+            "value": 4150.53418
+          },
+          {
+            "feature": "kl_div_mean_32",
+            "value": 2628.246826
+          },
+          {
+            "feature": "top10_jaccard_mean_32",
+            "value": 1230.615723
+          },
+          {
+            "feature": "delta_h_valid",
+            "value": 1031.062256
+          },
+          {
+            "feature": "h_alts_std_32",
+            "value": 973.662476
+          },
+          {
+            "feature": "avg_logp",
+            "value": 610.087463
+          },
+          {
+            "feature": "entropy_std_32",
+            "value": 356.511841
+          },
+          {
+            "feature": "h_alts",
+            "value": 345.258759
+          },
+          {
+            "feature": "entropy_std_8",
+            "value": 296.786499
+          },
+          {
+            "feature": "h_alts_mean_32",
+            "value": 285.337677
+          },
+          {
+            "feature": "delta_h_std_32",
+            "value": 282.163879
+          },
+          {
+            "feature": "delta_h_mean_32",
+            "value": 258.129028
+          },
+          {
+            "feature": "top1_prob_std_32",
+            "value": 243.105576
+          },
+          {
+            "feature": "top10_jaccard_mean_8",
+            "value": 240.31665
+          },
+          {
+            "feature": "top10_jaccard_std_32",
+            "value": 201.096924
+          },
+          {
+            "feature": "logprob_4",
+            "value": 169.387299
+          },
+          {
+            "feature": "top1_prob_std_8",
+            "value": 165.334549
+          },
+          {
+            "feature": "top1_prob_mean_32",
+            "value": 136.024353
+          },
+          {
+            "feature": "top1_prob_mean_8",
+            "value": 123.865112
+          },
+          {
+            "feature": "entropy_mean_32",
+            "value": 121.481308
+          },
+          {
+            "feature": "h_alts_mean_8",
+            "value": 117.422028
+          },
+          {
+            "feature": "h_alts_std_8",
+            "value": 109.839722
+          },
+          {
+            "feature": "logit_range",
+            "value": 108.058815
+          },
+          {
+            "feature": "logprob_0",
+            "value": 107.45356
+          },
+          {
+            "feature": "logprob_3",
+            "value": 106.557556
+          },
+          {
+            "feature": "kl_div_mean_8",
+            "value": 102.141182
+          },
+          {
+            "feature": "entropy_mean_8",
+            "value": 97.09362
+          },
+          {
+            "feature": "top10_jaccard",
+            "value": 86.341423
+          },
+          {
+            "feature": "kl_div",
+            "value": 78.025116
+          },
+          {
+            "feature": "top5_prob",
+            "value": 75.629387
+          },
+          {
+            "feature": "top10_jaccard_std_8",
+            "value": 72.793564
+          },
+          {
+            "feature": "top1_prob",
+            "value": 63.988758
+          },
+          {
+            "feature": "kl_div_std_8",
+            "value": 61.304173
+          },
+          {
+            "feature": "delta_h_mean_8",
+            "value": 60.778378
+          },
+          {
+            "feature": "tail_mass",
+            "value": 60.557297
+          },
+          {
+            "feature": "logprob_1",
+            "value": 57.027142
+          },
+          {
+            "feature": "delta_h_std_8",
+            "value": 56.451015
+          },
+          {
+            "feature": "eff_vocab_size",
+            "value": 54.48912
+          },
+          {
+            "feature": "delta_h",
+            "value": 49.043423
+          },
+          {
+            "feature": "logprob_2",
+            "value": 44.409695
+          },
+          {
+            "feature": "entropy",
+            "value": 42.846306
+          }
+        ]
+      },
+      "weight": {
+        "ranked": [
+          {
+            "feature": "token_position",
+            "value": 6118.0
+          },
+          {
+            "feature": "top10_jaccard_std_32",
+            "value": 3571.0
+          },
+          {
+            "feature": "h_alts_std_32",
+            "value": 3513.0
+          },
+          {
+            "feature": "kl_div_mean_32",
+            "value": 3303.0
+          },
+          {
+            "feature": "kl_div_std_32",
+            "value": 3061.0
+          },
+          {
+            "feature": "h_alts_mean_32",
+            "value": 2650.0
+          },
+          {
+            "feature": "top10_jaccard_mean_32",
+            "value": 2632.0
+          },
+          {
+            "feature": "top1_prob_std_32",
+            "value": 2406.0
+          },
+          {
+            "feature": "entropy_std_32",
+            "value": 2295.0
+          },
+          {
+            "feature": "delta_h_std_32",
+            "value": 2227.0
+          },
+          {
+            "feature": "entropy_mean_32",
+            "value": 1802.0
+          },
+          {
+            "feature": "top1_prob_mean_32",
+            "value": 1635.0
+          },
+          {
+            "feature": "kl_div_mean_8",
+            "value": 1512.0
+          },
+          {
+            "feature": "avg_logp",
+            "value": 1481.0
+          },
+          {
+            "feature": "top10_jaccard_std_8",
+            "value": 1360.0
+          },
+          {
+            "feature": "kl_div_std_8",
+            "value": 1277.0
+          },
+          {
+            "feature": "h_alts_std_8",
+            "value": 1242.0
+          },
+          {
+            "feature": "h_alts_mean_8",
+            "value": 1149.0
+          },
+          {
+            "feature": "top10_jaccard_mean_8",
+            "value": 1100.0
+          },
+          {
+            "feature": "entropy_mean_8",
+            "value": 1078.0
+          },
+          {
+            "feature": "kl_div",
+            "value": 948.0
+          },
+          {
+            "feature": "entropy_std_8",
+            "value": 929.0
+          },
+          {
+            "feature": "top1_prob_std_8",
+            "value": 914.0
+          },
+          {
+            "feature": "delta_h_std_8",
+            "value": 911.0
+          },
+          {
+            "feature": "logit_range",
+            "value": 802.0
+          },
+          {
+            "feature": "delta_h_mean_32",
+            "value": 770.0
+          },
+          {
+            "feature": "top1_prob_mean_8",
+            "value": 760.0
+          },
+          {
+            "feature": "logprob_4",
+            "value": 625.0
+          },
+          {
+            "feature": "h_alts",
+            "value": 584.0
+          },
+          {
+            "feature": "logprob_1",
+            "value": 423.0
+          },
+          {
+            "feature": "delta_h",
+            "value": 422.0
+          },
+          {
+            "feature": "delta_h_mean_8",
+            "value": 393.0
+          },
+          {
+            "feature": "logprob_3",
+            "value": 368.0
+          },
+          {
+            "feature": "tail_mass",
+            "value": 367.0
+          },
+          {
+            "feature": "top10_jaccard",
+            "value": 348.0
+          },
+          {
+            "feature": "logprob_2",
+            "value": 342.0
+          },
+          {
+            "feature": "top5_prob",
+            "value": 285.0
+          },
+          {
+            "feature": "entropy",
+            "value": 163.0
+          },
+          {
+            "feature": "top1_prob",
+            "value": 111.0
+          },
+          {
+            "feature": "logprob_0",
+            "value": 78.0
+          },
+          {
+            "feature": "eff_vocab_size",
+            "value": 46.0
+          },
+          {
+            "feature": "delta_h_valid",
+            "value": 13.0
+          }
+        ]
+      },
+      "cover": {
+        "ranked": [
+          {
+            "feature": "delta_h_valid",
+            "value": 177623.609375
+          },
+          {
+            "feature": "top5_prob",
+            "value": 94295.585938
+          },
+          {
+            "feature": "logprob_4",
+            "value": 88428.992188
+          },
+          {
+            "feature": "h_alts",
+            "value": 86874.976562
+          },
+          {
+            "feature": "delta_h_mean_32",
+            "value": 80828.210938
+          },
+          {
+            "feature": "delta_h_mean_8",
+            "value": 76813.835938
+          },
+          {
+            "feature": "top1_prob_mean_32",
+            "value": 74849.3125
+          },
+          {
+            "feature": "logprob_1",
+            "value": 73672.976562
+          },
+          {
+            "feature": "entropy_mean_8",
+            "value": 73353.296875
+          },
+          {
+            "feature": "entropy_mean_32",
+            "value": 71040.296875
+          },
+          {
+            "feature": "top1_prob_std_32",
+            "value": 69964.257812
+          },
+          {
+            "feature": "avg_logp",
+            "value": 65550.273438
+          },
+          {
+            "feature": "tail_mass",
+            "value": 63794.832031
+          },
+          {
+            "feature": "entropy",
+            "value": 61504.710938
+          },
+          {
+            "feature": "top1_prob_std_8",
+            "value": 60699.964844
+          },
+          {
+            "feature": "delta_h",
+            "value": 60039.472656
+          },
+          {
+            "feature": "kl_div_std_32",
+            "value": 58756.015625
+          },
+          {
+            "feature": "entropy_std_32",
+            "value": 58214.699219
+          },
+          {
+            "feature": "top10_jaccard",
+            "value": 55001.363281
+          },
+          {
+            "feature": "token_position",
+            "value": 53068.933594
+          },
+          {
+            "feature": "delta_h_std_32",
+            "value": 52997.347656
+          },
+          {
+            "feature": "entropy_std_8",
+            "value": 52757.507812
+          },
+          {
+            "feature": "logprob_2",
+            "value": 48928.925781
+          },
+          {
+            "feature": "top1_prob_mean_8",
+            "value": 48841.949219
+          },
+          {
+            "feature": "top10_jaccard_mean_32",
+            "value": 45579.609375
+          },
+          {
+            "feature": "h_alts_std_32",
+            "value": 45115.40625
+          },
+          {
+            "feature": "logprob_3",
+            "value": 44600.804688
+          },
+          {
+            "feature": "kl_div_mean_32",
+            "value": 43672.257812
+          },
+          {
+            "feature": "top10_jaccard_mean_8",
+            "value": 42718.980469
+          },
+          {
+            "feature": "top10_jaccard_std_8",
+            "value": 41416.480469
+          },
+          {
+            "feature": "logit_range",
+            "value": 40262.886719
+          },
+          {
+            "feature": "kl_div_mean_8",
+            "value": 39984.480469
+          },
+          {
+            "feature": "kl_div",
+            "value": 39883.234375
+          },
+          {
+            "feature": "top10_jaccard_std_32",
+            "value": 39323.757812
+          },
+          {
+            "feature": "h_alts_std_8",
+            "value": 39174.992188
+          },
+          {
+            "feature": "delta_h_std_8",
+            "value": 32418.365234
+          },
+          {
+            "feature": "kl_div_std_8",
+            "value": 31468.667969
+          },
+          {
+            "feature": "h_alts_mean_32",
+            "value": 29847.585938
+          },
+          {
+            "feature": "h_alts_mean_8",
+            "value": 29284.787109
+          },
+          {
+            "feature": "eff_vocab_size",
+            "value": 20491.720703
+          },
+          {
+            "feature": "logprob_0",
+            "value": 16678.939453
+          },
+          {
+            "feature": "top1_prob",
+            "value": 13378.342773
+          }
+        ]
+      }
+    },
+    "H50": {
+      "gain": {
+        "ranked": [
+          {
+            "feature": "kl_div_std_32",
+            "value": 3815.172363
+          },
+          {
+            "feature": "token_position",
+            "value": 3691.915527
+          },
+          {
+            "feature": "kl_div_mean_32",
+            "value": 3475.026123
+          },
+          {
+            "feature": "top10_jaccard_mean_32",
+            "value": 1541.761719
+          },
+          {
+            "feature": "delta_h_valid",
+            "value": 1197.220947
+          },
+          {
+            "feature": "h_alts_std_32",
+            "value": 842.20697
+          },
+          {
+            "feature": "avg_logp",
+            "value": 600.91925
+          },
+          {
+            "feature": "entropy_std_32",
+            "value": 357.09848
+          },
+          {
+            "feature": "h_alts",
+            "value": 273.455902
+          },
+          {
+            "feature": "h_alts_mean_32",
+            "value": 246.456818
+          },
+          {
+            "feature": "top10_jaccard_mean_8",
+            "value": 243.294724
+          },
+          {
+            "feature": "delta_h_std_32",
+            "value": 234.47258
+          },
+          {
+            "feature": "delta_h_mean_32",
+            "value": 203.358978
+          },
+          {
+            "feature": "top1_prob_std_32",
+            "value": 201.572052
+          },
+          {
+            "feature": "logprob_4",
+            "value": 188.109467
+          },
+          {
+            "feature": "top10_jaccard_std_32",
+            "value": 174.365936
+          },
+          {
+            "feature": "entropy_std_8",
+            "value": 170.608673
+          },
+          {
+            "feature": "logit_range",
+            "value": 145.714966
+          },
+          {
+            "feature": "entropy_mean_32",
+            "value": 122.374863
+          },
+          {
+            "feature": "kl_div_mean_8",
+            "value": 118.513351
+          },
+          {
+            "feature": "top1_prob_std_8",
+            "value": 116.127579
+          },
+          {
+            "feature": "top1_prob_mean_32",
+            "value": 113.247192
+          },
+          {
+            "feature": "h_alts_mean_8",
+            "value": 111.291321
+          },
+          {
+            "feature": "h_alts_std_8",
+            "value": 109.191605
+          },
+          {
+            "feature": "top1_prob_mean_8",
+            "value": 100.397278
+          },
+          {
+            "feature": "entropy_mean_8",
+            "value": 89.721191
+          },
+          {
+            "feature": "logprob_0",
+            "value": 79.685226
+          },
+          {
+            "feature": "delta_h_std_8",
+            "value": 79.117744
+          },
+          {
+            "feature": "top10_jaccard",
+            "value": 75.449783
+          },
+          {
+            "feature": "logprob_1",
+            "value": 71.377243
+          },
+          {
+            "feature": "top5_prob",
+            "value": 65.866524
+          },
+          {
+            "feature": "kl_div",
+            "value": 62.955791
+          },
+          {
+            "feature": "top10_jaccard_std_8",
+            "value": 59.107651
+          },
+          {
+            "feature": "logprob_3",
+            "value": 56.866821
+          },
+          {
+            "feature": "kl_div_std_8",
+            "value": 52.643505
+          },
+          {
+            "feature": "tail_mass",
+            "value": 50.988003
+          },
+          {
+            "feature": "delta_h_mean_8",
+            "value": 50.153664
+          },
+          {
+            "feature": "top1_prob",
+            "value": 49.181801
+          },
+          {
+            "feature": "entropy",
+            "value": 43.940193
+          },
+          {
+            "feature": "eff_vocab_size",
+            "value": 43.494118
+          },
+          {
+            "feature": "logprob_2",
+            "value": 42.728329
+          },
+          {
+            "feature": "delta_h",
+            "value": 39.259083
+          }
+        ]
+      },
+      "weight": {
+        "ranked": [
+          {
+            "feature": "token_position",
+            "value": 6161.0
+          },
+          {
+            "feature": "top10_jaccard_std_32",
+            "value": 3557.0
+          },
+          {
+            "feature": "h_alts_std_32",
+            "value": 3548.0
+          },
+          {
+            "feature": "kl_div_mean_32",
+            "value": 3338.0
+          },
+          {
+            "feature": "kl_div_std_32",
+            "value": 3036.0
+          },
+          {
+            "feature": "h_alts_mean_32",
+            "value": 2698.0
+          },
+          {
+            "feature": "top10_jaccard_mean_32",
+            "value": 2456.0
+          },
+          {
+            "feature": "entropy_std_32",
+            "value": 2386.0
+          },
+          {
+            "feature": "top1_prob_std_32",
+            "value": 2384.0
+          },
+          {
+            "feature": "delta_h_std_32",
+            "value": 2216.0
+          },
+          {
+            "feature": "entropy_mean_32",
+            "value": 1787.0
+          },
+          {
+            "feature": "top1_prob_mean_32",
+            "value": 1565.0
+          },
+          {
+            "feature": "avg_logp",
+            "value": 1455.0
+          },
+          {
+            "feature": "kl_div_mean_8",
+            "value": 1431.0
+          },
+          {
+            "feature": "top10_jaccard_std_8",
+            "value": 1322.0
+          },
+          {
+            "feature": "kl_div_std_8",
+            "value": 1270.0
+          },
+          {
+            "feature": "h_alts_std_8",
+            "value": 1219.0
+          },
+          {
+            "feature": "h_alts_mean_8",
+            "value": 1114.0
+          },
+          {
+            "feature": "top10_jaccard_mean_8",
+            "value": 1079.0
+          },
+          {
+            "feature": "entropy_mean_8",
+            "value": 1047.0
+          },
+          {
+            "feature": "kl_div",
+            "value": 993.0
+          },
+          {
+            "feature": "entropy_std_8",
+            "value": 913.0
+          },
+          {
+            "feature": "delta_h_std_8",
+            "value": 900.0
+          },
+          {
+            "feature": "top1_prob_std_8",
+            "value": 885.0
+          },
+          {
+            "feature": "delta_h_mean_32",
+            "value": 821.0
+          },
+          {
+            "feature": "logit_range",
+            "value": 804.0
+          },
+          {
+            "feature": "top1_prob_mean_8",
+            "value": 714.0
+          },
+          {
+            "feature": "logprob_4",
+            "value": 628.0
+          },
+          {
+            "feature": "h_alts",
+            "value": 549.0
+          },
+          {
+            "feature": "logprob_1",
+            "value": 447.0
+          },
+          {
+            "feature": "delta_h_mean_8",
+            "value": 423.0
+          },
+          {
+            "feature": "delta_h",
+            "value": 418.0
+          },
+          {
+            "feature": "logprob_2",
+            "value": 418.0
+          },
+          {
+            "feature": "top10_jaccard",
+            "value": 409.0
+          },
+          {
+            "feature": "tail_mass",
+            "value": 378.0
+          },
+          {
+            "feature": "logprob_3",
+            "value": 359.0
+          },
+          {
+            "feature": "top5_prob",
+            "value": 316.0
+          },
+          {
+            "feature": "entropy",
+            "value": 171.0
+          },
+          {
+            "feature": "top1_prob",
+            "value": 127.0
+          },
+          {
+            "feature": "logprob_0",
+            "value": 86.0
+          },
+          {
+            "feature": "eff_vocab_size",
+            "value": 81.0
+          },
+          {
+            "feature": "delta_h_valid",
+            "value": 13.0
+          }
+        ]
+      },
+      "cover": {
+        "ranked": [
+          {
+            "feature": "delta_h_valid",
+            "value": 175973.234375
+          },
+          {
+            "feature": "delta_h_mean_32",
+            "value": 105672.4375
+          },
+          {
+            "feature": "entropy",
+            "value": 98783.40625
+          },
+          {
+            "feature": "h_alts",
+            "value": 91124.515625
+          },
+          {
+            "feature": "delta_h_mean_8",
+            "value": 90825.945312
+          },
+          {
+            "feature": "entropy_mean_32",
+            "value": 86551.914062
+          },
+          {
+            "feature": "top5_prob",
+            "value": 85520.65625
+          },
+          {
+            "feature": "eff_vocab_size",
+            "value": 85268.242188
+          },
+          {
+            "feature": "tail_mass",
+            "value": 83996.242188
+          },
+          {
+            "feature": "logprob_4",
+            "value": 82231.84375
+          },
+          {
+            "feature": "avg_logp",
+            "value": 80397.78125
+          },
+          {
+            "feature": "top1_prob_mean_32",
+            "value": 78700.554688
+          },
+          {
+            "feature": "top1_prob_std_32",
+            "value": 78064.921875
+          },
+          {
+            "feature": "entropy_mean_8",
+            "value": 73457.28125
+          },
+          {
+            "feature": "logprob_1",
+            "value": 68986.554688
+          },
+          {
+            "feature": "entropy_std_8",
+            "value": 67188.945312
+          },
+          {
+            "feature": "top1_prob_std_8",
+            "value": 66799.765625
+          },
+          {
+            "feature": "delta_h",
+            "value": 66681.960938
+          },
+          {
+            "feature": "entropy_std_32",
+            "value": 65727.742188
+          },
+          {
+            "feature": "kl_div_std_32",
+            "value": 62786.070312
+          },
+          {
+            "feature": "delta_h_std_32",
+            "value": 62242.453125
+          },
+          {
+            "feature": "logprob_3",
+            "value": 60857.503906
+          },
+          {
+            "feature": "top10_jaccard",
+            "value": 60802.835938
+          },
+          {
+            "feature": "top10_jaccard_mean_32",
+            "value": 60137.902344
+          },
+          {
+            "feature": "logprob_2",
+            "value": 56327.167969
+          },
+          {
+            "feature": "token_position",
+            "value": 56025.996094
+          },
+          {
+            "feature": "kl_div",
+            "value": 51137.792969
+          },
+          {
+            "feature": "top10_jaccard_std_8",
+            "value": 51132.101562
+          },
+          {
+            "feature": "logit_range",
+            "value": 49313.636719
+          },
+          {
+            "feature": "kl_div_mean_8",
+            "value": 48091.835938
+          },
+          {
+            "feature": "top10_jaccard_mean_8",
+            "value": 47139.378906
+          },
+          {
+            "feature": "kl_div_mean_32",
+            "value": 46138.652344
+          },
+          {
+            "feature": "h_alts_std_32",
+            "value": 45805.054688
+          },
+          {
+            "feature": "top10_jaccard_std_32",
+            "value": 43188.21875
+          },
+          {
+            "feature": "top1_prob_mean_8",
+            "value": 42096.164062
+          },
+          {
+            "feature": "h_alts_std_8",
+            "value": 41583.828125
+          },
+          {
+            "feature": "logprob_0",
+            "value": 34657.414062
+          },
+          {
+            "feature": "kl_div_std_8",
+            "value": 33059.503906
+          },
+          {
+            "feature": "h_alts_mean_32",
+            "value": 32818.632812
+          },
+          {
+            "feature": "top1_prob",
+            "value": 31715.048828
+          },
+          {
+            "feature": "h_alts_mean_8",
+            "value": 31402.367188
+          },
+          {
+            "feature": "delta_h_std_8",
+            "value": 30782.166016
+          }
+        ]
+      }
+    }
+  }
+}

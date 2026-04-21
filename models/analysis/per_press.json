@@ -1,0 +1,1597 @@
+{
+  "horizons": [
+    1,
+    5,
+    10,
+    25,
+    50
+  ],
+  "nt_onset_frac": 0.75,
+  "by_horizon": {
+    "H1": {
+      "expected_attention": {
+        "n_tokens": 765624,
+        "n_sequences": 2500,
+        "n_catastrophic": 121,
+        "token": {
+          "all": {
+            "auroc": 0.9806,
+            "auprc": 0.7098,
+            "auroc_ci": [
+              0.9809,
+              0.9836
+            ],
+            "auprc_ci": [
+              0.7034,
+              0.7294
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9539,
+            "auprc": 0.0049,
+            "auroc_ci": [
+              0.8754,
+              0.9744
+            ],
+            "auprc_ci": [
+              0.0021,
+              0.0104
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.8201,
+          "seq_auprc": 0.1375,
+          "seq_auroc_ci": [
+            0.7872,
+            0.8512
+          ],
+          "seq_auprc_ci": [
+            0.1147,
+            0.1691
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 121
+        }
+      },
+      "knorm": {
+        "n_tokens": 844126,
+        "n_sequences": 2500,
+        "n_catastrophic": 1774,
+        "token": {
+          "all": {
+            "auroc": 0.9894,
+            "auprc": 0.9466,
+            "auroc_ci": [
+              0.9888,
+              0.9901
+            ],
+            "auprc_ci": [
+              0.9452,
+              0.9498
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9143,
+            "auprc": 0.0486,
+            "auroc_ci": [
+              0.909,
+              0.9306
+            ],
+            "auprc_ci": [
+              0.0464,
+              0.0716
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.6183,
+          "seq_auprc": 0.7511,
+          "seq_auroc_ci": [
+            0.5914,
+            0.6417
+          ],
+          "seq_auprc_ci": [
+            0.7251,
+            0.7714
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 1774
+        }
+      },
+      "none": {
+        "n_tokens": 149574,
+        "n_sequences": 500,
+        "n_catastrophic": 6,
+        "token": {
+          "all": {
+            "auroc": 0.9867,
+            "auprc": 0.5064,
+            "auroc_ci": [
+              0.9853,
+              0.9879
+            ],
+            "auprc_ci": [
+              0.4833,
+              0.5356
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9745,
+            "auprc": 0.0051,
+            "auroc_ci": [
+              0.9467,
+              0.9922
+            ],
+            "auprc_ci": [
+              0.0005,
+              0.0417
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.7922,
+          "seq_auprc": 0.051,
+          "seq_auroc_ci": [
+            0.5604,
+            0.9338
+          ],
+          "seq_auprc_ci": [
+            0.0096,
+            0.2229
+          ],
+          "n_sequences": 500,
+          "n_catastrophic": 6
+        }
+      },
+      "random": {
+        "n_tokens": 841501,
+        "n_sequences": 2500,
+        "n_catastrophic": 898,
+        "token": {
+          "all": {
+            "auroc": 0.9688,
+            "auprc": 0.9143,
+            "auroc_ci": [
+              0.968,
+              0.9699
+            ],
+            "auprc_ci": [
+              0.9123,
+              0.9169
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.848,
+            "auprc": 0.014,
+            "auroc_ci": [
+              0.8423,
+              0.8816
+            ],
+            "auprc_ci": [
+              0.0112,
+              0.0214
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.6086,
+          "seq_auprc": 0.4514,
+          "seq_auroc_ci": [
+            0.5845,
+            0.6314
+          ],
+          "seq_auprc_ci": [
+            0.417,
+            0.4767
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 898
+        }
+      },
+      "snapkv": {
+        "n_tokens": 941369,
+        "n_sequences": 2460,
+        "n_catastrophic": 1690,
+        "token": {
+          "all": {
+            "auroc": 0.9821,
+            "auprc": 0.9935,
+            "auroc_ci": [
+              0.9814,
+              0.9823
+            ],
+            "auprc_ci": [
+              0.9932,
+              0.9936
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.855,
+            "auprc": 0.0233,
+            "auroc_ci": [
+              0.8498,
+              0.8581
+            ],
+            "auprc_ci": [
+              0.022,
+              0.0254
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.3355,
+          "seq_auprc": 0.5964,
+          "seq_auroc_ci": [
+            0.3133,
+            0.3614
+          ],
+          "seq_auprc_ci": [
+            0.5755,
+            0.6239
+          ],
+          "n_sequences": 2460,
+          "n_catastrophic": 1690
+        }
+      },
+      "streaming_llm": {
+        "n_tokens": 810665,
+        "n_sequences": 2500,
+        "n_catastrophic": 342,
+        "token": {
+          "all": {
+            "auroc": 0.9702,
+            "auprc": 0.7754,
+            "auroc_ci": [
+              0.969,
+              0.9714
+            ],
+            "auprc_ci": [
+              0.7732,
+              0.7851
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8963,
+            "auprc": 0.008,
+            "auroc_ci": [
+              0.8953,
+              0.9488
+            ],
+            "auprc_ci": [
+              0.0062,
+              0.0123
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.7224,
+          "seq_auprc": 0.2418,
+          "seq_auroc_ci": [
+            0.6904,
+            0.7527
+          ],
+          "seq_auprc_ci": [
+            0.2186,
+            0.2703
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 342
+        }
+      },
+      "tova": {
+        "n_tokens": 790209,
+        "n_sequences": 2500,
+        "n_catastrophic": 385,
+        "token": {
+          "all": {
+            "auroc": 0.9754,
+            "auprc": 0.8101,
+            "auroc_ci": [
+              0.9745,
+              0.9768
+            ],
+            "auprc_ci": [
+              0.8086,
+              0.82
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9189,
+            "auprc": 0.0078,
+            "auroc_ci": [
+              0.887,
+              0.9438
+            ],
+            "auprc_ci": [
+              0.0054,
+              0.0107
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.7255,
+          "seq_auprc": 0.261,
+          "seq_auroc_ci": [
+            0.6973,
+            0.7535
+          ],
+          "seq_auprc_ci": [
+            0.235,
+            0.2893
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 385
+        }
+      }
+    },
+    "H5": {
+      "expected_attention": {
+        "n_tokens": 765624,
+        "n_sequences": 2500,
+        "n_catastrophic": 121,
+        "token": {
+          "all": {
+            "auroc": 0.9792,
+            "auprc": 0.7018,
+            "auroc_ci": [
+              0.9795,
+              0.9823
+            ],
+            "auprc_ci": [
+              0.6944,
+              0.7202
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9529,
+            "auprc": 0.022,
+            "auroc_ci": [
+              0.9156,
+              0.9572
+            ],
+            "auprc_ci": [
+              0.0176,
+              0.0261
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.8354,
+          "seq_auprc": 0.1489,
+          "seq_auroc_ci": [
+            0.8054,
+            0.8635
+          ],
+          "seq_auprc_ci": [
+            0.1243,
+            0.181
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 121
+        }
+      },
+      "knorm": {
+        "n_tokens": 844126,
+        "n_sequences": 2500,
+        "n_catastrophic": 1774,
+        "token": {
+          "all": {
+            "auroc": 0.9826,
+            "auprc": 0.9279,
+            "auroc_ci": [
+              0.9821,
+              0.9838
+            ],
+            "auprc_ci": [
+              0.9271,
+              0.9318
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9034,
+            "auprc": 0.1721,
+            "auroc_ci": [
+              0.9004,
+              0.9111
+            ],
+            "auprc_ci": [
+              0.1608,
+              0.1862
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.6596,
+          "seq_auprc": 0.7751,
+          "seq_auroc_ci": [
+            0.6348,
+            0.6811
+          ],
+          "seq_auprc_ci": [
+            0.7497,
+            0.7951
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 1774
+        }
+      },
+      "none": {
+        "n_tokens": 149574,
+        "n_sequences": 500,
+        "n_catastrophic": 6,
+        "token": {
+          "all": {
+            "auroc": 0.9854,
+            "auprc": 0.4954,
+            "auroc_ci": [
+              0.9839,
+              0.9868
+            ],
+            "auprc_ci": [
+              0.471,
+              0.5222
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9622,
+            "auprc": 0.0063,
+            "auroc_ci": [
+              0.942,
+              0.9783
+            ],
+            "auprc_ci": [
+              0.0032,
+              0.0171
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.8067,
+          "seq_auprc": 0.0526,
+          "seq_auroc_ci": [
+            0.5906,
+            0.9346
+          ],
+          "seq_auprc_ci": [
+            0.0103,
+            0.2125
+          ],
+          "n_sequences": 500,
+          "n_catastrophic": 6
+        }
+      },
+      "random": {
+        "n_tokens": 841501,
+        "n_sequences": 2500,
+        "n_catastrophic": 898,
+        "token": {
+          "all": {
+            "auroc": 0.9659,
+            "auprc": 0.9098,
+            "auroc_ci": [
+              0.965,
+              0.9671
+            ],
+            "auprc_ci": [
+              0.9076,
+              0.9123
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8484,
+            "auprc": 0.0584,
+            "auroc_ci": [
+              0.8432,
+              0.8638
+            ],
+            "auprc_ci": [
+              0.061,
+              0.0807
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.6198,
+          "seq_auprc": 0.4703,
+          "seq_auroc_ci": [
+            0.5964,
+            0.641
+          ],
+          "seq_auprc_ci": [
+            0.438,
+            0.4964
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 898
+        }
+      },
+      "snapkv": {
+        "n_tokens": 941369,
+        "n_sequences": 2460,
+        "n_catastrophic": 1690,
+        "token": {
+          "all": {
+            "auroc": 0.9816,
+            "auprc": 0.9934,
+            "auroc_ci": [
+              0.9809,
+              0.9819
+            ],
+            "auprc_ci": [
+              0.9931,
+              0.9935
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8713,
+            "auprc": 0.0865,
+            "auroc_ci": [
+              0.865,
+              0.8746
+            ],
+            "auprc_ci": [
+              0.0791,
+              0.0942
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.3284,
+          "seq_auprc": 0.5995,
+          "seq_auroc_ci": [
+            0.3085,
+            0.3539
+          ],
+          "seq_auprc_ci": [
+            0.5803,
+            0.6261
+          ],
+          "n_sequences": 2460,
+          "n_catastrophic": 1690
+        }
+      },
+      "streaming_llm": {
+        "n_tokens": 810665,
+        "n_sequences": 2500,
+        "n_catastrophic": 342,
+        "token": {
+          "all": {
+            "auroc": 0.9676,
+            "auprc": 0.7677,
+            "auroc_ci": [
+              0.9663,
+              0.9687
+            ],
+            "auprc_ci": [
+              0.7648,
+              0.7767
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9049,
+            "auprc": 0.0354,
+            "auroc_ci": [
+              0.9143,
+              0.939
+            ],
+            "auprc_ci": [
+              0.0333,
+              0.0446
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.7337,
+          "seq_auprc": 0.2538,
+          "seq_auroc_ci": [
+            0.7023,
+            0.7655
+          ],
+          "seq_auprc_ci": [
+            0.2306,
+            0.2833
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 342
+        }
+      },
+      "tova": {
+        "n_tokens": 790209,
+        "n_sequences": 2500,
+        "n_catastrophic": 385,
+        "token": {
+          "all": {
+            "auroc": 0.9723,
+            "auprc": 0.8005,
+            "auroc_ci": [
+              0.9715,
+              0.974
+            ],
+            "auprc_ci": [
+              0.7994,
+              0.8111
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9031,
+            "auprc": 0.0332,
+            "auroc_ci": [
+              0.8906,
+              0.9169
+            ],
+            "auprc_ci": [
+              0.032,
+              0.0415
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.7513,
+          "seq_auprc": 0.2799,
+          "seq_auroc_ci": [
+            0.7243,
+            0.7789
+          ],
+          "seq_auprc_ci": [
+            0.2527,
+            0.312
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 385
+        }
+      }
+    },
+    "H10": {
+      "expected_attention": {
+        "n_tokens": 765624,
+        "n_sequences": 2500,
+        "n_catastrophic": 121,
+        "token": {
+          "all": {
+            "auroc": 0.9774,
+            "auprc": 0.6932,
+            "auroc_ci": [
+              0.9776,
+              0.9805
+            ],
+            "auprc_ci": [
+              0.6864,
+              0.7118
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9463,
+            "auprc": 0.0367,
+            "auroc_ci": [
+              0.9242,
+              0.9508
+            ],
+            "auprc_ci": [
+              0.0326,
+              0.0433
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.8369,
+          "seq_auprc": 0.153,
+          "seq_auroc_ci": [
+            0.8047,
+            0.8662
+          ],
+          "seq_auprc_ci": [
+            0.127,
+            0.1892
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 121
+        }
+      },
+      "knorm": {
+        "n_tokens": 844126,
+        "n_sequences": 2500,
+        "n_catastrophic": 1774,
+        "token": {
+          "all": {
+            "auroc": 0.9758,
+            "auprc": 0.9089,
+            "auroc_ci": [
+              0.9751,
+              0.9769
+            ],
+            "auprc_ci": [
+              0.9079,
+              0.9127
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9051,
+            "auprc": 0.2622,
+            "auroc_ci": [
+              0.9011,
+              0.9081
+            ],
+            "auprc_ci": [
+              0.2483,
+              0.2703
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.6715,
+          "seq_auprc": 0.7862,
+          "seq_auroc_ci": [
+            0.6463,
+            0.6928
+          ],
+          "seq_auprc_ci": [
+            0.7611,
+            0.8056
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 1774
+        }
+      },
+      "none": {
+        "n_tokens": 149574,
+        "n_sequences": 500,
+        "n_catastrophic": 6,
+        "token": {
+          "all": {
+            "auroc": 0.9837,
+            "auprc": 0.4829,
+            "auroc_ci": [
+              0.9821,
+              0.9852
+            ],
+            "auprc_ci": [
+              0.4591,
+              0.5106
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9578,
+            "auprc": 0.0081,
+            "auroc_ci": [
+              0.9455,
+              0.9673
+            ],
+            "auprc_ci": [
+              0.0056,
+              0.0145
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.7787,
+          "seq_auprc": 0.0442,
+          "seq_auroc_ci": [
+            0.5321,
+            0.9244
+          ],
+          "seq_auprc_ci": [
+            0.0094,
+            0.1599
+          ],
+          "n_sequences": 500,
+          "n_catastrophic": 6
+        }
+      },
+      "random": {
+        "n_tokens": 841501,
+        "n_sequences": 2500,
+        "n_catastrophic": 898,
+        "token": {
+          "all": {
+            "auroc": 0.9626,
+            "auprc": 0.9048,
+            "auroc_ci": [
+              0.9618,
+              0.9638
+            ],
+            "auprc_ci": [
+              0.9027,
+              0.9076
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8475,
+            "auprc": 0.0973,
+            "auroc_ci": [
+              0.8467,
+              0.861
+            ],
+            "auprc_ci": [
+              0.1009,
+              0.1199
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.6257,
+          "seq_auprc": 0.4819,
+          "seq_auroc_ci": [
+            0.6037,
+            0.6487
+          ],
+          "seq_auprc_ci": [
+            0.4495,
+            0.5086
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 898
+        }
+      },
+      "snapkv": {
+        "n_tokens": 941369,
+        "n_sequences": 2460,
+        "n_catastrophic": 1690,
+        "token": {
+          "all": {
+            "auroc": 0.9813,
+            "auprc": 0.9933,
+            "auroc_ci": [
+              0.9806,
+              0.9815
+            ],
+            "auprc_ci": [
+              0.9931,
+              0.9934
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8746,
+            "auprc": 0.1536,
+            "auroc_ci": [
+              0.8696,
+              0.8772
+            ],
+            "auprc_ci": [
+              0.1449,
+              0.1616
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.3191,
+          "seq_auprc": 0.5983,
+          "seq_auroc_ci": [
+            0.2975,
+            0.3437
+          ],
+          "seq_auprc_ci": [
+            0.5784,
+            0.6241
+          ],
+          "n_sequences": 2460,
+          "n_catastrophic": 1690
+        }
+      },
+      "streaming_llm": {
+        "n_tokens": 810665,
+        "n_sequences": 2500,
+        "n_catastrophic": 342,
+        "token": {
+          "all": {
+            "auroc": 0.9649,
+            "auprc": 0.7594,
+            "auroc_ci": [
+              0.9634,
+              0.9661
+            ],
+            "auprc_ci": [
+              0.757,
+              0.769
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.907,
+            "auprc": 0.0596,
+            "auroc_ci": [
+              0.9049,
+              0.9246
+            ],
+            "auprc_ci": [
+              0.0557,
+              0.0672
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.7469,
+          "seq_auprc": 0.2598,
+          "seq_auroc_ci": [
+            0.7192,
+            0.7771
+          ],
+          "seq_auprc_ci": [
+            0.2358,
+            0.289
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 342
+        }
+      },
+      "tova": {
+        "n_tokens": 790209,
+        "n_sequences": 2500,
+        "n_catastrophic": 385,
+        "token": {
+          "all": {
+            "auroc": 0.9679,
+            "auprc": 0.7888,
+            "auroc_ci": [
+              0.9668,
+              0.9695
+            ],
+            "auprc_ci": [
+              0.7872,
+              0.7989
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8932,
+            "auprc": 0.056,
+            "auroc_ci": [
+              0.8847,
+              0.9032
+            ],
+            "auprc_ci": [
+              0.0536,
+              0.0641
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.7577,
+          "seq_auprc": 0.2887,
+          "seq_auroc_ci": [
+            0.7337,
+            0.7851
+          ],
+          "seq_auprc_ci": [
+            0.2624,
+            0.3212
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 385
+        }
+      }
+    },
+    "H25": {
+      "expected_attention": {
+        "n_tokens": 765624,
+        "n_sequences": 2500,
+        "n_catastrophic": 121,
+        "token": {
+          "all": {
+            "auroc": 0.973,
+            "auprc": 0.669,
+            "auroc_ci": [
+              0.9734,
+              0.9767
+            ],
+            "auprc_ci": [
+              0.664,
+              0.688
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9421,
+            "auprc": 0.0714,
+            "auroc_ci": [
+              0.9301,
+              0.948
+            ],
+            "auprc_ci": [
+              0.0672,
+              0.0828
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.8346,
+          "seq_auprc": 0.1542,
+          "seq_auroc_ci": [
+            0.8008,
+            0.8666
+          ],
+          "seq_auprc_ci": [
+            0.1276,
+            0.1877
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 121
+        }
+      },
+      "knorm": {
+        "n_tokens": 844126,
+        "n_sequences": 2500,
+        "n_catastrophic": 1774,
+        "token": {
+          "all": {
+            "auroc": 0.9608,
+            "auprc": 0.8771,
+            "auroc_ci": [
+              0.9602,
+              0.9623
+            ],
+            "auprc_ci": [
+              0.8762,
+              0.882
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9049,
+            "auprc": 0.4397,
+            "auroc_ci": [
+              0.9015,
+              0.906
+            ],
+            "auprc_ci": [
+              0.4254,
+              0.445
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.7158,
+          "seq_auprc": 0.8118,
+          "seq_auroc_ci": [
+            0.6921,
+            0.7356
+          ],
+          "seq_auprc_ci": [
+            0.7868,
+            0.8292
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 1774
+        }
+      },
+      "none": {
+        "n_tokens": 149574,
+        "n_sequences": 500,
+        "n_catastrophic": 6,
+        "token": {
+          "all": {
+            "auroc": 0.9788,
+            "auprc": 0.4607,
+            "auroc_ci": [
+              0.9765,
+              0.9809
+            ],
+            "auprc_ci": [
+              0.4386,
+              0.4887
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9391,
+            "auprc": 0.0137,
+            "auroc_ci": [
+              0.9272,
+              0.9512
+            ],
+            "auprc_ci": [
+              0.011,
+              0.0193
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.7534,
+          "seq_auprc": 0.0438,
+          "seq_auroc_ci": [
+            0.4911,
+            0.9221
+          ],
+          "seq_auprc_ci": [
+            0.008,
+            0.1861
+          ],
+          "n_sequences": 500,
+          "n_catastrophic": 6
+        }
+      },
+      "random": {
+        "n_tokens": 841501,
+        "n_sequences": 2500,
+        "n_catastrophic": 898,
+        "token": {
+          "all": {
+            "auroc": 0.9527,
+            "auprc": 0.8922,
+            "auroc_ci": [
+              0.9513,
+              0.9534
+            ],
+            "auprc_ci": [
+              0.8896,
+              0.894
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8402,
+            "auprc": 0.198,
+            "auroc_ci": [
+              0.84,
+              0.8496
+            ],
+            "auprc_ci": [
+              0.1999,
+              0.2187
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.6264,
+          "seq_auprc": 0.4956,
+          "seq_auroc_ci": [
+            0.603,
+            0.6494
+          ],
+          "seq_auprc_ci": [
+            0.4608,
+            0.5234
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 898
+        }
+      },
+      "snapkv": {
+        "n_tokens": 941369,
+        "n_sequences": 2460,
+        "n_catastrophic": 1690,
+        "token": {
+          "all": {
+            "auroc": 0.9805,
+            "auprc": 0.9933,
+            "auroc_ci": [
+              0.9798,
+              0.9807
+            ],
+            "auprc_ci": [
+              0.993,
+              0.9934
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8688,
+            "auprc": 0.2921,
+            "auroc_ci": [
+              0.8647,
+              0.8714
+            ],
+            "auprc_ci": [
+              0.283,
+              0.3007
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.3052,
+          "seq_auprc": 0.5992,
+          "seq_auroc_ci": [
+            0.2842,
+            0.329
+          ],
+          "seq_auprc_ci": [
+            0.58,
+            0.624
+          ],
+          "n_sequences": 2460,
+          "n_catastrophic": 1690
+        }
+      },
+      "streaming_llm": {
+        "n_tokens": 810665,
+        "n_sequences": 2500,
+        "n_catastrophic": 342,
+        "token": {
+          "all": {
+            "auroc": 0.9579,
+            "auprc": 0.7417,
+            "auroc_ci": [
+              0.9564,
+              0.9595
+            ],
+            "auprc_ci": [
+              0.7406,
+              0.7525
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9085,
+            "auprc": 0.1219,
+            "auroc_ci": [
+              0.9065,
+              0.9183
+            ],
+            "auprc_ci": [
+              0.1134,
+              0.1276
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.7589,
+          "seq_auprc": 0.2652,
+          "seq_auroc_ci": [
+            0.7292,
+            0.7898
+          ],
+          "seq_auprc_ci": [
+            0.2409,
+            0.2989
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 342
+        }
+      },
+      "tova": {
+        "n_tokens": 790209,
+        "n_sequences": 2500,
+        "n_catastrophic": 385,
+        "token": {
+          "all": {
+            "auroc": 0.957,
+            "auprc": 0.7606,
+            "auroc_ci": [
+              0.956,
+              0.9591
+            ],
+            "auprc_ci": [
+              0.7588,
+              0.7709
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8838,
+            "auprc": 0.1121,
+            "auroc_ci": [
+              0.8786,
+              0.8898
+            ],
+            "auprc_ci": [
+              0.1091,
+              0.1231
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.7699,
+          "seq_auprc": 0.3009,
+          "seq_auroc_ci": [
+            0.7484,
+            0.7986
+          ],
+          "seq_auprc_ci": [
+            0.273,
+            0.3338
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 385
+        }
+      }
+    },
+    "H50": {
+      "expected_attention": {
+        "n_tokens": 765624,
+        "n_sequences": 2500,
+        "n_catastrophic": 121,
+        "token": {
+          "all": {
+            "auroc": 0.9651,
+            "auprc": 0.627,
+            "auroc_ci": [
+              0.9643,
+              0.969
+            ],
+            "auprc_ci": [
+              0.6222,
+              0.6463
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9341,
+            "auprc": 0.1022,
+            "auroc_ci": [
+              0.9213,
+              0.9352
+            ],
+            "auprc_ci": [
+              0.0962,
+              0.1088
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.8269,
+          "seq_auprc": 0.1569,
+          "seq_auroc_ci": [
+            0.7925,
+            0.8574
+          ],
+          "seq_auprc_ci": [
+            0.1243,
+            0.1962
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 121
+        }
+      },
+      "knorm": {
+        "n_tokens": 844126,
+        "n_sequences": 2500,
+        "n_catastrophic": 1774,
+        "token": {
+          "all": {
+            "auroc": 0.9371,
+            "auprc": 0.8496,
+            "auroc_ci": [
+              0.9364,
+              0.9392
+            ],
+            "auprc_ci": [
+              0.849,
+              0.8548
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8872,
+            "auprc": 0.5625,
+            "auroc_ci": [
+              0.8835,
+              0.8878
+            ],
+            "auprc_ci": [
+              0.5528,
+              0.5665
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.7337,
+          "seq_auprc": 0.8316,
+          "seq_auroc_ci": [
+            0.7094,
+            0.7547
+          ],
+          "seq_auprc_ci": [
+            0.8098,
+            0.8489
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 1774
+        }
+      },
+      "none": {
+        "n_tokens": 149574,
+        "n_sequences": 500,
+        "n_catastrophic": 6,
+        "token": {
+          "all": {
+            "auroc": 0.9658,
+            "auprc": 0.4274,
+            "auroc_ci": [
+              0.9619,
+              0.9689
+            ],
+            "auprc_ci": [
+              0.4075,
+              0.4539
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.9129,
+            "auprc": 0.0185,
+            "auroc_ci": [
+              0.8993,
+              0.9268
+            ],
+            "auprc_ci": [
+              0.0159,
+              0.0223
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.8047,
+          "seq_auprc": 0.0436,
+          "seq_auroc_ci": [
+            0.6588,
+            0.921
+          ],
+          "seq_auprc_ci": [
+            0.0127,
+            0.166
+          ],
+          "n_sequences": 500,
+          "n_catastrophic": 6
+        }
+      },
+      "random": {
+        "n_tokens": 841501,
+        "n_sequences": 2500,
+        "n_catastrophic": 898,
+        "token": {
+          "all": {
+            "auroc": 0.9357,
+            "auprc": 0.8734,
+            "auroc_ci": [
+              0.9333,
+              0.936
+            ],
+            "auprc_ci": [
+              0.8704,
+              0.8749
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8197,
+            "auprc": 0.2891,
+            "auroc_ci": [
+              0.8194,
+              0.8262
+            ],
+            "auprc_ci": [
+              0.2863,
+              0.3013
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.6225,
+          "seq_auprc": 0.5019,
+          "seq_auroc_ci": [
+            0.5991,
+            0.6464
+          ],
+          "seq_auprc_ci": [
+            0.4673,
+            0.5312
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 898
+        }
+      },
+      "snapkv": {
+        "n_tokens": 941369,
+        "n_sequences": 2460,
+        "n_catastrophic": 1690,
+        "token": {
+          "all": {
+            "auroc": 0.9792,
+            "auprc": 0.9932,
+            "auroc_ci": [
+              0.9786,
+              0.9796
+            ],
+            "auprc_ci": [
+              0.993,
+              0.9934
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8514,
+            "auprc": 0.3956,
+            "auroc_ci": [
+              0.8473,
+              0.853
+            ],
+            "auprc_ci": [
+              0.3886,
+              0.4042
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.2758,
+          "seq_auprc": 0.5949,
+          "seq_auroc_ci": [
+            0.2564,
+            0.297
+          ],
+          "seq_auprc_ci": [
+            0.5745,
+            0.6213
+          ],
+          "n_sequences": 2460,
+          "n_catastrophic": 1690
+        }
+      },
+      "streaming_llm": {
+        "n_tokens": 810665,
+        "n_sequences": 2500,
+        "n_catastrophic": 342,
+        "token": {
+          "all": {
+            "auroc": 0.9439,
+            "auprc": 0.7111,
+            "auroc_ci": [
+              0.9427,
+              0.9461
+            ],
+            "auprc_ci": [
+              0.7108,
+              0.7217
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.8899,
+            "auprc": 0.1728,
+            "auroc_ci": [
+              0.8851,
+              0.8956
+            ],
+            "auprc_ci": [
+              0.1645,
+              0.1787
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.7563,
+          "seq_auprc": 0.263,
+          "seq_auroc_ci": [
+            0.7276,
+            0.7857
+          ],
+          "seq_auprc_ci": [
+            0.2374,
+            0.297
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 342
+        }
+      },
+      "tova": {
+        "n_tokens": 790209,
+        "n_sequences": 2500,
+        "n_catastrophic": 385,
+        "token": {
+          "all": {
+            "auroc": 0.9373,
+            "auprc": 0.7172,
+            "auroc_ci": [
+              0.9364,
+              0.9402
+            ],
+            "auprc_ci": [
+              0.7166,
+              0.7288
+            ]
+          },
+          "pre_onset": {
+            "auroc": 0.861,
+            "auprc": 0.1618,
+            "auroc_ci": [
+              0.8583,
+              0.8692
+            ],
+            "auprc_ci": [
+              0.1577,
+              0.1704
+            ]
+          }
+        },
+        "sequence": {
+          "seq_auroc": 0.7621,
+          "seq_auprc": 0.2986,
+          "seq_auroc_ci": [
+            0.7408,
+            0.7855
+          ],
+          "seq_auprc_ci": [
+            0.271,
+            0.3299
+          ],
+          "n_sequences": 2500,
+          "n_catastrophic": 385
+        }
+      }
+    }
+  }
+}

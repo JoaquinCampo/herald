@@ -11,7 +11,9 @@ wheels/
 
 # Experiment output
 results/
-models/
+
+# Trained XGBoost model weights (large, regenerable from sweep+train)
+models/hazard_*.json
 
 # IDE / editor
 .ruff_cache/
