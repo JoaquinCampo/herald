@@ -25,24 +25,22 @@ def build(
     root: Path = typer.Option(Path("results/phase0")),
 ) -> None:
     """Run all offline metric modules in order."""
-    from herald.metrics import (
-        alignment,
-        outcome,
-        sequence,
-        tags,
-        token,
-        trajectory,
-    )
+    from herald.metrics import alignment as _alignment
+    from herald.metrics import outcome as _outcome
+    from herald.metrics import sequence as _sequence
+    from herald.metrics import tags as _tags
+    from herald.metrics import token as _token
+    from herald.metrics import trajectory as _trajectory
 
     final = root / "final"
     out = root / "metrics"
     out.mkdir(parents=True, exist_ok=True)
-    token.build(final, out)
-    trajectory.build(final, out)
-    sequence.build(final, out)
-    outcome.build(final, out)
-    tags.build(final, out)
-    alignment.build(out, out)
+    _token.build(final, out)
+    _trajectory.build(final, out)
+    _sequence.build(final, out)
+    _outcome.build(final, out)
+    _tags.build(final, out)
+    _alignment.build(out, out)
 
 
 @app.command()
