@@ -19,12 +19,37 @@ cmd = "uv run mypy src/"
 help = "Type check"
 
 [tool.poe.tasks.test]
-cmd = "uv run pytest tests/ -x -q"
-help = "Run tests"
+cmd = "uv run pytest -m 'not gpu' -q"
+help = "Run CPU tests (Mac default)"
+env = { OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1" }
+
+[tool.poe.tasks.test-gpu]
+cmd = "uv run pytest -m 'gpu and not e2e' -q"
+help = "Run GPU tests (Orion only)"
+
+[tool.poe.tasks.test-e2e]
+cmd = "uv run pytest -m 'e2e' -q"
+help = "Run end-to-end Phase 0 sweep tests (opt-in, Orion)"
 
 [tool.poe.tasks.check]
 sequence = ["fmt", "lint", "typecheck", "test"]
-help = "Run all checks (fmt + lint + typecheck + test)"
+help = "Run all CPU checks (fmt + lint + typecheck + test)"
+
+[tool.poe.tasks.phase0-run]
+cmd = "uv run herald phase0 run"
+help = "Run Phase 0 sweep (Orion)"
+
+[tool.poe.tasks.metrics-finalize]
+cmd = "uv run herald metrics finalize"
+help = "Compact per-run parquets into final/"
+
+[tool.poe.tasks.metrics-build]
+cmd = "uv run herald metrics build"
+help = "Run all offline metric modules"
+
+[tool.poe.tasks.phase0]
+sequence = ["phase0-run", "metrics-finalize", "metrics-build"]
+help = "Phase 0 chain: sweep -> finalize -> build metrics"
 
 [tool.poe.tasks.sweep]
 cmd = "uv run herald sweep"

@@ -73,8 +73,12 @@ ignore_missing_imports = true
 [tool.poe]
 include = "poe_tasks.toml"
 
-[tool.pytest]
+[tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+  "gpu: requires a real LLM forward pass (run on Orion only)",
+  "e2e: end-to-end Phase 0 sweep (large; opt-in)",
+]
 
 [tool.ruff]
 line-length = 78
