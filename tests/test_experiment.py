@@ -4,7 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from herald.config import ExperimentConfig, RunResult
+from herald.config import (
+    ExperimentConfig,
+    RunResult,
+    compute_prompt_hash,
+    make_run_id,
+)
 from herald.experiment import (
     SWEEP_METHODS,
     SWEEP_RATIOS,
@@ -28,13 +33,20 @@ def _make_result(
     catastrophes: list[str] | None = None,
     num_tokens: int = 50,
 ) -> RunResult:
+    prompt_text = "Solve: 2+2"
+    press = "none"
+    compression_ratio = 0.0
+    seed = 42
     return RunResult(
+        run_id=make_run_id(prompt_id, press, compression_ratio, seed),
         prompt_id=prompt_id,
-        prompt_text="Solve: 2+2",
+        prompt_text=prompt_text,
+        prompt_hash=compute_prompt_hash(prompt_text),
         model="test-model",
-        press="none",
-        compression_ratio=0.0,
-        seed=42,
+        press=press,
+        compression_ratio=compression_ratio,
+        seed=seed,
+        baseline_run_id=make_run_id(prompt_id, "none", 0.0, seed),
         generated_text="#### 4",
         ground_truth="4",
         predicted_answer="4",
@@ -42,7 +54,6 @@ def _make_result(
         stop_reason="eos",
         catastrophes=catastrophes or [],
         num_tokens_generated=num_tokens,
-        cache_size_after_prefill=None,
         signals=[],
     )
 

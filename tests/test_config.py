@@ -1,11 +1,19 @@
 """Tests for herald.config — Pydantic models."""
 
+import hashlib
 import math
 from pathlib import Path
 
 import pytest
 
-from herald.config import ExperimentConfig, RunResult, TokenSignals
+from herald.config import (
+    ExperimentConfig,
+    GenerationArtifact,
+    RunResult,
+    TokenSignals,
+    compute_prompt_hash,
+    make_run_id,
+)
 
 # ---------------------------------------------------------------------------
 # ExperimentConfig
@@ -114,26 +122,40 @@ class TestTokenSignals:
 # ---------------------------------------------------------------------------
 
 
+def _minimal_run_result(**overrides: object) -> RunResult:
+    """Build a minimal valid RunResult for testing."""
+    prompt_text = "Solve: 2+2"
+    prompt_id = "gsm8k_0"
+    press = "none"
+    compression_ratio = 0.0
+    seed = 42
+    kwargs: dict[str, object] = dict(
+        run_id=make_run_id(prompt_id, press, compression_ratio, seed),
+        prompt_id=prompt_id,
+        prompt_text=prompt_text,
+        prompt_hash=compute_prompt_hash(prompt_text),
+        model="test-model",
+        press=press,
+        compression_ratio=compression_ratio,
+        seed=seed,
+        baseline_run_id=make_run_id(prompt_id, "none", 0.0, seed),
+        generated_text="#### 4",
+        ground_truth="4",
+        predicted_answer="4",
+        correct=True,
+        stop_reason="eos",
+        catastrophes=[],
+        num_tokens_generated=10,
+        signals=[],
+    )
+    kwargs.update(overrides)
+    return RunResult(**kwargs)  # type: ignore[arg-type]
+
+
 class TestRunResult:
     @pytest.fixture()
     def minimal_result(self) -> RunResult:
-        return RunResult(
-            prompt_id="gsm8k_0",
-            prompt_text="Solve: 2+2",
-            model="test-model",
-            press="none",
-            compression_ratio=0.0,
-            seed=42,
-            generated_text="#### 4",
-            ground_truth="4",
-            predicted_answer="4",
-            correct=True,
-            stop_reason="eos",
-            catastrophes=[],
-            num_tokens_generated=10,
-            cache_size_after_prefill=None,
-            signals=[],
-        )
+        return _minimal_run_result()
 
     def test_construction(self, minimal_result: RunResult):
         assert minimal_result.prompt_id == "gsm8k_0"
@@ -142,13 +164,14 @@ class TestRunResult:
         assert minimal_result.catastrophe_onsets == {}
 
     def test_with_catastrophes(self):
-        result = RunResult(
+        result = _minimal_run_result(
             prompt_id="gsm8k_1",
             prompt_text="Solve: 3+3",
-            model="test-model",
+            prompt_hash=compute_prompt_hash("Solve: 3+3"),
+            run_id=make_run_id("gsm8k_1", "streaming_llm", 0.875, 42),
             press="streaming_llm",
             compression_ratio=0.875,
-            seed=42,
+            baseline_run_id=make_run_id("gsm8k_1", "none", 0.0, 42),
             generated_text="loop loop loop",
             ground_truth="6",
             predicted_answer=None,
@@ -156,9 +179,7 @@ class TestRunResult:
             stop_reason="max_tokens",
             catastrophes=["looping", "non_termination"],
             num_tokens_generated=512,
-            cache_size_after_prefill=100,
             catastrophe_onsets={"looping": 50, "non_termination": 511},
-            signals=[],
         )
         assert "looping" in result.catastrophes
         assert result.catastrophe_onsets["looping"] == 50
@@ -171,22 +192,84 @@ class TestRunResult:
 
     def test_with_signals(self):
         sig = TokenSignals(entropy=1.0, top1_prob=0.5, top5_prob=0.9)
-        result = RunResult(
+        result = _minimal_run_result(
             prompt_id="gsm8k_2",
             prompt_text="Solve: 1+1",
-            model="test-model",
-            press="none",
-            compression_ratio=0.0,
-            seed=42,
+            prompt_hash=compute_prompt_hash("Solve: 1+1"),
+            run_id=make_run_id("gsm8k_2", "none", 0.0, 42),
+            baseline_run_id=make_run_id("gsm8k_2", "none", 0.0, 42),
             generated_text="#### 2",
             ground_truth="2",
             predicted_answer="2",
-            correct=True,
-            stop_reason="eos",
-            catastrophes=[],
             num_tokens_generated=5,
-            cache_size_after_prefill=None,
             signals=[sig],
         )
         assert len(result.signals) == 1
         assert result.signals[0].entropy == 1.0
+
+
+# ---------------------------------------------------------------------------
+# compute_prompt_hash and make_run_id helpers
+# ---------------------------------------------------------------------------
+
+
+def test_compute_prompt_hash_is_sha256_hex():
+    h = compute_prompt_hash("hello world")
+    assert h == hashlib.sha256(b"hello world").hexdigest()
+    assert len(h) == 64
+
+
+def test_make_run_id_deterministic():
+    a = make_run_id(
+        prompt_id="p1", press="snapkv", compression_ratio=0.875, seed=42
+    )
+    b = make_run_id(
+        prompt_id="p1", press="snapkv", compression_ratio=0.875, seed=42
+    )
+    assert a == b
+    assert a != make_run_id(
+        prompt_id="p1", press="snapkv", compression_ratio=0.5, seed=42
+    )
+
+
+def test_run_result_baseline_self_link_default():
+    rr = RunResult(
+        run_id="r1",
+        prompt_id="p1",
+        prompt_text="Q",
+        prompt_hash=compute_prompt_hash("Q"),
+        model="x",
+        press="none",
+        compression_ratio=0.0,
+        seed=42,
+        max_new_tokens=10,
+        decoding_config={"do_sample": False},
+        task="gsm8k",
+        baseline_run_id="r1",
+        generated_text="A",
+        generated_token_ids=[1, 2, 3],
+        ground_truth="A",
+        predicted_answer="A",
+        correct=True,
+        stop_reason="eos",
+        catastrophes=[],
+        num_tokens_generated=3,
+        signals=[],
+        replay_status="ok",
+        herald_git_sha="abc",
+    )
+    assert rr.baseline_run_id == rr.run_id
+
+
+def test_generation_artifact_holds_required_fields():
+    import torch
+
+    art = GenerationArtifact(
+        run_id="r1",
+        input_ids=torch.zeros(1, 5, dtype=torch.long),
+        input_len=5,
+        generated_token_ids=[10, 11],
+        compressed_scores=[torch.zeros(100), torch.zeros(100)],
+    )
+    assert art.input_len == 5
+    assert len(art.compressed_scores) == 2

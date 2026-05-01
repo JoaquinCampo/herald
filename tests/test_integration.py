@@ -11,7 +11,12 @@ from pathlib import Path
 
 import pytest
 
-from herald.config import RunResult, TokenSignals
+from herald.config import (
+    RunResult,
+    TokenSignals,
+    compute_prompt_hash,
+    make_run_id,
+)
 from herald.features import (
     add_rolling_features,
     build_dataset,
@@ -90,14 +95,22 @@ def _create_sweep_results(
                 cats = ["looping"] if has_cat else []
                 onsets = {"looping": onset_pos} if onset_pos else {}
 
+                prompt_id = f"gsm8k_{i}"
+                prompt_text = "Solve: 2+2"
+                seed = 42
                 results.append(
                     RunResult(
-                        prompt_id=f"gsm8k_{i}",
-                        prompt_text="Solve: 2+2",
+                        run_id=make_run_id(prompt_id, press, ratio, seed),
+                        prompt_id=prompt_id,
+                        prompt_text=prompt_text,
+                        prompt_hash=compute_prompt_hash(prompt_text),
                         model="test-model",
                         press=press,
                         compression_ratio=ratio,
-                        seed=42,
+                        seed=seed,
+                        baseline_run_id=make_run_id(
+                            prompt_id, "none", 0.0, seed
+                        ),
                         generated_text="#### 4",
                         ground_truth="4",
                         predicted_answer="4",

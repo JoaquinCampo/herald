@@ -153,7 +153,12 @@ class TestTrainPredictor:
 
     def test_with_synthetic_results(self, tmp_path: Path):
         """End-to-end test with multiple presses (exercises LOCO CV)."""
-        from herald.config import RunResult, TokenSignals
+        from herald.config import (
+            RunResult,
+            TokenSignals,
+            compute_prompt_hash,
+            make_run_id,
+        )
 
         results_dir = tmp_path / "results"
 
@@ -186,13 +191,17 @@ class TestTrainPredictor:
             results = []
             for i in range(6):
                 has_cat = i % 3 == 0
+                prompt_id = f"gsm8k_{i}"
                 result = RunResult(
-                    prompt_id=f"gsm8k_{i}",
+                    run_id=make_run_id(prompt_id, press, 0.5, 42),
+                    prompt_id=prompt_id,
                     prompt_text="test",
+                    prompt_hash=compute_prompt_hash("test"),
                     model="test-model",
                     press=press,
                     compression_ratio=0.5,
                     seed=42,
+                    baseline_run_id=make_run_id(prompt_id, "none", 0.0, 42),
                     generated_text="#### 42",
                     ground_truth="42",
                     predicted_answer="42",

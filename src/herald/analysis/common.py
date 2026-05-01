@@ -30,6 +30,7 @@ class TokenBucket(TypedDict):
     pre: list[bool]
     seq_ids: list[str]
 
+
 DEFAULT_HORIZONS = [1, 5, 10, 25, 50]
 DEFAULT_NT_ONSET_FRAC = 0.75
 

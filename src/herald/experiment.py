@@ -17,7 +17,12 @@ from transformers import (
     StoppingCriteriaList,
 )
 
-from herald.config import ExperimentConfig, RunResult
+from herald.config import (
+    ExperimentConfig,
+    RunResult,
+    compute_prompt_hash,
+    make_run_id,
+)
 from herald.detectors import (
     detect_all,
     detect_catastrophe_onsets,
@@ -216,14 +221,25 @@ def run_single(
     )
 
     return RunResult(
+        run_id=make_run_id(
+            prompt_data["id"],
+            config.press_name,
+            config.compression_ratio,
+            config.seed,
+        ),
         prompt_id=prompt_data["id"],
         prompt_text=chat_text,
+        prompt_hash=compute_prompt_hash(chat_text),
         model=config.model_name,
         press=config.press_name,
         compression_ratio=config.compression_ratio,
         max_new_tokens=config.max_new_tokens,
         seed=config.seed,
+        baseline_run_id=make_run_id(
+            prompt_data["id"], "none", 0.0, config.seed
+        ),
         generated_text=generated_text,
+        generated_token_ids=generated_ids,
         ground_truth=prompt_data["ground_truth"],
         predicted_answer=predicted,
         correct=correct,
