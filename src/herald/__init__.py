@@ -9,6 +9,7 @@ from pathlib import Path
 import typer
 
 from herald.analysis.cli import app as analyze_app
+from herald.metrics.cli import app as metrics_app
 
 app = typer.Typer(
     name="herald",
@@ -16,6 +17,7 @@ app = typer.Typer(
     "compression from logit signals.",
 )
 app.add_typer(analyze_app, name="analyze")
+app.add_typer(metrics_app, name="metrics")
 
 
 @app.command()

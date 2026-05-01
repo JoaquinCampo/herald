@@ -149,3 +149,37 @@ def write_replay_rows(rows: list[dict[str, Any]], path: Path) -> None:
 
 def read_runs(path: Path) -> pl.DataFrame:
     return pl.read_parquet(path)
+
+
+def finalize_dataset(root: Path) -> None:
+    """Concatenate raw/<kind>/*.parquet into final/."""
+    raw = root / "raw"
+    final = root / "final"
+    final.mkdir(parents=True, exist_ok=True)
+
+    runs_files = sorted((raw / "runs").glob("*.parquet"))
+    if runs_files:
+        runs_df = pl.concat(
+            [pl.read_parquet(p) for p in runs_files],
+            how="vertical_relaxed",
+        )
+        runs_df.write_parquet(final / "runs.parquet")
+
+    for kind in ("tokens", "replay"):
+        out_dir = final / kind
+        out_dir.mkdir(parents=True, exist_ok=True)
+        files = sorted((raw / kind).glob("*.parquet"))
+        if not files or not runs_files:
+            continue
+        runs_meta = pl.read_parquet(final / "runs.parquet").select(
+            ["run_id", "press", "compression_ratio"]
+        )
+        for f in files:
+            df = pl.read_parquet(f).join(runs_meta, on="run_id", how="left")
+            for keys, part in df.group_by(["press", "compression_ratio"]):
+                press, ratio = keys
+                pdir = out_dir / f"press={press}" / f"ratio={ratio:.4f}"
+                pdir.mkdir(parents=True, exist_ok=True)
+                part.drop(["press", "compression_ratio"]).write_parquet(
+                    pdir / f.name
+                )
