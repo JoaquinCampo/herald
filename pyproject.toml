@@ -8,13 +8,24 @@ authors = [{ name = "Joaquin Campo", email = "jcamponario@gmail.com" }]
 dependencies = [
   "datasets>=4.7.0",
   "loguru>=0.7.3",
+  "polars>=1.18.0",
+  "pyarrow>=18.0.0",
   "pydantic>=2.12.5",
   "pydantic-settings>=2.13.1",
   "scikit-learn>=1.6.0",
+  "scipy>=1.14.0",
   "torch>=2.10.0",
   "transformers>=5.3.0",
   "typer>=0.24.1",
   "xgboost>=3.0.0",
+]
+
+[project.optional-dependencies]
+metrics = [
+  "bert-score>=0.3.13",
+  "editdistance>=0.8.1",
+  "rouge-score>=0.1.2",
+  "sentence-transformers>=3.3.0",
 ]
 
 [project.scripts]
@@ -41,13 +52,20 @@ strict = true
 
 [[tool.mypy.overrides]]
 module = [
-  "kvpress.*",
+  "bert_score.*",
   "datasets.*",
-  "transformers.*",
-  "xgboost.*",
-  "sklearn.*",
+  "editdistance",
   "joblib",
   "joblib.*",
+  "kvpress.*",
+  "pyarrow.*",
+  "rouge_score.*",
+  "scikit-learn.*",
+  "scipy.*",
+  "sentence_transformers.*",
+  "sklearn.*",
+  "transformers.*",
+  "xgboost.*",
 ]
 ignore_missing_imports = true
 
