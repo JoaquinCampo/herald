@@ -170,3 +170,9 @@ fact that the predictor will see balanced training data.
   below the trajectory rank correlation; Phase 2 may need
   every-4 if per-position prediction targets are adopted, or
   anomaly-triggered dense replay.
+- Controller alignment: Phase 0 does not answer whether a damaged
+  trajectory can recover after compression pressure is lifted. Before
+  committing Phase 2 to purely anticipatory prediction, run the
+  pre-registered Phase 1 intervention probe in
+  `gold/phase-1-intervention-probe.md`. The probe is deliberately
+  separate from the fixed-ratio measurement headline.

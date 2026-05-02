@@ -23,6 +23,29 @@ improves the compute-quality frontier.
 Each phase has a pre-registered "go" criterion and a fallback that
 keeps the paper viable.
 
+## Contribution Validation Bar
+
+Related work narrows the novelty claim. HERALD should not claim that
+"logits contain quality information"; entropy-based and lightweight
+per-token predictors already establish that. The claim is that cheap
+online signals can forecast *future, compression-attributable* damage
+and drive useful intervention across compressors, ratios, tasks, and
+models.
+
+Before making the strong paper claim, validate against
+`gold/contribution-validation.md`. In particular:
+
+- Beat random, position-only, ratio-only, entropy/EWMA, change-point,
+  single-feature, and logistic-regression baselines.
+- Treat held-out press / cross-compressor transfer as a headline
+  experiment, not an appendix.
+- Tie diagnostic tags to prior failure-mode definitions where possible
+  and label heuristic thresholds honestly.
+- Quantify whether cheap online features contain information beyond
+  position and ratio proxies.
+- Include at least one real closed-loop intervention demo before
+  claiming the control contribution.
+
 ## Mechanistic Hypothesis (Frame for Introduction)
 
 KV-cache compression evicts or down-weights past tokens; the attention
@@ -86,6 +109,32 @@ sounding one-sided and is statistically cleaner.
 Looping, non-termination, format break, drift. Used to characterize
 *what kind* of failure occurred, not as training signal.
 
+### Predictor target discipline
+
+The headline HERALD predictor must not be trained or evaluated as a
+looping / non-termination detector. Diagnostic tags are allowed for
+onset-aligned analysis, qualitative taxonomy, and auxiliary tasks, but
+they are not the main compression-damage label.
+
+The main predictor target is paired, counterfactual damage relative to
+the uncompressed baseline for the same prompt:
+
+- **Outcome harm**: `baseline_correct AND compressed_wrong`.
+- **Sequence damage**: ROUGE-L / embedding similarity / edit-distance
+  degradation versus the paired uncompressed output.
+- **Trajectory damage**: future partial sums of matched-prefix
+  KL / JS / NLL-ratio over `[t+1, t+H]`.
+
+For every compressed token `t`, the predictor observes only cheap
+online features available at time `t`; the label asks whether paired
+compression-attributable damage occurs within horizon `H` or reaches a
+severity threshold by completion. If task correctness is saturated,
+Phase 2 should use continuous sequence/trajectory severity as the
+primary target rather than falling back to diagnostic tags.
+
+Reviewer-facing rule: HERALD predicts future counterfactual
+compression harm. It does not merely classify abnormal text.
+
 ### Alignment study (methodological centerpiece)
 
 Pairwise correlation and AUROC matrix across all damage metrics,
@@ -112,8 +161,9 @@ No science claims here. Prevents wasting GPU weeks on a broken schema.
   following), LongBench-Single (long-context)
 - Full press matrix (all kvpress methods plus random-eviction
   baseline)
-- 6 ratios: 0, 0.5, 0.75, 0.875, 0.9375, 0.96875 (geometric near the
-  cliff)
+- 8 ratios: 0, 0.25, 0.375, 0.5, 0.75, 0.875, 0.9375,
+  0.96875. Phase 0 showed the cliff is at or below 0.5 on GSM8K, so
+  0.25 and 0.375 are required to map the gentle-damage regime.
 - 200 prompts per task
 - Greedy decoding (deployment-aligned; no wasted seeds)
 - Uniform matched-prefix replay every 8 tokens (committed; Phase 0
@@ -125,11 +175,25 @@ No science claims here. Prevents wasting GPU weeks on a broken schema.
   and `gold/phase-0-results.md`.)
 - Anomaly-triggered dense replay reserved for analysis only, never
   for training
+- Segment-level aggregates for K in {8, 16, 32}: cheap online
+  features, trajectory partial sums, repetition/progress markers, and
+  answer-state markers. These are computed from existing per-token
+  data and are required for Phase 2 and Phase 4.
+- Segment-level cost instrumentation: retained KV size where
+  available, wall-clock/token, tokens/sec, and memory telemetry where
+  the platform exposes it. These are required for cost-quality Pareto
+  curves and reported as part of the measurement substrate.
+- Generation loop refactored behind a policy abstraction:
+  `FixedRatioPolicy` is the default for the headline sweep, and
+  `SwitchAtOffsetPolicy` exists only for the pre-registered
+  intervention probe below. This is infrastructure, not a controller
+  result.
 
 **Outputs**:
 
 - Multi-resolution damage metrics for every (prompt, press, ratio)
   cell
+- Segment metrics and cost metrics for every fixed-ratio cell
 - Alignment matrix figure with bootstrap CIs
 
 **Success criterion**: Intrinsic metrics significantly predict
@@ -143,6 +207,86 @@ trajectory NLL ratio classify diagnostic failures).
 compression damage; how they fail to align; why compression damage is
 harder to measure than the field assumes. Still publishable.
 
+### Phase 1 Intervention Probe (Pre-Registered Side Study)
+
+This probe is included to keep the staged plan aligned with the
+ultimate controller goal without turning Phase 1 into a full
+controller dataset. It is a measurement of *recoverability*, not a
+policy sweep and not a Phase 4 result.
+
+**Purpose**: determine whether reactive control is feasible, or
+whether Phase 2 must focus on anticipatory prediction. Phase 0's
+per-token JS saturation is indirect evidence only; it does not prove
+that a damaged trajectory cannot be salvaged by an intervention.
+
+**Budget**: approximately 900 additional runs, roughly 3% overhead
+relative to the Phase 1 fixed-ratio sweep.
+
+**Pre-registration timing**: stratum rules, sampling algorithm,
+offsets, intervention definitions, endpoints, and seed/decoding policy
+are written down before the Phase 1 sweep launches. Actual prompts are
+sampled after the sweep reveals the baseline-conditioned strata.
+
+**Strata**:
+
+- Clear success: baseline and compressed fixed-ratio runs are both
+  correct / high-quality.
+- Boundary-unstable: correctness or quality flips across adjacent
+  ratios.
+- Clear compression failure: baseline is correct / high-quality and
+  compressed fixed-ratio run fails.
+
+**Tasks**: split the probe across all four Phase 1 tasks. Recovery
+dynamics may differ across math, code, instruction following, and
+long-context generation; a GSM8K-only probe is not enough to inform
+the controller design.
+
+**Intervention vocabulary is press-specific**:
+
+- StreamingLLM / mask-based: lift pressure by disabling or relaxing
+  the mask for the next segment.
+- Continuous eviction methods such as Knorm / TOVA: lift pressure by
+  stopping further eviction for the next segment where the press
+  implementation supports it.
+- Prompt-time eviction methods such as SnapKV / ExpectedAttention:
+  there may be no meaningful "stop further eviction" action after
+  prefill. The deployable arm is ratio reduction only if it can be
+  implemented without changing the realized history; otherwise the
+  meaningful ablation is reprefill.
+- Reprefill / recompute fallback: oracle intervention, run on a
+  20% subset. It bounds what recovery could achieve if the system is
+  willing to pay a high compute cost.
+
+**Offset arms**:
+
+- Deployable offsets: fixed token positions, budget fractions, or
+  fixed online thresholds defined before seeing outcomes.
+- Offline-diagnostic offsets: generated-length fractions, used only to
+  characterize recoverability and never presented as deployable.
+
+**Primary estimand**: paired comparison of
+`switch-at-offset-T` versus `continue-fixed` for the same
+`(prompt, task, press, ratio, history)` wherever the intervention is
+well-defined.
+
+**Probe decision rules**:
+
+- Reactive control feasible if the deployable intervention recovers
+  >= 50% of the quality gap between fixed compressed and uncompressed
+  baselines on the boundary-unstable stratum, with paired bootstrap CI
+  excluding zero, on at least 2 of 4 tasks.
+- Reactive control likely infeasible if neither deployable
+  interventions nor reprefill recover > 20% of the quality gap on any
+  task. Phase 2 should then emphasize anticipatory horizons and early
+  warning.
+- Mixed outcome: document which tasks and presses support reactive
+  versus anticipatory control, then set Phase 2 targets and Phase 4
+  policies accordingly.
+
+**Narrative constraint**: the probe must stay a self-contained
+intervention study. The Phase 1 headline remains the fixed-ratio
+measurement methodology.
+
 ## Phase 2: Predictor
 
 **Inputs (Tier 0 + Tier 0.5 + Tier 1, no internals)**:
@@ -155,6 +299,12 @@ harder to measure than the field assumes. Still publishable.
 
 Conditioned on (press_id, ratio) as auxiliary inputs so the model
 learns press-specific dynamics.
+
+If the Phase 1 intervention probe shows reactive control is feasible
+for some press/task regimes, Phase 2 includes short-horizon reactive
+risk targets and segment-level decision targets for those regimes. If
+the probe shows recovery is weak, Phase 2 emphasizes anticipatory
+targets with enough lead time to intervene before derailment.
 
 **Targets**:
 
@@ -181,6 +331,14 @@ quantities, not raw per-token JS:
     same partial-sum aggregates.
 - Sequence-level risk via max or pooled token risk over the
   full trajectory's `sum_kl` / `sum_js` / `rouge_l` drop.
+- Outcome-harm risk (`baseline_correct AND compressed_wrong`) where
+  Phase 1 produces a non-saturated correctness distribution. If
+  correctness remains saturated, outcome harm is reported as an
+  extrinsic validator but not used as the sole training target.
+
+Diagnostic tags (`looping`, `non_termination`, later `format_break` /
+`drift`) may be auxiliary outputs or stratification variables, but
+they are not the headline training target.
 
 **Models, in increasing complexity**:
 
@@ -197,10 +355,20 @@ not survive distribution shift to held-out model or held-out task).
 
 **Baselines that have to be beaten**:
 
+- Random predictor.
+- Position-only predictor.
+- Compression-ratio-only predictor, reported as a metadata/proxy
+  baseline rather than as an online damage signal.
 - Threshold on entropy.
 - EWMA on entropy with fitted threshold.
 - Online change-point detection on entropy or perplexity.
+- Single-feature thresholds for each cheap feature family.
 - Logistic regression on raw tokens.
+- Logistic regression on Tier 0 features.
+
+If entropy, position-only, or ratio-only baselines are within a few
+AUROC points of the primary predictor, the multivariate predictor claim
+is weak and must be scoped accordingly.
 
 **Threshold selection**: Validation-set alignment with extrinsic
 outcomes plus sensitivity analysis on T, W, K. Heuristic-dependence is
@@ -208,7 +376,9 @@ moved, not eliminated; defended by the sensitivity study.
 
 **Success criterion**: Best predictor's AUROC on held-out ratio
 exceeds best entropy/EWMA baseline by >= 0.05, with paired bootstrap
-CI not crossing zero.
+CI not crossing zero. Also report the margin against position-only and
+ratio-only baselines; if either dominates, the result shifts toward a
+measurement paper or a per-regime calibration paper.
 
 **Fallback**: "Compression damage is not predictable from local logit
 features beyond chance baselines." Still a meaningful contribution.
@@ -233,6 +403,11 @@ features beyond chance baselines." Still a meaningful contribution.
 **Success criterion**: Held-out model family AUROC stays within 0.10
 of held-out prompt AUROC.
 
+**Cross-compressor requirement**: held-out press is load-bearing for
+the black-box claim. If cross-press transfer collapses, the paper must
+state that HERALD is a per-compressor calibration framework rather
+than a universal compressor-agnostic predictor.
+
 **Fallback**: "The predictor must be trained per model family."
 Honest scope statement.
 
@@ -244,6 +419,11 @@ Honest scope statement.
   ratio.
 - SnapKV or ExpectedAttention: eviction-based, recompute fallback or
   temporary full-KV recovery.
+
+The exact action set is inherited from the Phase 1 intervention probe:
+each press has a written intervention vocabulary before controller
+training begins. The controller is not allowed to use an action that
+was not validated or bounded by the probe.
 
 **Controller design (per-segment gating, primary)**:
 
@@ -304,9 +484,16 @@ goes in v2.
 
 ## Implementation Priority
 
-The next concrete blocker is Phase 0: matched-prefix replay pipeline
-plus the multi-resolution metric table, validated on a 20-prompt
-slice. Until that is clean, scaling to Phase 1 is premature.
+Phase 0 is complete. The next concrete blockers before launching
+Phase 1 are:
 
-The architecture debate is closed; execution begins with the schema
-and replay code.
+1. Add segment-level metric and cost instrumentation to the metrics
+   substrate.
+2. Refactor generation behind the policy abstraction while keeping
+   `FixedRatioPolicy` as the default path.
+3. Write the intervention-probe pre-registration document:
+   press-specific action table, stratum rules, offsets, endpoints, and
+   decision rules.
+4. Run the first Phase 1 cells in early-stop batches to verify the
+   expanded low-ratio grid finds a non-saturated regime before
+   launching the full sweep.
