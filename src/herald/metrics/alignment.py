@@ -55,7 +55,11 @@ def build(final: Path, out: Path) -> None:
         df = df.join(f, on="run_id", how="inner")
 
     rows = []
-    metrics = [c for c in df.columns if c != "run_id"]
+    metrics = [
+        c
+        for c in df.columns
+        if c != "run_id" and df[c].dtype.is_numeric()
+    ]
     for i, a in enumerate(metrics):
         for b in metrics[i + 1 :]:
             x = df[a].to_numpy()
