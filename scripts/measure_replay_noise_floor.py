@@ -18,7 +18,6 @@ import polars as pl
 def main() -> None:
     from herald.config import ExperimentConfig
     from herald.experiment import (
-        get_press,
         load_model,
         run_single_with_replay,
     )
@@ -37,7 +36,6 @@ def main() -> None:
     )
     model, tok, device = load_model(cfg)
     prompts = DEFAULT_TASK.load(num_prompts=5, seed=42)
-    press = get_press("none", 0.0)
 
     js_p99: list[float] = []
     for p in prompts:
@@ -47,7 +45,6 @@ def main() -> None:
             device=device,
             prompt_data=p,
             config=cfg,
-            press=press,
             baseline_run_id=None,
             output_root=cfg.output_dir,
         )

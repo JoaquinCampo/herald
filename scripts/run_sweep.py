@@ -1,6 +1,7 @@
 """Launch sweep on orion. Usage: python scripts/run_sweep.py [--num-prompts 500]"""
 
 import sys
+
 sys.path.insert(0, "src")
 
 from herald.experiment import run_sweep
