@@ -8,9 +8,50 @@ top-1 ranks). The full-vocab tensors are not retained after this call.
 """
 
 import math
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 import torch
 import torch.nn.functional as F
+
+from herald.config import GenerationArtifact
+from herald.metrics.io import PerRunPaths, write_replay_rows
+
+
+@torch.no_grad()
+def replay_forward(
+    model: Any,
+    input_ids: torch.Tensor,
+    generated_token_ids: list[int],
+) -> torch.Tensor:
+    """Single teacher-forced uncompressed forward.
+
+    Returns logits at every generated position with shape
+    (gen_len, vocab_size). Caller is responsible for being outside
+    any kvpress context.
+
+    Index alignment: position prompt_len-1+i predicts gen[i], so we
+    slice [:, prompt_len-1 : prompt_len-1+N, :].
+    """
+    if input_ids.shape[0] != 1:
+        raise ValueError("replay_forward expects batch size 1")
+    if not generated_token_ids:
+        return torch.empty(
+            (0, model.config.vocab_size), device=input_ids.device
+        )
+
+    device = input_ids.device
+    gen_t = torch.tensor(
+        generated_token_ids, dtype=input_ids.dtype, device=device
+    ).unsqueeze(0)
+    full = torch.cat([input_ids, gen_t], dim=1)
+    out = model(input_ids=full, use_cache=False)
+    prompt_len = input_ids.shape[1]
+    n = len(generated_token_ids)
+    sliced = out.logits[0, prompt_len - 1 : prompt_len - 1 + n, :]
+    result: torch.Tensor = sliced.contiguous()
+    return result
 
 
 def _kl(log_p: torch.Tensor, log_q: torch.Tensor, p: torch.Tensor) -> float:
@@ -75,3 +116,61 @@ def compute_replay_position(
         "top1_rank_comp_under_unc": rank_c_under_u,
         "top1_rank_unc_under_comp": rank_u_under_c,
     }
+
+
+@dataclass(frozen=True)
+class ReplayMetrics:
+    run_id: str
+    num_positions: int
+    js_full_max: float
+    js_full_mean: float
+
+
+def replay_run(
+    model: Any,
+    tokenizer: Any,
+    artifact: GenerationArtifact,
+    output_root: Path,
+    top_k: int = 128,
+) -> ReplayMetrics:
+    """Run uncompressed replay forward and emit per-run replay parquet.
+
+    Must be called outside any kvpress context. Consumes
+    `artifact.compressed_scores` while they are still on GPU.
+    """
+    paths = PerRunPaths(root=output_root, run_id=artifact.run_id)
+    if not artifact.generated_token_ids:
+        write_replay_rows([], paths.replay)
+        return ReplayMetrics(
+            run_id=artifact.run_id,
+            num_positions=0,
+            js_full_max=0.0,
+            js_full_mean=0.0,
+        )
+
+    uncompressed_logits = replay_forward(
+        model, artifact.input_ids, artifact.generated_token_ids
+    )
+    rows: list[dict[str, Any]] = []
+    js_values: list[float] = []
+    for t, gen_id in enumerate(artifact.generated_token_ids):
+        comp = artifact.compressed_scores[t]
+        unc = uncompressed_logits[t]
+        row = compute_replay_position(
+            logits_compressed=comp,
+            logits_uncompressed=unc,
+            realized_token_id=gen_id,
+            top_k=top_k,
+        )
+        row["run_id"] = artifact.run_id
+        row["token_pos"] = t
+        rows.append(row)
+        js_values.append(float(row["js_full"]))  # type: ignore[arg-type]
+
+    write_replay_rows(rows, paths.replay)
+    return ReplayMetrics(
+        run_id=artifact.run_id,
+        num_positions=len(rows),
+        js_full_max=max(js_values) if js_values else 0.0,
+        js_full_mean=(sum(js_values) / len(js_values) if js_values else 0.0),
+    )

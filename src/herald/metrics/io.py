@@ -141,6 +141,42 @@ def write_tokens_rows(rows: list[dict[str, Any]], path: Path) -> None:
     pq.write_table(table, path)
 
 
+def signals_to_token_rows(
+    run_id: str,
+    generated_token_ids: list[int],
+    token_strs: list[str],
+    signals: list[Any],
+) -> list[dict[str, Any]]:
+    """Convert in-memory TokenSignals list to TOKENS_SCHEMA rows."""
+    rows: list[dict[str, Any]] = []
+    for pos, (tok_id, tok_str, sig) in enumerate(
+        zip(generated_token_ids, token_strs, signals)
+    ):
+        rows.append(
+            {
+                "run_id": run_id,
+                "token_pos": pos,
+                "token_id": int(tok_id),
+                "token_str": tok_str,
+                "entropy": float(sig.entropy),
+                "top1_prob": float(sig.top1_prob),
+                "top5_prob": float(sig.top5_prob),
+                "top5_logprobs": [float(x) for x in sig.top5_logprobs],
+                "h_alts": float(sig.h_alts),
+                "avg_logp": float(sig.avg_logp),
+                "delta_h": float(sig.delta_h),
+                "delta_h_valid": bool(sig.delta_h_valid),
+                "kl_div": float(sig.kl_div),
+                "top10_jaccard": float(sig.top10_jaccard),
+                "eff_vocab_size": float(sig.eff_vocab_size),
+                "tail_mass": float(sig.tail_mass),
+                "logit_range": float(sig.logit_range),
+                "lookback_ratio": float(sig.lookback_ratio),
+            }
+        )
+    return rows
+
+
 def write_replay_rows(rows: list[dict[str, Any]], path: Path) -> None:
     _ensure_parent(path)
     table = pa.Table.from_pylist(rows, schema=REPLAY_SCHEMA)

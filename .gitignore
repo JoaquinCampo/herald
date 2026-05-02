@@ -12,6 +12,9 @@ wheels/
 # Experiment output
 results/
 
+# Packaged dataset for HuggingFace upload
+dataset_release/
+
 # Trained XGBoost model weights (large, regenerable from sweep+train)
 models/hazard_*.json
 
@@ -26,3 +29,6 @@ models/hazard_*.json
 
 # Logs
 logs/
+
+# Orion sync manifest
+.orion-sync

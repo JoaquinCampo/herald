@@ -105,5 +105,35 @@ def nt_sensitivity_cmd(
     output_path.write_text(json.dumps(results, indent=2))
 
 
+@app.command(name="phase0")
+def phase0_cmd(
+    action: str = typer.Argument(..., help="run"),
+    manifest: Path = typer.Option(
+        Path("gold/phase0-random-manifest.json"),
+        help="prompt manifest JSON",
+    ),
+    model: str = typer.Option("Qwen/Qwen2.5-7B-Instruct"),
+    output_root: Path = typer.Option(Path("results/phase0")),
+    max_new_tokens: int = typer.Option(512),
+    prompt_timeout_seconds: float = typer.Option(300.0),
+    num_prompts: int | None = typer.Option(None),
+) -> None:
+    """Run the Phase 0 sweep (Orion only)."""
+    if action != "run":
+        raise typer.BadParameter(
+            "supported actions: run", param_hint="action"
+        )
+    from herald.phase0 import run_phase0_sweep
+
+    run_phase0_sweep(
+        model_name=model,
+        manifest_path=manifest,
+        max_new_tokens=max_new_tokens,
+        output_root=output_root,
+        prompt_timeout_seconds=prompt_timeout_seconds,
+        num_prompts=num_prompts,
+    )
+
+
 def main() -> None:
     app()

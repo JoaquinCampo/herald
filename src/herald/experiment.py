@@ -1,12 +1,17 @@
 """Experiment runner: load model, compress KV cache,
 generate, extract signals, detect catastrophes."""
 
+import datetime as _dt
 import gc
 import json
+import subprocess as _sp
 import time
 from contextlib import nullcontext
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from herald.metrics.replay import ReplayMetrics
 
 import torch
 from loguru import logger
@@ -19,6 +24,7 @@ from transformers import (
 
 from herald.config import (
     ExperimentConfig,
+    GenerationArtifact,
     RunResult,
     compute_prompt_hash,
     make_run_id,
@@ -140,22 +146,26 @@ class _TimeoutCriteria(StoppingCriteria):
         )
 
 
-def run_single(
+def _generate_compressed(
     model: AutoModelForCausalLM,
     tokenizer: AutoTokenizer,
     device: str,
     prompt_data: dict[str, Any],
     config: ExperimentConfig,
     press: object | None,
-    task: Task = DEFAULT_TASK,
-) -> RunResult:
-    """Run generation for a single prompt and extract signals."""
+) -> tuple[GenerationArtifact, dict[str, Any]]:
+    """Run compressed generation and capture artifact + extras.
+
+    Replay is the caller's responsibility. `compressed_scores` are kept
+    on the model's device until replay consumes them.
+    """
     messages = format_chat(prompt_data["question"])
     chat_text = tokenizer.apply_chat_template(  # type: ignore[attr-defined]
         messages, tokenize=False, add_generation_prompt=True
     )
     inputs = tokenizer(chat_text, return_tensors="pt").to(device)  # type: ignore[operator]
-    input_len = inputs["input_ids"].shape[1]
+    input_ids = inputs["input_ids"]
+    input_len = input_ids.shape[1]
 
     ctx = press(model) if press is not None else nullcontext()  # type: ignore[operator]
     stopping = StoppingCriteriaList(
@@ -182,20 +192,17 @@ def run_single(
     eos_ids = set(eos_id) if isinstance(eos_id, list) else {eos_id}
     hit_eos = len(generated_ids) > 0 and generated_ids[-1] in eos_ids
     hit_max = len(generated_ids) >= config.max_new_tokens
+    stop_reason = (
+        "eos" if hit_eos else ("max_tokens" if hit_max else "timeout")
+    )
 
-    if hit_eos:
-        stop_reason = "eos"
-    elif hit_max:
-        stop_reason = "max_tokens"
-    else:
-        stop_reason = "timeout"
-
-    # Extract per-token signals, threading StepState between calls
     signals = []
     state = None
+    compressed_scores: list[torch.Tensor] = []
     for score in outputs.scores:
         sig, state = extract_signals(score[0], prev=state)
         signals.append(sig)
+        compressed_scores.append(score[0].detach())
 
     if config.capture_attention and outputs.attentions is not None:
         lookbacks = compute_lookback_ratios(
@@ -204,51 +211,219 @@ def run_single(
         for sig, lb in zip(signals, lookbacks):
             sig.lookback_ratio = lb
 
+    run_id = make_run_id(
+        prompt_data["id"],
+        config.press_name,
+        config.compression_ratio,
+        config.seed,
+    )
+    artifact = GenerationArtifact(
+        run_id=run_id,
+        input_ids=input_ids,
+        input_len=input_len,
+        generated_token_ids=generated_ids,
+        compressed_scores=compressed_scores,
+    )
+    extras = {
+        "chat_text": chat_text,
+        "generated_text": generated_text,
+        "stop_reason": stop_reason,
+        "signals": signals,
+        "prompt_data": prompt_data,
+    }
+    return artifact, extras
+
+
+def _finalize_run_result(
+    artifact: GenerationArtifact,
+    extras: dict[str, Any],
+    config: ExperimentConfig,
+    device: str,
+    baseline_run_id: str | None,
+    replay_status: str,
+    replay_error: str | None,
+    task: Task,
+) -> RunResult:
+    """Build a RunResult from a generated artifact + extras."""
+    prompt_data = extras["prompt_data"]
+    generated_text = extras["generated_text"]
+    stop_reason = extras["stop_reason"]
+    chat_text = extras["chat_text"]
+
     catastrophes = detect_all(
         generated_text,
-        generated_ids,
+        artifact.generated_token_ids,
         stop_reason,
         prompt_data["ground_truth"],
         is_wrong_fn=task.is_wrong,
     )
     catastrophe_onsets = detect_catastrophe_onsets(
-        generated_ids, stop_reason, catastrophes
+        artifact.generated_token_ids, stop_reason, catastrophes
     )
-
     predicted = task.parse_answer(generated_text)
     correct = (
         "wrong_answer" not in catastrophes if predicted is not None else None
     )
 
+    self_baseline = make_run_id(prompt_data["id"], "none", 0.0, config.seed)
     return RunResult(
-        run_id=make_run_id(
-            prompt_data["id"],
-            config.press_name,
-            config.compression_ratio,
-            config.seed,
-        ),
+        run_id=artifact.run_id,
         prompt_id=prompt_data["id"],
         prompt_text=chat_text,
         prompt_hash=compute_prompt_hash(chat_text),
         model=config.model_name,
+        dtype="float16",
+        device_class=_device_class(device),
         press=config.press_name,
         compression_ratio=config.compression_ratio,
         max_new_tokens=config.max_new_tokens,
         seed=config.seed,
-        baseline_run_id=make_run_id(
-            prompt_data["id"], "none", 0.0, config.seed
-        ),
+        decoding_config={"do_sample": "False"},
+        task="gsm8k",
+        baseline_run_id=baseline_run_id or self_baseline,
         generated_text=generated_text,
-        generated_token_ids=generated_ids,
+        generated_token_ids=artifact.generated_token_ids,
         ground_truth=prompt_data["ground_truth"],
         predicted_answer=predicted,
         correct=correct,
         stop_reason=stop_reason,
         catastrophes=catastrophes,
-        num_tokens_generated=len(generated_ids),
+        num_tokens_generated=len(artifact.generated_token_ids),
         catastrophe_onsets=catastrophe_onsets,
-        signals=signals,
+        signals=extras["signals"],
+        replay_status=replay_status,
+        replay_error=replay_error,
+        created_at=_dt.datetime.utcnow().isoformat() + "Z",
+        herald_git_sha=_git_sha(),
     )
+
+
+def _git_sha() -> str:
+    try:
+        return (
+            _sp.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=Path(__file__).resolve().parent.parent.parent,
+                stderr=_sp.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
+    except Exception:
+        return "unknown"
+
+
+def _device_class(device: str) -> str:
+    if device.startswith("cuda"):
+        return "cuda"
+    if device.startswith("mps"):
+        return "mps"
+    return "cpu"
+
+
+def run_single(
+    model: AutoModelForCausalLM,
+    tokenizer: AutoTokenizer,
+    device: str,
+    prompt_data: dict[str, Any],
+    config: ExperimentConfig,
+    press: object | None,
+    task: Task = DEFAULT_TASK,
+) -> RunResult:
+    """Run generation for a single prompt and extract signals."""
+    artifact, extras = _generate_compressed(
+        model, tokenizer, device, prompt_data, config, press
+    )
+    return _finalize_run_result(
+        artifact=artifact,
+        extras=extras,
+        config=config,
+        device=device,
+        baseline_run_id=None,
+        replay_status="pending",
+        replay_error=None,
+        task=task,
+    )
+
+
+def run_single_with_replay(
+    model: AutoModelForCausalLM,
+    tokenizer: AutoTokenizer,
+    device: str,
+    prompt_data: dict[str, Any],
+    config: ExperimentConfig,
+    press: object | None,
+    baseline_run_id: str | None,
+    output_root: Path,
+    task: Task = DEFAULT_TASK,
+    top_k: int = 128,
+) -> tuple[RunResult, "ReplayMetrics"]:
+    """Run compressed generation + inline replay, then write 3 parquets.
+
+    `baseline_run_id=None` means this run is itself a baseline; it
+    self-links via baseline_run_id == run_id.
+    """
+    from herald.metrics.io import (
+        PerRunPaths,
+        signals_to_token_rows,
+        write_run_record,
+        write_tokens_rows,
+    )
+    from herald.metrics.replay import ReplayMetrics, replay_run
+
+    artifact, extras = _generate_compressed(
+        model, tokenizer, device, prompt_data, config, press
+    )
+
+    replay_status = "ok"
+    replay_error: str | None = None
+    rm: ReplayMetrics
+    try:
+        rm = replay_run(
+            model=model,
+            tokenizer=tokenizer,
+            artifact=artifact,
+            output_root=output_root,
+            top_k=top_k,
+        )
+    except Exception as exc:  # noqa: BLE001
+        replay_status = "failed"
+        replay_error = repr(exc)
+        rm = ReplayMetrics(
+            run_id=artifact.run_id,
+            num_positions=0,
+            js_full_max=0.0,
+            js_full_mean=0.0,
+        )
+
+    rr = _finalize_run_result(
+        artifact=artifact,
+        extras=extras,
+        config=config,
+        device=device,
+        baseline_run_id=baseline_run_id,
+        replay_status=replay_status,
+        replay_error=replay_error,
+        task=task,
+    )
+
+    paths = PerRunPaths(root=output_root, run_id=rr.run_id)
+    token_strs = [
+        tokenizer.decode([tid], skip_special_tokens=True)  # type: ignore[attr-defined]
+        for tid in artifact.generated_token_ids
+    ]
+    write_tokens_rows(
+        signals_to_token_rows(
+            run_id=rr.run_id,
+            generated_token_ids=artifact.generated_token_ids,
+            token_strs=token_strs,
+            signals=extras["signals"],
+        ),
+        paths.tokens,
+    )
+    write_run_record(rr.model_dump(mode="json"), paths.run)
+
+    return rr, rm
 
 
 def summarize(results: list[RunResult]) -> dict[str, Any]:
