@@ -127,17 +127,20 @@ def run_phase0_sweep(
         if _maybe_skip(paths):
             logger.info(f"  skip baseline {p['id']} (existing ok)")
             continue
-        run_single_with_replay(
-            model=model,
-            tokenizer=tok,
-            device=device,
-            prompt_data=p,
-            config=cfg_template,
-            press=None,
-            baseline_run_id=None,
-            output_root=output_root,
-            top_k=top_k,
-        )
+        try:
+            run_single_with_replay(
+                model=model,
+                tokenizer=tok,
+                device=device,
+                prompt_data=p,
+                config=cfg_template,
+                press=None,
+                baseline_run_id=None,
+                output_root=output_root,
+                top_k=top_k,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error(f"  baseline {p['id']} failed: {exc!r}")
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -159,17 +162,22 @@ def run_phase0_sweep(
                 if _maybe_skip(paths):
                     logger.info(f"  skip {press_name}@{ratio} {p['id']}")
                     continue
-                run_single_with_replay(
-                    model=model,
-                    tokenizer=tok,
-                    device=device,
-                    prompt_data=p,
-                    config=cfg,
-                    press=press,
-                    baseline_run_id=baseline_id,
-                    output_root=output_root,
-                    top_k=top_k,
-                )
+                try:
+                    run_single_with_replay(
+                        model=model,
+                        tokenizer=tok,
+                        device=device,
+                        prompt_data=p,
+                        config=cfg,
+                        press=press,
+                        baseline_run_id=baseline_id,
+                        output_root=output_root,
+                        top_k=top_k,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.error(
+                        f"  {press_name}@{ratio} {p['id']} failed: {exc!r}"
+                    )
                 gc.collect()
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
