@@ -73,6 +73,14 @@ def _clear_checkpoint(config: ExperimentConfig) -> None:
         ckpt.unlink()
 
 
+# SnapKV asserts query_length > window_size. The kvpress default
+# (64) blows up on short GSM8K prompts (chat-templated length 64).
+# 32 keeps a meaningful recent-attention window while passing the
+# assertion for every prompt observed in the Phase 0 manifest
+# (shortest chat-templated q_len = 64). See gold/phase-0-results.md.
+SNAPKV_WINDOW_SIZE = 32
+
+
 def get_press(name: str, compression_ratio: float) -> Any:  # noqa: ANN201
     """Create a kvpress Press object (or None for baseline)."""
     if name == "none":
@@ -87,9 +95,14 @@ def get_press(name: str, compression_ratio: float) -> Any:  # noqa: ANN201
         TOVAPress,
     )
 
+    if name == "snapkv":
+        return SnapKVPress(
+            compression_ratio=compression_ratio,
+            window_size=SNAPKV_WINDOW_SIZE,
+        )
+
     presses = {
         "streaming_llm": StreamingLLMPress,
-        "snapkv": SnapKVPress,
         "knorm": KnormPress,
         "expected_attention": ExpectedAttentionPress,
         "tova": TOVAPress,
@@ -97,7 +110,7 @@ def get_press(name: str, compression_ratio: float) -> Any:  # noqa: ANN201
     }
     if name not in presses:
         raise ValueError(
-            f"Unknown press: {name}. Available: {list(presses.keys())}"
+            f"Unknown press: {name}. Available: {['snapkv', *presses.keys()]}"
         )
     return presses[name](compression_ratio=compression_ratio)
 

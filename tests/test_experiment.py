@@ -11,6 +11,7 @@ from herald.config import (
     make_run_id,
 )
 from herald.experiment import (
+    SNAPKV_WINDOW_SIZE,
     SWEEP_METHODS,
     SWEEP_RATIOS,
     _append_checkpoint,
@@ -18,6 +19,7 @@ from herald.experiment import (
     _clear_checkpoint,
     _load_checkpoint,
     build_sweep_configs,
+    get_press,
     result_exists,
     summarize,
 )
@@ -226,3 +228,26 @@ class TestResultExists:
         filename = f"{model_short}_{ratio_str}_{cfg.num_prompts}p.json"
         (out_dir / filename).write_text("{}")
         assert result_exists(cfg) is True
+
+
+# ---------------------------------------------------------------------------
+# get_press: SnapKV window_size regression
+# ---------------------------------------------------------------------------
+
+
+class TestGetPressSnapKV:
+    def test_snapkv_window_smaller_than_short_prompts(self):
+        """SnapKV asserts q_len > window_size; a Phase 0 sweep
+        on GSM8K hit q_len=64. The window must be < 64 (with margin)
+        so SnapKV(score) does not assert. Regression for runs that
+        failed on gsm8k_1116 / gsm8k_65."""
+        kvpress = pytest.importorskip("kvpress")
+        press = get_press("snapkv", 0.5)
+        assert isinstance(press, kvpress.SnapKVPress)
+        assert press.window_size == SNAPKV_WINDOW_SIZE
+        assert press.window_size < 64
+        assert press.compression_ratio == 0.5
+
+    def test_snapkv_window_constant_value(self):
+        # Lock in the chosen value so it can't drift silently.
+        assert SNAPKV_WINDOW_SIZE == 32
