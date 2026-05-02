@@ -117,3 +117,16 @@ class RunResult(BaseModel):
     replay_error: str | None = None
     created_at: str | None = None
     herald_git_sha: str | None = None
+    # Cost telemetry. Captured at generation boundaries; no per-token
+    # cuda syncs (would perturb timing). NaN where the platform does
+    # not expose the underlying counter (e.g. peak_memory on CPU/MPS,
+    # kv_size_at_end where the press does not implement it).
+    wall_clock_per_token: NanFloat = float("nan")
+    peak_memory_mb: NanFloat = float("nan")
+    kv_size_at_end: NanFloat = float("nan")
+    policy_name: str = "fixed_ratio"
+    # Replay wall-clock (the matched-prefix uncompressed forward).
+    # NaN when the run did not replay (`run_single` without replay).
+    # Surfaced separately so Block 2 can measure replay-fraction
+    # without re-instrumenting later.
+    replay_wall_clock_seconds: NanFloat = float("nan")

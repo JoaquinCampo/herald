@@ -4,9 +4,10 @@ generate, extract signals, detect catastrophes."""
 import datetime as _dt
 import gc
 import json
+import math
 import subprocess as _sp
 import time
-from contextlib import nullcontext
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -33,6 +34,7 @@ from herald.detectors import (
     detect_all,
     detect_catastrophe_onsets,
 )
+from herald.policy import FixedRatioPolicy, Policy
 from herald.prompts import format_chat
 from herald.signals import compute_lookback_ratios, extract_signals
 from herald.tasks import DEFAULT_TASK, Task
@@ -159,20 +161,87 @@ class _TimeoutCriteria(StoppingCriteria):
         )
 
 
+def _append_truncation_sidecar(
+    output_root: Path,
+    run_id: str,
+    prompt_id: str,
+    task_name: str,
+    truncation_meta: dict[str, Any],
+) -> None:
+    """Append a single JSONL line with this run's truncation metadata.
+
+    Layout: ``<output_root>/raw/truncation.jsonl``. One line per run.
+    The Block 3 watchdog reads this to enforce "stop if LongBench
+    truncation metadata is missing for truncated prompts." Empty
+    ``truncation_meta`` is still recorded so absence is detectable.
+    """
+    sidecar = output_root / "raw" / "truncation.jsonl"
+    sidecar.parent.mkdir(parents=True, exist_ok=True)
+    record = {
+        "run_id": run_id,
+        "prompt_id": prompt_id,
+        "task": task_name,
+        **(truncation_meta or {}),
+    }
+    with sidecar.open("a") as f:
+        f.write(json.dumps(record) + "\n")
+
+
+def _retained_kv_bytes(press: object | None) -> float:
+    """Best-effort byte count of the press' retained KV at end of run.
+
+    NaN where the press does not expose it (today: every kvpress press).
+    See gold/research-plan.md Phase 1 for the upstream-PR follow-up.
+    """
+    if press is None:
+        return float("nan")
+    fn = getattr(press, "retained_kv_bytes", None)
+    if callable(fn):
+        try:
+            return float(fn())
+        except Exception:  # noqa: BLE001
+            return float("nan")
+    return float("nan")
+
+
 def _generate_compressed(
     model: AutoModelForCausalLM,
     tokenizer: AutoTokenizer,
     device: str,
     prompt_data: dict[str, Any],
     config: ExperimentConfig,
-    press: object | None,
+    policy: Policy,
+    task: Task = DEFAULT_TASK,
 ) -> tuple[GenerationArtifact, dict[str, Any]]:
     """Run compressed generation and capture artifact + extras.
 
     Replay is the caller's responsibility. `compressed_scores` are kept
     on the model's device until replay consumes them.
+
+    The single-press fast path (FixedRatioPolicy) calls
+    `model.generate(...)` inside one `policy.make_context(model)`. The
+    headline Phase 1 sweep uses this path exclusively.
+
+    Cost telemetry is captured at generation boundaries: one
+    `cuda.synchronize()` at end-of-generate (required for meaningful
+    wall-clock), no per-token syncs (would perturb timing).
     """
-    messages = format_chat(prompt_data["question"])
+    if policy.requires_manual_decode:
+        raise NotImplementedError(
+            "Manual-decode policies (e.g. SwitchAtOffsetPolicy) are "
+            "not implemented yet; lands before Block 4."
+        )
+
+    question_text, truncation_meta = task.format_prompt(
+        prompt_data,
+        tokenizer,
+        system_prompt=prompt_data.get("system_prompt"),
+        max_new_tokens=config.max_new_tokens,
+    )
+    messages = format_chat(
+        question_text,
+        system_prompt=prompt_data.get("system_prompt"),
+    )
     chat_text = tokenizer.apply_chat_template(  # type: ignore[attr-defined]
         messages, tokenize=False, add_generation_prompt=True
     )
@@ -180,10 +249,16 @@ def _generate_compressed(
     input_ids = inputs["input_ids"]
     input_len = input_ids.shape[1]
 
-    ctx = press(model) if press is not None else nullcontext()  # type: ignore[operator]
     stopping = StoppingCriteriaList(
         [_TimeoutCriteria(config.prompt_timeout_seconds)]
     )
+
+    press, ctx = policy.make_context(model)
+
+    is_cuda = device.startswith("cuda")
+    if is_cuda:
+        torch.cuda.reset_peak_memory_stats()
+    t_start = time.perf_counter()
 
     with torch.no_grad(), ctx:
         outputs = model.generate(  # type: ignore[attr-defined]
@@ -195,6 +270,16 @@ def _generate_compressed(
             return_dict_in_generate=True,
             stopping_criteria=stopping,
         )
+
+    if is_cuda:
+        torch.cuda.synchronize()
+    t_end = time.perf_counter()
+    elapsed = t_end - t_start
+    peak_mem_mb = (
+        torch.cuda.max_memory_allocated() / (1024 * 1024)
+        if is_cuda
+        else float("nan")
+    )
 
     generated_ids = outputs.sequences[0, input_len:].tolist()
     generated_text = tokenizer.decode(  # type: ignore[attr-defined]
@@ -208,6 +293,9 @@ def _generate_compressed(
     stop_reason = (
         "eos" if hit_eos else ("max_tokens" if hit_max else "timeout")
     )
+
+    n_gen = len(generated_ids)
+    wall_per_token = elapsed / n_gen if n_gen > 0 else float("nan")
 
     signals = []
     state = None
@@ -243,6 +331,11 @@ def _generate_compressed(
         "stop_reason": stop_reason,
         "signals": signals,
         "prompt_data": prompt_data,
+        "wall_clock_per_token": wall_per_token,
+        "peak_memory_mb": peak_mem_mb,
+        "kv_size_at_end": _retained_kv_bytes(press),
+        "policy_name": type(policy).__name__,
+        "truncation_meta": truncation_meta,
     }
     return artifact, extras
 
@@ -292,7 +385,7 @@ def _finalize_run_result(
         max_new_tokens=config.max_new_tokens,
         seed=config.seed,
         decoding_config={"do_sample": "False"},
-        task="gsm8k",
+        task=task.name,
         baseline_run_id=baseline_run_id or self_baseline,
         generated_text=generated_text,
         generated_token_ids=artifact.generated_token_ids,
@@ -308,6 +401,13 @@ def _finalize_run_result(
         replay_error=replay_error,
         created_at=_dt.datetime.utcnow().isoformat() + "Z",
         herald_git_sha=_git_sha(),
+        wall_clock_per_token=extras.get("wall_clock_per_token", float("nan")),
+        peak_memory_mb=extras.get("peak_memory_mb", float("nan")),
+        kv_size_at_end=extras.get("kv_size_at_end", float("nan")),
+        policy_name=extras.get("policy_name", "FixedRatioPolicy"),
+        replay_wall_clock_seconds=extras.get(
+            "replay_wall_clock_seconds", float("nan")
+        ),
     )
 
 
@@ -334,18 +434,37 @@ def _device_class(device: str) -> str:
     return "cpu"
 
 
+def _policy_for(config: ExperimentConfig, policy: Policy | None) -> Policy:
+    if policy is not None:
+        return policy
+    return FixedRatioPolicy(
+        press_name=config.press_name,
+        compression_ratio=config.compression_ratio,
+    )
+
+
 def run_single(
     model: AutoModelForCausalLM,
     tokenizer: AutoTokenizer,
     device: str,
     prompt_data: dict[str, Any],
     config: ExperimentConfig,
-    press: object | None,
+    policy: Policy | None = None,
     task: Task = DEFAULT_TASK,
 ) -> RunResult:
-    """Run generation for a single prompt and extract signals."""
+    """Run generation for a single prompt and extract signals.
+
+    `policy` defaults to `FixedRatioPolicy(config.press_name,
+    config.compression_ratio)` — the Phase 0 / Phase 1 headline path.
+    """
     artifact, extras = _generate_compressed(
-        model, tokenizer, device, prompt_data, config, press
+        model,
+        tokenizer,
+        device,
+        prompt_data,
+        config,
+        _policy_for(config, policy),
+        task,
     )
     return _finalize_run_result(
         artifact=artifact,
@@ -365,9 +484,9 @@ def run_single_with_replay(
     device: str,
     prompt_data: dict[str, Any],
     config: ExperimentConfig,
-    press: object | None,
     baseline_run_id: str | None,
     output_root: Path,
+    policy: Policy | None = None,
     task: Task = DEFAULT_TASK,
     top_k: int = 128,
 ) -> tuple[RunResult, "ReplayMetrics"]:
@@ -375,6 +494,9 @@ def run_single_with_replay(
 
     `baseline_run_id=None` means this run is itself a baseline; it
     self-links via baseline_run_id == run_id.
+
+    `policy` defaults to `FixedRatioPolicy(config.press_name,
+    config.compression_ratio)` — the Phase 0 / Phase 1 headline path.
     """
     from herald.metrics.io import (
         PerRunPaths,
@@ -385,12 +507,20 @@ def run_single_with_replay(
     from herald.metrics.replay import ReplayMetrics, replay_run
 
     artifact, extras = _generate_compressed(
-        model, tokenizer, device, prompt_data, config, press
+        model,
+        tokenizer,
+        device,
+        prompt_data,
+        config,
+        _policy_for(config, policy),
+        task,
     )
 
     replay_status = "ok"
     replay_error: str | None = None
     rm: ReplayMetrics
+    is_cuda = device.startswith("cuda")
+    t_replay_start = time.perf_counter()
     try:
         rm = replay_run(
             model=model,
@@ -408,6 +538,9 @@ def run_single_with_replay(
             js_full_max=0.0,
             js_full_mean=0.0,
         )
+    if is_cuda:
+        torch.cuda.synchronize()
+    extras["replay_wall_clock_seconds"] = time.perf_counter() - t_replay_start
 
     rr = _finalize_run_result(
         artifact=artifact,
@@ -435,6 +568,13 @@ def run_single_with_replay(
         paths.tokens,
     )
     write_run_record(rr.model_dump(mode="json"), paths.run)
+    _append_truncation_sidecar(
+        output_root=output_root,
+        run_id=rr.run_id,
+        prompt_id=prompt_data["id"],
+        task_name=task.name,
+        truncation_meta=extras.get("truncation_meta", {}),
+    )
 
     return rr, rm
 
@@ -486,19 +626,62 @@ def save_results(results: list[RunResult], config: ExperimentConfig) -> Path:
     return path
 
 
+@dataclass
+class CostWatchdog:
+    """Block 3 budget guard: abort the cell if observed wall-clock per
+    token drifts above the predicted budget.
+
+    Block 2 produces a per-cell predicted seconds-per-token; the
+    watchdog is constructed with that prediction. After every prompt
+    completes, `observe()` updates a rolling mean of recent runs and
+    returns True (abort) when the rolling mean exceeds
+    `predicted_s_per_token * tolerance` for `consecutive_breaches`
+    consecutive prompts.
+
+    Block 1 ships the class; Block 3 wires it into the sweep loop with
+    the actual budget loaded from `gold/phase-1-cost-budget.json`.
+    """
+
+    predicted_s_per_token: float
+    tolerance: float = 1.25
+    consecutive_breaches: int = 3
+    history: list[float] = field(default_factory=list)
+    _streak: int = 0
+
+    def observe(self, result: RunResult) -> bool:
+        wpt = result.wall_clock_per_token
+        if not math.isfinite(wpt) or wpt <= 0.0:
+            return False
+        self.history.append(wpt)
+        threshold = self.predicted_s_per_token * self.tolerance
+        if wpt > threshold:
+            self._streak += 1
+        else:
+            self._streak = 0
+        return self._streak >= self.consecutive_breaches
+
+
 def run_prompts(
     model: AutoModelForCausalLM,
     tokenizer: AutoTokenizer,
     device: str,
     prompts: list[dict[str, Any]],
     config: ExperimentConfig,
-    press: object | None,
+    policy: Policy | None = None,
     task: Task = DEFAULT_TASK,
+    cost_watchdog: "CostWatchdog | None" = None,
 ) -> list[RunResult]:
     """Run all prompts with a pre-loaded model.
 
-    Supports per-prompt checkpointing.
+    Supports per-prompt checkpointing. `policy` defaults to
+    `FixedRatioPolicy(config.press_name, config.compression_ratio)`.
+
+    `cost_watchdog`, if provided, is consulted after each prompt with
+    the new RunResult's cost telemetry. If it returns `abort=True`,
+    the loop stops cleanly. See `gold/research-plan.md` Block 3 budget
+    discipline.
     """
+    pol = _policy_for(config, policy)
     results = _load_checkpoint(config)
     completed_ids = {r.prompt_id for r in results}
     if completed_ids:
@@ -521,7 +704,7 @@ def run_prompts(
 
         try:
             result = run_single(
-                model, tokenizer, device, prompt_data, config, press, task
+                model, tokenizer, device, prompt_data, config, pol, task
             )
         except Exception as e:
             logger.error(f"  FAILED: {e}")
@@ -544,6 +727,13 @@ def run_prompts(
         )
         results.append(result)
         _append_checkpoint(result, config)
+
+        if cost_watchdog is not None and cost_watchdog.observe(result):
+            logger.warning(
+                "Cost watchdog triggered abort: observed wall-clock "
+                "drift exceeds the budget. See cost_watchdog state."
+            )
+            break
 
         gc.collect()
         if torch.backends.mps.is_available():
@@ -592,10 +782,9 @@ def run_experiment(
     )
 
     model, tokenizer, device = load_model(config)
-    press = get_press(config.press_name, config.compression_ratio)
     prompts = task.load(config.num_prompts, config.seed)
     results = run_prompts(
-        model, tokenizer, device, prompts, config, press, task
+        model, tokenizer, device, prompts, config, None, task
     )
     print_summary(results, config)
     return results
@@ -701,9 +890,8 @@ def run_sweep(
         )
         logger.info(f"{'#' * 60}")
 
-        press = get_press(config.press_name, config.compression_ratio)
         results = run_prompts(
-            model, tokenizer, device, prompts, config, press, task
+            model, tokenizer, device, prompts, config, None, task
         )
         print_summary(results, config)
         save_results(results, config)

@@ -35,14 +35,18 @@ def load_gsm8k(num_prompts: int, seed: int = 42) -> list[dict[str, str]]:
     return prompts
 
 
-def format_chat(question: str) -> ChatMessages:
-    """Format a GSM8K question as chat messages for instruct models.
+def format_chat(
+    question: str, system_prompt: str | None = None
+) -> ChatMessages:
+    """Format a question as chat messages for instruct models.
 
     Returns a list of message dicts ready for tokenizer.apply_chat_template().
     Zero-shot — instruct models are already trained for
-    step-by-step reasoning.
+    step-by-step reasoning. `system_prompt` defaults to the GSM8K
+    math-reasoning prompt; tasks supply their own.
     """
+    sys = system_prompt if system_prompt is not None else SYSTEM_PROMPT
     return [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": sys},
         {"role": "user", "content": question},
     ]

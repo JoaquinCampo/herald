@@ -41,6 +41,11 @@ RUNS_SCHEMA = pa.schema(
         pa.field("replay_error", pa.string()),
         pa.field("created_at", pa.string()),
         pa.field("herald_git_sha", pa.string()),
+        pa.field("wall_clock_per_token", pa.float64()),
+        pa.field("peak_memory_mb", pa.float64()),
+        pa.field("kv_size_at_end", pa.float64()),
+        pa.field("policy_name", pa.string()),
+        pa.field("replay_wall_clock_seconds", pa.float64()),
     ]
 )
 

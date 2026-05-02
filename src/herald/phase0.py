@@ -19,7 +19,6 @@ from herald.config import (
     make_run_id,
 )
 from herald.experiment import (
-    get_press,
     load_model,
     run_single_with_replay,
 )
@@ -134,7 +133,6 @@ def run_phase0_sweep(
                 device=device,
                 prompt_data=p,
                 config=cfg_template,
-                press=None,
                 baseline_run_id=None,
                 output_root=output_root,
                 top_k=top_k,
@@ -153,7 +151,6 @@ def run_phase0_sweep(
                     "compression_ratio": float(ratio),
                 }
             )
-            press = get_press(press_name, ratio)
             logger.info(f"Phase 0 cell: {press_name}@{ratio}")
             for p in prompts:
                 run_id = make_run_id(p["id"], press_name, ratio, seed)
@@ -169,7 +166,6 @@ def run_phase0_sweep(
                         device=device,
                         prompt_data=p,
                         config=cfg,
-                        press=press,
                         baseline_run_id=baseline_id,
                         output_root=output_root,
                         top_k=top_k,
