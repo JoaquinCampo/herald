@@ -1,9 +1,11 @@
 """End-to-end Phase 0 smoke (Orion-only).
 
-Pin `JS_NOISE_FLOOR` from `scripts/measure_replay_noise_floor.py` on
-Orion before treating gates 3/4 as locked. The default below is a
-plausibility floor for MPS/CUDA fp16; the real Orion gate may be
-tighter.
+`JS_NOISE_FLOOR` is the per-token JS divergence we are willing to
+attribute to fp16 / CUDA non-determinism on the no-press baseline.
+Calibrated 2026-05-02 from the Phase 0 sweep on Qwen2.5-7B-Instruct
+(20 baseline runs, RTX 5090, fp16): cell_js_max=0.092,
+cell_js_median=0.079. We pick 1e-1 as a clean ceiling above the
+observed maximum; see gold/phase-0-results.md.
 """
 
 from pathlib import Path
@@ -11,7 +13,7 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-JS_NOISE_FLOOR = 1e-3
+JS_NOISE_FLOOR = 1e-1
 
 
 @pytest.mark.gpu
