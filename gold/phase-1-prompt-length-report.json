@@ -1,0 +1,82 @@
+{
+  "model": "Qwen/Qwen2.5-7B-Instruct",
+  "num_prompts": 50,
+  "seed": 42,
+  "max_new_tokens": 512,
+  "budget": 16384,
+  "qwen_positional_limit": 32768,
+  "tasks": [
+    {
+      "task": "gsm8k",
+      "n": 50,
+      "pre_truncation_chat_tokens": {
+        "p50": 94,
+        "p90": 132,
+        "p95": 148,
+        "max": 160
+      },
+      "post_truncation_chat_tokens": {
+        "p50": 94,
+        "p90": 132,
+        "p95": 148,
+        "max": 160
+      },
+      "n_over_budget": 0,
+      "fraction_over_budget": 0.0
+    },
+    {
+      "task": "humaneval",
+      "n": 50,
+      "pre_truncation_chat_tokens": {
+        "p50": 165,
+        "p90": 244,
+        "p95": 290,
+        "max": 302
+      },
+      "post_truncation_chat_tokens": {
+        "p50": 165,
+        "p90": 244,
+        "p95": 290,
+        "max": 302
+      },
+      "n_over_budget": 0,
+      "fraction_over_budget": 0.0
+    },
+    {
+      "task": "ifeval",
+      "n": 50,
+      "pre_truncation_chat_tokens": {
+        "p50": 74,
+        "p90": 107,
+        "p95": 118,
+        "max": 131
+      },
+      "post_truncation_chat_tokens": {
+        "p50": 74,
+        "p90": 107,
+        "p95": 118,
+        "max": 131
+      },
+      "n_over_budget": 0,
+      "fraction_over_budget": 0.0
+    },
+    {
+      "task": "longbench_single",
+      "n": 50,
+      "pre_truncation_chat_tokens": {
+        "p50": 4735,
+        "p90": 8051,
+        "p95": 9739,
+        "max": 20079
+      },
+      "post_truncation_chat_tokens": {
+        "p50": 4735,
+        "p90": 8051,
+        "p95": 9739,
+        "max": 15808
+      },
+      "n_over_budget": 1,
+      "fraction_over_budget": 0.02
+    }
+  ]
+}
