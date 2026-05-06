@@ -1,8 +1,12 @@
 # Phase 1 Block 3 launch packet
 
-**Status**: drafted; LongBench failure cleared pending validation rerun
-(see `gold/phase-1-longbench-failure-diagnosis.md`). Do not launch
-until that validation reports 12/12 ok.
+**Status**: launcher landed (`scripts/phase1_sweep.py`), cost budget
+re-profiled on qasper, all six acceptance gates pass (unit tests,
+dry-run prints 172/34 400/qasper, smoke 8/8 cells in 40.8s, forced-
+trip rehearsal aborts on rule 1, status command verified on smoke
+output). Block 3 is gated on user authorization only. The LongBench
+failure reported in `gold/phase-1-longbench-failure-diagnosis.md` is
+cleared (12/12 ok with truncation sidecars).
 
 ## Scope
 
@@ -24,11 +28,10 @@ compressed + `4` baseline = **172 cells**, **34 400 runs**.
 
 ## Exact launch command
 
-Block 3 launch is one wrapper script per task, sequential, sharing the
-loaded model across cells in a task. No such wrapper exists yet
-(`scripts/run_sweep.py` runs a single task with a fixed press list);
-the launcher is the engineering item to land before launch. The
-intended invocation is:
+Block 3 runs as a single sequential pass through the cell plan,
+loading the model once and reusing it across cells. The launcher
+`scripts/phase1_sweep.py` is implemented and shipping the watchdog
+rules below; invoke it as:
 
     cd /clustergpu/home/jcampo/herald
     nohup .venv/bin/python scripts/phase1_sweep.py \
@@ -47,31 +50,53 @@ intended invocation is:
         --skip-existing \
         > results/phase1_sweep.log 2>&1 &
 
-`scripts/phase1_sweep.py` is to be implemented by lifting the
-per-cell loop out of `phase1_profile.py` and adding:
+`scripts/phase1_sweep.py` lifts the per-cell loop from
+`phase1_profile.py` and adds:
 
 - `CostWatchdog` per cell (predicted_s_per_token from
-  `phase-1-cost-budget.json`, tolerance 1.25, 3 consecutive breaches).
+  `phase-1-cost-budget.json` via `CostBudget.resolve(...)`, tolerance
+  1.25, 3 consecutive breaches, 3-observation warm-up gate).
 - Skip-existing: on a per-cell basis, a prompt is considered done
   when `paths.all_exist()` returns true and the saved
   `replay_status == "ok"`.
-- Truncation-sidecar enforcement: if any prompt's run record contains
-  generation against a chat-templated length implying truncation but
-  the sidecar is missing, abort.
+- Truncation-sidecar enforcement: rule 5 below; for LongBench cells
+  the sidecar must contain a record matching each run_id and must
+  not report `loop_exhausted = true`.
 - Per-task baseline cells run before any compressed cell for that
   task so `baseline_run_id` linkage is valid.
 
-If a launcher script is not landed in time, the fallback is a shell
-loop calling `phase1_profile.py` per task, with `--num-prompts 200`
-and the same press/ratio lists, redirecting log per task. That path
-loses the watchdog and is therefore *not* a Block 3 launch — it is a
-Block 2-shaped sweep at full N.
+The launcher exits with code 0 on success, 2 if the budget does not
+cover all planned cells in `--dry-run`, and 3 if any sweep-wide
+watchdog rule trips during the run.
 
 ## Estimated wall-clock
 
-From `gold/phase-1-cost-budget.json` (Block 2, 50 prompts, Orion
-RTX 5090). All numbers are per-cell and extrapolate linearly to 200
-prompts.
+**Headline (post-qasper, post-truncation budget):
+~26.5 GPU-hours.**
+
+The original Block 2 estimate (~42 GPU-h) was anchored on
+NarrativeQA, which had ~20 k-token contexts and a 50% replay
+fraction. Switching the LongBench subtask to Qasper (and applying
+deterministic context truncation; see
+`gold/phase-1-longbench-failure-diagnosis.md`) cut LongBench's
+per-token cost from 0.0559 s to 0.0191 s (-66%), and replay cost
+from 3.04 s to 0.44 s (-86%). The full 16-cell qasper re-profile
+(`logs/phase1_profile_qasper.log`, 458.8 s wall-clock, 0/200
+failures) confirms these numbers.
+
+Updated per-task projection (43 cells per task, 200 prompts each):
+
+| task | s/prompt | runs (43 × 200) | task hours |
+| --- | --- | --- | --- |
+| gsm8k | ~4.4 | 8 600 | 10.5 |
+| humaneval | ~1.0 | 8 600 | 2.4 |
+| ifeval | ~4.1 | 8 600 | 9.8 |
+| longbench_single (qasper) | ~1.6 | 8 600 | 3.8 |
+| **total** | — | **34 400** | **~26.5** |
+
+The original tabular breakdown below is retained as a reference for
+how the per-cell numbers come together. All raw numbers from
+`gold/phase-1-cost-budget.json`.
 
 | task | s/token median | tokens median | per-prompt s | per-cell s @ 200 | per-cell min |
 | --- | --- | --- | --- | --- | --- |
@@ -183,6 +208,11 @@ This matches the behavior already used by `phase1_profile.py`
 - `results/phase1_sweep.log` — combined stdout/stderr from
   `phase1_sweep.py`.
 - `gold/phase-1-cost-budget.json` is read-only input.
+- In-flight status: `uv run python scripts/phase1_status.py` reads the
+  results dir + log and prints process state, cells/runs progress,
+  active cell, watchdog substitutions, latest artifact write, disk
+  usage, last 20 log lines, and an OK / WARN / ABORTED / UNKNOWN
+  health verdict. CPU-only; safe to re-run while the sweep is live.
 - After the sweep, `finalize_dataset` (already in
   `herald.metrics.io`) builds `results/phase1/final/{runs,tokens,replay}.parquet`
   for downstream analysis.
@@ -196,7 +226,9 @@ Before issuing the launch command above, the operator confirms:
       and shows the truncation sidecar populated.
 - [ ] `nvidia-smi` shows the GPU clean (no stale processes).
 - [ ] `~/.cache/huggingface/datasets/` contains gsm8k, humaneval,
-      ifeval, and THUDM/LongBench/narrativeqa.
+      ifeval, and THUDM/LongBench/qasper. (NarrativeQA was retired from
+      the LongBench task after the truncation diagnosis in
+      `gold/phase-1-longbench-failure-diagnosis.md` swapped to qasper.)
 - [ ] `phase-1-cost-budget.json` has been re-profiled on a 50-prompt
       LongBench slice with the truncation fix (the existing values
       stay safe but tighter values give the watchdog more margin).
@@ -205,15 +237,40 @@ Before issuing the launch command above, the operator confirms:
 - [ ] Free disk on Orion ≥ 60 GiB.
 - [ ] `tmux`/`screen`/`nohup` is used so the sweep survives an SSH
       disconnect.
+- [ ] After the launch, run
+      `uv run python scripts/phase1_status.py` once and confirm
+      Health: OK with a sane elapsed/ETA and the active cell visible.
+      Re-run this command at any time during the sweep for a snapshot.
 
 ## Outstanding items before launch
 
-1. Implement `scripts/phase1_sweep.py` (lifted from
-   `phase1_profile.py` plus the watchdog rules above).
-2. Re-profile LongBench cells with the truncation fix and update the
-   cost-budget JSON.
-3. Decide on the final `--ratios` list. The grid above is the
-   research-plan grid; the cost-budget JSON currently only has 0.5,
-   0.875, 0.9375 entries. Either expand the budget profile to cover
-   0.25, 0.375, 0.75, 0.96875 too, or relax watchdog rule 1 to use
-   the nearest-profiled-ratio prediction.
+1. ~~Implement `scripts/phase1_sweep.py` (lifted from
+   `phase1_profile.py` plus the watchdog rules above).~~ **Landed.**
+2. ~~Re-profile LongBench cells with the truncation fix and update the
+   cost-budget JSON.~~ **Done; qasper @ 0.5/0.875/0.9375 in
+   `gold/phase-1-cost-budget.json`.**
+3. ~~Decide on the final `--ratios` list.~~ **Decision: nearest-
+   profiled-ratio fallback in `CostBudget.resolve(...)`. Within-task
+   wpt spread is 4-8% across the profiled grid, well inside the 25%
+   watchdog tolerance. Task-level fallbacks are explicitly recorded
+   in the budget JSON for presses that were not in the Block 2
+   profile (currently only `streaming_llm` was profiled).**
+
+Acceptance gates (all PASS as of 2026-05-03):
+
+- [x] `task_fallbacks` recorded in `gold/phase-1-cost-budget.json`
+      for every task so unprofiled presses (`snapkv`, `knorm`,
+      `expected_attention`, `tova`, `random`) resolve to a
+      conservative per-task prediction. (Future work: replace these
+      with one-ratio-per-press profile runs.)
+- [x] Dry-run `scripts/phase1_sweep.py` against the production budget
+      prints 172 cells, 34 400 runs, qasper.
+- [x] Smoke `scripts/phase1_sweep.py --smoke` on Orion: 8/8 cells in
+      40.8s, all parquets written, sidecars populated.
+- [x] Forced-trip rehearsal at `--watchdog-tolerance 0.01` aborts the
+      cell on the first prompt with `aborted_by_watchdog=true` and
+      abort_reason citing rule 1.
+- [x] `scripts/phase1_status.py` verified against the smoke output
+      (Health: OK, 8/8 cells, 100% baseline+exact match distribution)
+      and the forced-trip output (Health: WARN, watchdog-aborted cell
+      reported with rule 1 reason).

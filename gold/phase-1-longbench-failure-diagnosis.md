@@ -1,8 +1,60 @@
 # Phase 1 LongBench failure diagnosis
 
-**Status as of 2026-05-02**: fix landed locally; tiny Orion validation rerun
-pending. Block 3 cleared from the LongBench failure perspective only after
-validation reports clean.
+**Status as of 2026-05-02 (final)**: fix landed; LongBench subtask
+switched from `narrativeqa` to `qasper`; truncation guard kept as a
+safety belt; Orion smoke validated. Block 3 is **cleared from the
+LongBench failure perspective**.
+
+## Decision: switch subtask, do not run truncated NarrativeQA
+
+The original implementation kept `LONGBENCH_SUBTASK = "narrativeqa"`
+and added a 16 384-token truncation guard. That fix solved the OOM
+but introduced a worse problem: NarrativeQA contexts are whole novels
+and the answer span can sit anywhere in the story. Truncating the
+context to 16k tokens means failures driven by truncating the answer
+span are statistically indistinguishable from KV-compression damage,
+which destroys the paired counterfactual that Phase 1's measurement
+methodology is built on.
+
+Decision: switch to `LONGBENCH_SUBTASK = "qasper"` (scientific paper
+QA, contexts ~3-15k tokens). Qasper preserves the long-context
+regime, fits comfortably under both Qwen2.5-7B-Instruct's 32 768
+positional limit and the 16 384 truncation budget, and almost never
+hits the truncation path. The truncation logic stays in place as a
+safety belt for the rare overlong prompt and for any future
+LongBench subtask that creeps near the budget. See the prompt-length
+report (next section) and the smoke validation (below) for evidence.
+
+## Phase 1 prompt-length gate (hard rule)
+
+Before any Phase 1 launch the operator runs:
+
+    .venv/bin/python scripts/phase1_prompt_length_report.py
+
+This loads the deterministic 50-prompt slice for every Phase 1 task,
+applies the chat template, and reports `p50 / p90 / p95 / max`
+chat-templated token lengths plus `n_over_budget` and
+`fraction_over_budget`. If any task's `fraction_over_budget` exceeds
+**5%**, the script exits 2 and the task is **not valid for Phase 1**
+under the current model/budget; the operator must change the
+LongBench subtask, raise the budget (and accept the OOM risk), or
+swap models.
+
+Result on the seed=42, n=50, model=Qwen/Qwen2.5-7B-Instruct,
+budget=16 384, max_new_tokens=512 slice (run 2026-05-02 on Orion;
+see `gold/phase-1-prompt-length-report.json`):
+
+| task | n | pre p50 | pre p90 | pre p95 | pre max | post max | n_over_budget | fraction |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| gsm8k | 50 | 94 | 132 | 148 | 160 | 160 | 0 | 0.0% |
+| humaneval | 50 | 165 | 244 | 290 | 302 | 302 | 0 | 0.0% |
+| ifeval | 50 | 74 | 107 | 118 | 131 | 131 | 0 | 0.0% |
+| longbench_single (qasper) | 50 | 4735 | 8051 | 9739 | 20 079 | 15 808 | 1 | 2.0% |
+
+PASS: every task fits the gate. The single qasper prompt at 20 079
+tokens lands in the truncation guard (post-truncation 15 808 tokens,
+well clear of the 32 768 positional limit and inside the 16 384
+budget plus margin). The other 49 prompts do not need truncation.
 
 ## Context
 
@@ -184,35 +236,51 @@ CPU tests use a stub tokenizer (whitespace tokens, fake ChatML
 overhead). The fix is exercised against the real Qwen tokenizer only
 through the Orion validation rerun below.
 
-## Tiny Orion validation rerun
+## Orion smoke validation (qasper)
 
-Script: `scripts/phase1_longbench_validate.py` (added).
+Once the subtask was switched to qasper, the original "rerun the 6
+failing NarrativeQA prompts" validation was no longer applicable
+(those IDs do not exist in qasper). Replaced with a tiny smoke under
+the regular `phase1_profile.py` path against 3 qasper prompts × 2
+cells.
 
-Purpose: prove the fix on the 6 previously failing prompts under both
-a baseline and one compressed cell, write to a separate output path,
-do not overwrite the profile data.
-
-Validation command (on Orion):
+Smoke command (on Orion):
 
     cd /clustergpu/home/jcampo/herald
-    .venv/bin/python scripts/phase1_longbench_validate.py \
-        --output-root results/phase1_validate \
-        --presses none,streaming_llm \
-        --ratios 0.0,0.875 \
-        --max-new-tokens 512
+    export HTTPS_PROXY=http://127.0.0.1:18080
+    export HTTP_PROXY=http://127.0.0.1:18080
+    .venv/bin/python scripts/phase1_profile.py \
+        --tasks longbench_single \
+        --presses streaming_llm \
+        --ratios 0.875 \
+        --num-prompts 3 \
+        --max-new-tokens 256 \
+        --output-root results/phase1_qasper_smoke \
+        --budget-out /tmp/phase1_qasper_smoke_budget.json \
+        --include-baseline
 
-Validation success criteria:
+Smoke result (2026-05-02, total wall-clock 15 s):
 
-- All 6 baseline runs (`press=none, ratio=0.0`) produce
-  `replay_status = "ok"` and an existing `replay/<run_id>.parquet`.
-- All 6 compressed runs (`press=streaming_llm, ratio=0.875`) likewise
-  produce `replay_status = "ok"`.
-- No schema/parquet failures.
-- `truncation.jsonl` sidecar contains a `truncated=True` line for each
-  of the 6 prompts in each cell.
-- `peak_memory_mb` stays below 24 576 (24 GiB).
+| cell | n_runs | n_failed | gen s/tok | replay s | tokens | peak MiB | replay frac |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| longbench_single / none@0.0 | 3 | 0 | 0.0166 | 0.32 | 54 | 15 191 | 0.265 |
+| longbench_single / streaming_llm@0.875 | 3 | 0 | 0.0171 | 0.34 | 72 | 15 037 | 0.218 |
 
-Result: **pending — to be filled in after the Orion run.**
+PASS: 6/6 ok across both cells, replay completed for every prompt,
+no schema/parquet failures, peak memory ~15 GiB (well under the
+24 GiB headroom rule), no truncation needed on this slice. The fix
+works end-to-end with the qasper subtask.
+
+The original `scripts/phase1_longbench_validate.py` is retained for
+future use (e.g. validating against any subtask-specific failing IDs
+if a new subtask is adopted). The current `qasper` subtask has no
+such fixture because the smoke ran without failures.
+
+Saved artifacts (Orion):
+
+- `results/phase1_qasper_smoke/phase1_profile_summary.json`
+- `results/phase1_qasper_smoke/longbench_single/none/ratio=0.0000/raw/{runs,tokens,replay}/*.parquet`
+- `results/phase1_qasper_smoke/longbench_single/streaming_llm/ratio=0.8750/raw/{runs,tokens,replay}/*.parquet`
 
 ## Remaining risk
 
@@ -234,9 +302,13 @@ Result: **pending — to be filled in after the Orion run.**
 ## Block 3 readiness from the LongBench failure perspective
 
 - Diagnosis: complete.
-- Fix: implemented and CPU-tested.
-- Validation: **pending the Orion rerun.** Block 3 is **not yet cleared**.
-  Once the validation rerun reports 12/12 ok and the truncation sidecar
-  shows the expected entries, Block 3 is cleared from this failure
-  perspective and the launch packet (separate document /
-  `gold/phase-1-block3-launch-packet.md`) governs the rest.
+- Fix: implemented and CPU-tested (truncation guard + ABC hook).
+- Subtask switch: `narrativeqa → qasper`, documented above.
+- Prompt-length gate: PASS for all four tasks at seed 42, n=50.
+- Orion smoke: PASS (6/6 ok, no replay failures, peak ~15 GiB).
+- **Block 3 is cleared from the LongBench failure perspective.**
+
+Outstanding launch-side items remain in
+`gold/phase-1-block3-launch-packet.md` (launcher script, full
+re-profile of the cost budget on the new subtask, ratio-grid
+coverage). None of those are blocked by this diagnosis.

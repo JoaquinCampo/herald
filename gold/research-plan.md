@@ -86,6 +86,14 @@ divergence well-defined.
 - Embedding cosine similarity.
 - Edit distance, ROUGE-L.
 
+Sequence metrics are paired against the uncompressed baseline for the
+same prompt. They measure output drift and semantic drift; they do not
+by themselves prove task failure. ROUGE-L / edit / length difference
+are deterministic v1 metrics. Embedding cosine should be computed when
+the dependency environment is available and reported separately from
+lexical overlap because paraphrase can lower ROUGE-L without lowering
+semantic quality.
+
 ### Outcome level (paired counterfactual)
 
 Track all four cells:
@@ -104,10 +112,46 @@ Report:
 The "compression occasionally helps" cell prevents the paper from
 sounding one-sided and is statistically cleaner.
 
+Outcome correctness is task-specific and must use real evaluators:
+GSM8K exact-answer extraction, HumanEval execution/pass-fail, Qasper
+F1/EM, and IFEval constraint scoring. Presence checks are not valid
+correctness labels. If a task evaluator is saturated or placeholder-
+only, correctness is reported as unavailable for that task rather than
+silently treated as "all correct."
+
 ### Diagnostic tags (categorical, not primary labels)
 
 Looping, non-termination, format break, drift. Used to characterize
 *what kind* of failure occurred, not as training signal.
+
+### Canonical run-level damage table
+
+Every phase after the fixed-ratio sweep should build one canonical
+`run_damage.parquet` table with one row per compressed run, joined to
+the paired uncompressed baseline. This is the table used for
+measurement validation and for evaluating whether a predictor matters
+to users.
+
+Required columns:
+
+- Metadata: `run_id`, `baseline_run_id`, `task`, `prompt_id`, `press`,
+  `compression_ratio`.
+- Intrinsic trajectory damage: `sum_kl`, `sum_js`, `nll_ratio`,
+  `first_divergence_point`.
+- Sequence drift: `rouge_l_drop`, edit-distance ratio, length-diff
+  ratio, and embedding-cosine drop when available.
+- Diagnostic tags: looping, non-termination, format break, drift.
+- Task quality where available: baseline score, compressed score,
+  `gross_harm`, `gross_help`, and task-specific score deltas.
+
+This table makes the distinction explicit:
+
+- Intrinsic replay labels are suitable training targets because they
+  are defined for every task.
+- Sequence and semantic drift are non-circular validators that work
+  without task graders.
+- Task correctness is the strongest validator, but only where a real
+  evaluator exists.
 
 ### Predictor target discipline
 
@@ -193,6 +237,9 @@ No science claims here. Prevents wasting GPU weeks on a broken schema.
 
 - Multi-resolution damage metrics for every (prompt, press, ratio)
   cell
+- Canonical `run_damage.parquet` joining intrinsic trajectory damage,
+  sequence/semantic drift, diagnostic tags, and task-quality deltas
+  where evaluators exist
 - Segment metrics and cost metrics for every fixed-ratio cell
 - Alignment matrix figure with bootstrap CIs
 
@@ -202,6 +249,16 @@ stable across at least 3 of 4 tasks. Reported via Spearman correlation
 AND AUROC/AUPRC for intrinsic-to-extrinsic classification (e.g., does
 future_max_JS_H classify baseline_correct AND compressed_wrong; does
 trajectory NLL ratio classify diagnostic failures).
+
+Post-Phase-1 clarification: if a task's correctness field is
+instrumentation-saturated because the evaluator is a placeholder
+(e.g., presence check), the strict outcome-harm criterion is reported
+as undefined for that task, not as a scientific failure of the
+intrinsic signal. The methodological follow-up is to evaluate the same
+bar against continuous severity columns in `run_damage.parquet` and to
+wire the proper deterministic evaluator. The pre-registered strict
+reading still remains reportable; this clarification prevents a
+placeholder grader from being mistaken for user-facing correctness.
 
 **Fallback**: "Negative methodology" paper. Five plausible measures of
 compression damage; how they fail to align; why compression damage is
@@ -289,6 +346,30 @@ measurement methodology.
 
 ## Phase 2: Predictor
 
+**Status after Phase 2 baseline sweep (2026-05-05)**:
+`gold/phase-2-results.md` records a passing result. Logistic
+regression over all cheap online features (`lr_all_cheap`: Tier 0 +
+rolling/EWMA + position + ratio) beats the best entropy/EWMA-style
+single-feature baseline (`entropy_mean_8`) by >= 0.05 AUROC on every
+split x horizon cell:
+
+- Held-out prompts: min delta +0.087.
+- Held-out ratios: min delta +0.054.
+- Held-out presses: min delta +0.062.
+- Held-out tasks: min delta +0.073.
+
+Per-run aggregation is also meaningful: max OOF score correlates with
+`rouge_l_drop` (Spearman 0.73), `sum_js` (0.74), looping (AUROC 0.81),
+and non-termination (AUROC 0.84). This validates the predictor as a
+run/segment risk estimator.
+
+Important limitation: lead-time analysis against looping /
+non-termination onsets does not pass. The JS-trained token predictor
+does not fire before those tag onsets; the score is inverted near the
+onset because collapsed loops can have low future JS. Therefore the
+v1 controller should be framed around segment/run risk gating, not
+precise "loop will start in N tokens" onset alarms.
+
 **Inputs (Tier 0 + Tier 0.5 + Tier 1, no internals)**:
 
 - Tier 0: top-1 prob, entropy, top-k concentration, log-rank slope of
@@ -342,12 +423,19 @@ they are not the headline training target.
 
 **Models, in increasing complexity**:
 
-1. Logistic regression on Tier 0 (sanity).
-2. XGBoost / LightGBM on full feature set (primary).
-3. Small GRU on the streaming feature sequence (only if XGBoost leaves
+1. Logistic regression on Tier 0 (sanity; failed the 0.05 bar against
+   entropy in Phase 2).
+2. Logistic regression on all cheap features (passed the Phase 2
+   predictor criterion; current v1 baseline to beat).
+3. XGBoost / LightGBM on full feature set (next-tier model; run only
+   to measure headroom over `lr_all_cheap`, not to rescue the core
+   claim).
+4. Small GRU on the streaming feature sequence (only if XGBoost leaves
    obvious headroom on lead time or calibration).
 
-Stop at the first model that decisively beats baselines.
+Stop at the first model that decisively beats baselines unless the
+next model is needed to address a known limitation (currently:
+lead-time/onset behavior, calibration, or controller utility).
 
 **Calibration**: Reliability diagrams, ECE. Split conformal intervals
 as optional deployment polish, not headline (coverage guarantees do
@@ -374,14 +462,49 @@ is weak and must be scoped accordingly.
 outcomes plus sensitivity analysis on T, W, K. Heuristic-dependence is
 moved, not eliminated; defended by the sensitivity study.
 
+**User-facing validation**: after per-token predictions are aggregated
+to per-run scores (e.g., max risk, mean top-k risk, count above
+threshold), evaluate them against `run_damage.parquet`:
+
+- Spearman correlation with continuous drift/severity metrics.
+- AUROC/AUPRC against diagnostic catastrophic tags.
+- AUROC/AUPRC against task outcome harm where real evaluators exist.
+- Calibration/reliability against the chosen intervention threshold.
+
+This validation is not the training objective; it is the evidence that
+the intrinsic target corresponds to damage a user would notice.
+
 **Success criterion**: Best predictor's AUROC on held-out ratio
 exceeds best entropy/EWMA baseline by >= 0.05, with paired bootstrap
 CI not crossing zero. Also report the margin against position-only and
 ratio-only baselines; if either dominates, the result shifts toward a
 measurement paper or a per-regime calibration paper.
 
+Post-Phase-2 clarification: the point estimates pass on every
+split/horizon. Before paper submission, add paired-bootstrap CIs on the
+cross-fold mean deltas to make the >=0.05 decision CI-backed rather
+than point-estimate-only.
+
 **Fallback**: "Compression damage is not predictable from local logit
 features beyond chance baselines." Still a meaningful contribution.
+
+### Phase 2b: Model / Label Follow-Up
+
+Phase 2 passed, but four follow-ups are required before locking the
+controller design:
+
+- **Headroom check**: train XGBoost / LightGBM on the same dataset and
+  compare against `lr_all_cheap`, especially on held-out ratio and
+  held-out press.
+- **Label-family check**: repeat the baseline sweep for
+  `future_sum_kl_H` and `future_max_js_H` (already present in
+  `phase2_tokens.parquet`) and compare lead-time/per-run validation
+  against the current `future_sum_js_H` label.
+- **Segment-risk check**: aggregate predictions over K in {8,16,32}
+  and evaluate segment/run risk, because exact tag-onset lead time is
+  weak under the JS label.
+- **CI upgrade**: add paired-bootstrap confidence intervals for
+  predictor-vs-baseline deltas.
 
 ## Phase 3: Generalization
 
@@ -425,10 +548,12 @@ each press has a written intervention vocabulary before controller
 training begins. The controller is not allowed to use an action that
 was not validated or bounded by the probe.
 
-**Controller design (per-segment gating, primary)**:
+**Controller design (segment/run risk gating, primary)**:
 
-- Every K tokens, compute risk from the previous window.
-- If risk > threshold, relax compression for next K tokens.
+- Every K tokens, compute risk from the previous window and/or the
+  maximum predicted risk seen so far in the run.
+- If segment/run risk > threshold, relax compression for next K tokens
+  or switch to a safer mode for the remainder of the generation.
 - Evaluate K in {8, 16, 32}.
 - Policies:
   - StreamingLLM: disable compression or lower ratio for next segment.
@@ -436,6 +561,12 @@ was not validated or bounded by the probe.
     or fall back to lower compression ratio.
 
 The segment design also makes compute accounting cleaner.
+
+Phase 2's lead-time result changes the emphasis: v1 should not claim
+precise onset prediction for looping/non-termination. It should test
+whether accumulated segment/run risk can drive a useful compression
+policy. Exact onset prediction remains a label/model follow-up, not a
+precondition for the controller demo.
 
 **Per-token gating**: included as oracle/upper-bound ablation only,
 not as deployable controller.
@@ -484,16 +615,19 @@ goes in v2.
 
 ## Implementation Priority
 
-Phase 0 is complete. The next concrete blockers before launching
-Phase 1 are:
+Phase 0, Phase 1, and the Phase 2 baseline predictor are complete.
+The next concrete blockers are:
 
-1. Add segment-level metric and cost instrumentation to the metrics
-   substrate.
-2. Refactor generation behind the policy abstraction while keeping
-   `FixedRatioPolicy` as the default path.
-3. Write the intervention-probe pre-registration document:
-   press-specific action table, stratum rules, offsets, endpoints, and
-   decision rules.
-4. Run the first Phase 1 cells in early-stop batches to verify the
-   expanded low-ratio grid finds a non-saturated regime before
-   launching the full sweep.
+1. Add paired-bootstrap CIs for the cross-fold predictor-vs-baseline
+   deltas in Phase 2.
+2. Run Phase 2b: XGBoost / LightGBM headroom check plus alternative
+   label families (`future_sum_kl`, `future_max_js`) and segment-risk
+   aggregation.
+3. Update paper figures/tables from `gold/phase-2-results.md`:
+   baseline table, split-transfer table, per-run validation table, and
+   lead-time limitation.
+4. Decide whether to run the Phase 1 intervention probe now or roll it
+   into Phase 4 as the first controller feasibility experiment.
+5. For control, implement the smallest segment-risk gating demo on one
+   mask-based press first, with random matched-compute gating as the
+   load-bearing control.

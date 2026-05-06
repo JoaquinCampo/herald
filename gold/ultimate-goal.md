@@ -46,6 +46,11 @@ methods.
   (BERTScore, embedding cosine), task-level outcome change (paired
   accuracy with all four cells), human judgment on calibrated
   rubrics.
+- **Canonical run-level damage table**: every compressed run is paired
+  with its uncompressed baseline and scored on intrinsic trajectory
+  damage, lexical/semantic drift, diagnostic tags, and task-quality
+  deltas where real evaluators exist. This table is what lets the
+  project distinguish "the model changed" from "the answer got worse."
 - **Cross-resolution alignment**: the alignment matrix shows when
   cheap proxies are faithful to expensive ground truth and where the
   proxies break. This is what lets practitioners pick the right
@@ -67,7 +72,9 @@ across models, tasks, and compression methods.
   applicable.
 - **Lead time analysis**: the distribution of "predicted onset minus
   actual onset" across runs. Lead time is what makes the predictor
-  useful, not just accurate.
+  useful, not just accurate. If exact onset lead time is weak for a
+  failure family, evaluate segment/run risk as the deployable control
+  signal instead of forcing an onset framing.
 - **Generalization across the full matrix**: held-out model family,
   held-out task, held-out compression method, held-out ratio. The
   predictor that only works on the training distribution is not the
@@ -100,6 +107,10 @@ deployment regimes.
 - **Per-segment and per-token gating**: deployable per-segment as the
   practical controller, per-token as the oracle upper bound on what
   responsiveness buys.
+- **Segment/run risk gating**: the controller may act on accumulated
+  risk over a segment or over the run so far, not only on a precise
+  predicted onset. This is the practical path when failure modes such
+  as looping have weak token-level pre-onset signatures.
 - **Pareto curves vs every meaningful baseline**: fixed compression,
   no compression, random gating at matched compute (the load-bearing
   control), oracle gating with ground-truth labels (upper bound).
@@ -201,6 +212,9 @@ The ultimate version therefore requires:
 
 - Strong baselines beaten, especially entropy/EWMA, position-only, and
   single-feature thresholds.
+- A canonical run-level damage table showing that intrinsic predictor
+  scores align with lexical/semantic drift, diagnostic catastrophes,
+  and task-quality loss where deterministic graders exist.
 - Cross-compressor transfer measured as a first-class result.
 - Cross-ratio, cross-task, and cross-model limits reported honestly.
 - Failure definitions grounded in prior literature where possible.

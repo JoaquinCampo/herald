@@ -115,6 +115,29 @@ Diagnostic tags are useful only if they are defensible.
 If a threshold is heuristic, label it as such and include sensitivity
 analysis rather than pretending it is canonical.
 
+## Required Damage Validation Table
+
+Before Phase 2 claims are written, build a canonical per-run
+`run_damage.parquet` table. This table is the bridge between intrinsic
+training labels and user-facing damage.
+
+Minimum contents:
+
+- Intrinsic trajectory damage from matched-prefix replay.
+- Sequence drift versus the paired uncompressed output: ROUGE-L drop,
+  edit/length difference, and embedding-cosine drop when available.
+- Diagnostic tags, clearly separated from primary labels.
+- Task-quality deltas where deterministic evaluators exist.
+
+Correctness labels must come from real task evaluators. Placeholder
+presence checks are not valid correctness labels. If an evaluator is
+saturated or missing, report correctness as unavailable for that task
+and validate against sequence/semantic severity until the evaluator is
+fixed.
+
+The predictor may train on intrinsic replay-derived labels, but its
+paper claim must be validated against this run-level damage table.
+
 ## Required Feature-Information Check
 
 Before making a strong predictor claim, quantify whether cheap online
@@ -150,6 +173,19 @@ Minimum Phase 4 evidence:
 
 Without this, the paper should frame control as future work and lean on
 measurement + predictability instead.
+
+## Phase 2 Lead-Time Scope Note
+
+Phase 2 validates cheap-feature predictability and cross-split
+transfer, but its JS-trained token predictor does not currently provide
+clean pre-onset warning for looping / non-termination tags. This does
+not invalidate the predictor contribution: per-run max score strongly
+aligns with `rouge_l_drop`, `sum_js`, looping, and non-termination.
+
+It does constrain the control claim. Until an alternative label/model
+demonstrates true pre-onset lead time, the v1 controller should be
+framed as segment/run risk gating rather than precise onset
+prediction.
 
 ## Decision Rules For Paper Framing
 
