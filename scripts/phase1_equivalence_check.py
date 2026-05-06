@@ -20,7 +20,7 @@ import polars as pl
 
 
 def main() -> int:
-    from herald.config import ExperimentConfig, RunResult
+    from herald.config import ExperimentConfig
     from herald.experiment import load_model, run_single_with_replay
     from herald.metrics.io import PerRunPaths
     from herald.tasks import DEFAULT_TASK
@@ -97,13 +97,15 @@ def main() -> int:
     if list(rr.generated_token_ids) != list(gold["generated_token_ids"]):
         failures.append("generated_token_ids differ")
     if rr.num_tokens_generated != gold["num_tokens_generated"]:
+        gold_n = gold["num_tokens_generated"]
         failures.append(
             f"num_tokens_generated drift: "
-            f"new={rr.num_tokens_generated} gold={gold['num_tokens_generated']}"
+            f"new={rr.num_tokens_generated} gold={gold_n}"
         )
     if rr.stop_reason != gold["stop_reason"]:
+        gold_sr = gold["stop_reason"]
         failures.append(
-            f"stop_reason drift: new={rr.stop_reason} gold={gold['stop_reason']}"
+            f"stop_reason drift: new={rr.stop_reason} gold={gold_sr}"
         )
     if rr.replay_status != "ok":
         failures.append(f"replay_status={rr.replay_status}")
