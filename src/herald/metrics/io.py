@@ -192,13 +192,34 @@ def read_runs(path: Path) -> pl.DataFrame:
     return pl.read_parquet(path)
 
 
+def _collect_raw_dirs(root: Path, kind: str) -> list[Path]:
+    """Return raw/<kind>/ directories under `root`.
+
+    Supports two layouts:
+      - Phase 0 (flat): `<root>/raw/<kind>/`.
+      - Phase 1 (nested per cell):
+        `<root>/<task>/<press>/ratio=*/raw/<kind>/`.
+    """
+    flat = root / "raw" / kind
+    if flat.is_dir():
+        return [flat]
+    return sorted(root.glob(f"*/*/ratio=*/raw/{kind}"))
+
+
 def finalize_dataset(root: Path) -> None:
-    """Concatenate raw/<kind>/*.parquet into final/."""
-    raw = root / "raw"
+    """Concatenate raw/<kind>/*.parquet into final/.
+
+    Handles both the Phase 0 flat layout (`<root>/raw/<kind>/`) and the
+    Phase 1 nested per-cell layout
+    (`<root>/<task>/<press>/ratio=*/raw/<kind>/`).
+    """
     final = root / "final"
     final.mkdir(parents=True, exist_ok=True)
 
-    runs_files = sorted((raw / "runs").glob("*.parquet"))
+    runs_dirs = _collect_raw_dirs(root, "runs")
+    runs_files: list[Path] = []
+    for d in runs_dirs:
+        runs_files.extend(sorted(d.glob("*.parquet")))
     if runs_files:
         runs_df = pl.concat(
             [pl.read_parquet(p) for p in runs_files],
@@ -209,7 +230,10 @@ def finalize_dataset(root: Path) -> None:
     for kind in ("tokens", "replay"):
         out_dir = final / kind
         out_dir.mkdir(parents=True, exist_ok=True)
-        files = sorted((raw / kind).glob("*.parquet"))
+        kind_dirs = _collect_raw_dirs(root, kind)
+        files: list[Path] = []
+        for d in kind_dirs:
+            files.extend(sorted(d.glob("*.parquet")))
         if not files or not runs_files:
             continue
         runs_meta = pl.read_parquet(final / "runs.parquet").select(
