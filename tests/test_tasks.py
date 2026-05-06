@@ -243,15 +243,25 @@ class TestLongBenchFormatPrompt:
         assert meta["reason"] == "missing_raw_fields"
         assert question == prompt["question"]
 
-    def test_failing_prompt_ids_fixture(self) -> None:
-        """Documented failing prompt IDs from Phase 1 Block 2 Option B.
+    def test_historical_narrativeqa_failures_documented(self) -> None:
+        """Tombstone fixture: historical NarrativeQA failures.
 
-        Kept here as a fixture so the diagnosis is grep-able from the
-        test suite. These six prompt IDs OOM'd in the matched-prefix
-        replay forward on Qwen2.5-7B-Instruct in the Block 2 profile.
-        See gold/phase-1-longbench-failure-diagnosis.md.
+        Phase 1 Block 2 Option B with ``LONGBENCH_SUBTASK = "narrativeqa"``
+        produced six deterministic CUDA-OOM-during-replay failures on
+        these prompt IDs (chat-templated length ~50k tokens, replay
+        forward demands 17-18 GiB activations on a 32 GiB GPU). After
+        the design discussion documented in
+        ``gold/phase-1-longbench-failure-diagnosis.md`` Phase 1 was
+        switched to ``LONGBENCH_SUBTASK = "qasper"`` because
+        truncating novel-length contexts to 16k tokens contaminated
+        the paired counterfactual: failures driven by truncating the
+        answer span are indistinguishable from KV-compression damage.
+        The truncation guard stays in place as a safety belt; qasper
+        rarely (ideally never) hits it. These IDs no longer match
+        anything the current loader returns and are documented here
+        so a future regression is traceable.
         """
-        failing = {
+        historical_narrativeqa_failures = {
             "longbench_1842b0ff1882e545a6d41d5caf67bba5312872423fa48e74",
             "longbench_32e116c58a3c59fc170aa5f4e1dde414c8f3881872889826",
             "longbench_7570a52d69ab93c5f54eba4c45d44a3411650c1e4694760a",
@@ -259,7 +269,7 @@ class TestLongBenchFormatPrompt:
             "longbench_df6c6350671baab25c635bfa495eea90c69a7d201b5fe460",
             "longbench_fbeb825de92309788269da33aa6bd189c7b1d46b997746f4",
         }
-        assert len(failing) == 6
+        assert len(historical_narrativeqa_failures) == 6
 
 
 class TestNonLongBenchFormatPromptUnchanged:

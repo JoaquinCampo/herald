@@ -75,3 +75,18 @@ class TestCostWatchdog:
         wd.observe(_result(0.09))
         assert wd.history == [0.10, 0.12, 0.09]
         assert all(math.isfinite(x) for x in wd.history)
+
+    def test_min_observations_blocks_early_trip(self) -> None:
+        # 3 consecutive breaches but min_observations=5 -> no trip yet
+        wd = CostWatchdog(
+            predicted_s_per_token=0.10,
+            tolerance=1.25,
+            consecutive_breaches=3,
+            min_observations_before_trip=5,
+        )
+        for _ in range(3):
+            assert wd.observe(_result(0.50)) is False
+        # 4th breach still below the warm-up gate
+        assert wd.observe(_result(0.50)) is False
+        # 5th breach meets the gate AND the streak -> trip
+        assert wd.observe(_result(0.50)) is True

@@ -645,11 +645,19 @@ class CostWatchdog:
     predicted_s_per_token: float
     tolerance: float = 1.25
     consecutive_breaches: int = 3
+    # Don't even consider tripping until this many finite observations
+    # have accumulated. Avoids overreacting on the first one or two
+    # warm-up prompts of a cell.
+    min_observations_before_trip: int = 3
     history: list[float] = field(default_factory=list)
     _streak: int = 0
 
     def observe(self, result: RunResult) -> bool:
-        wpt = result.wall_clock_per_token
+        return self.observe_wpt(result.wall_clock_per_token)
+
+    def observe_wpt(self, wpt: float) -> bool:
+        """Same as `observe` but takes the raw wpt directly. Lets the
+        Block 3 sweep avoid materializing a RunResult from parquet."""
         if not math.isfinite(wpt) or wpt <= 0.0:
             return False
         self.history.append(wpt)
@@ -658,6 +666,8 @@ class CostWatchdog:
             self._streak += 1
         else:
             self._streak = 0
+        if len(self.history) < self.min_observations_before_trip:
+            return False
         return self._streak >= self.consecutive_breaches
 
 

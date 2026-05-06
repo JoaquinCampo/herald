@@ -245,10 +245,16 @@ LONGBENCH_SYSTEM_PROMPT = (
     "answer the question. Be concise."
 )
 
-# LongBench has many subtasks; we use narrativeqa as the headline
-# single-document QA. Switching to qasper / multifieldqa_en is a
-# one-line change here.
-LONGBENCH_SUBTASK = "narrativeqa"
+# LongBench has many subtasks. Phase 1 uses `qasper` (scientific
+# paper QA): contexts in the ~3-15k token range fit comfortably under
+# Qwen2.5-7B-Instruct's 32 768 positional limit and below the 16 384
+# truncation guard, so almost no prompt is truncated. NarrativeQA
+# (whole novels, ~50k+ tokens) was rejected for Phase 1 because the
+# resulting truncation contaminates the paired counterfactual:
+# failures driven by truncating away the answer span are
+# indistinguishable from KV-compression damage. See
+# gold/phase-1-longbench-failure-diagnosis.md for the decision.
+LONGBENCH_SUBTASK = "qasper"
 
 # Total chat-templated prompt-token budget for LongBench prompts.
 # Phase 1 Block 2 Option B exposed deterministic CUDA OOM in the
