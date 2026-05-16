@@ -43,9 +43,7 @@ def test_aggregate_per_run_emits_required_columns() -> None:
 
 
 def test_aggregate_per_run_handles_short_runs() -> None:
-    df = pl.DataFrame(
-        {"run_id": ["A"], "score": [0.42]}
-    )
+    df = pl.DataFrame({"run_id": ["A"], "score": [0.42]})
     out = aggregate_per_run(df, top_k=10, threshold=0.5)
     rA = out.to_dicts()[0]
     assert rA["max_score"] == 0.42
@@ -70,9 +68,7 @@ def test_correlate_with_run_damage_returns_spearman_and_auroc() -> None:
             "rouge_l_drop": [0.1, 0.2, 0.3, 0.4, 0.5],
         }
     )
-    out = correlate_with_run_damage(
-        per_run, rd, score_col="max_score"
-    )
+    out = correlate_with_run_damage(per_run, rd, score_col="max_score")
     # Spearman: max_score and quality_delta are perfectly rank-aligned
     assert out["spearman_quality_delta"] == pytest.approx(1.0)
     # AUROC vs gross_harm_final: 0.1, 0.3 are negative; 0.5, 0.7, 0.9 positive
@@ -99,11 +95,7 @@ def test_correlate_with_run_damage_drops_null_validators() -> None:
             "rouge_l_drop": [0.1, 0.2, 0.3, 0.4],
         }
     )
-    out = correlate_with_run_damage(
-        per_run, rd, score_col="max_score"
-    )
+    out = correlate_with_run_damage(per_run, rd, score_col="max_score")
     # n_used_quality_delta = 2 (only A and C have it)
     assert out["n_used_quality_delta"] == 2
     assert out["n_used_gross_harm_final"] == 2
-
-

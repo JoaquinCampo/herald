@@ -576,6 +576,7 @@ def _build_baseline_scores(
     train_y: np.ndarray,
     test_y: np.ndarray,
     drop_press_feature: bool,
+    extra_features: tuple[str, ...] = (),
 ) -> dict[str, np.ndarray]:
     """Compute per-baseline scores on the test set."""
     n_test = test_df.height
@@ -667,6 +668,23 @@ def _build_baseline_scores(
         if s is not None:
             out["lr_all_cheap"] = s
 
+    # LR on all cheap features + caller-supplied extras (e.g. EWS).
+    # Extras are unioned with the existing cheap set; columns missing
+    # from the frame are silently skipped.
+    if extra_features:
+        extras_present = [c for c in extra_features if c in train_df.columns]
+        plus = list(all_cheap) + [
+            c for c in extras_present if c not in all_cheap
+        ]
+        if plus and len(plus) > len(all_cheap):
+            s = _logreg_score(
+                train_df.select(plus).fill_null(0.0).to_numpy().astype(float),
+                train_y,
+                test_df.select(plus).fill_null(0.0).to_numpy().astype(float),
+            )
+            if s is not None:
+                out["lr_all_cheap_plus_extras"] = s
+
     return out
 
 
@@ -682,6 +700,7 @@ def collect_fold_predictions(
         "feature::entropy_mean_8",
     ),
     group_col: str = "run_id",
+    extra_features: tuple[str, ...] = (),
 ) -> list[dict[str, Any]]:
     """Return per-fold predictions for paired CI computation.
 
@@ -737,6 +756,7 @@ def collect_fold_predictions(
                 keep_train_y,
                 keep_test_y,
                 drop_press_feature=drop_press,
+                extra_features=extra_features,
             )
             entry: dict[str, Any] = {
                 "split_kind": kind,
@@ -762,6 +782,7 @@ def evaluate_split(
     n_prompt_folds: int = 5,
     n_boot: int = DEFAULT_N_BOOT,
     seed: int = DEFAULT_BOOT_SEED,
+    extra_features: tuple[str, ...] = (),
 ) -> list[dict[str, Any]]:
     """For each split kind / fold / baseline, compute AUROC + AUPRC.
 
@@ -833,6 +854,7 @@ def evaluate_split(
                 keep_train_y,
                 keep_test,
                 drop_press_feature=drop_press,
+                extra_features=extra_features,
             )
             for bname, sarr in scores.items():
                 if sarr.shape[0] != keep_test.shape[0]:
