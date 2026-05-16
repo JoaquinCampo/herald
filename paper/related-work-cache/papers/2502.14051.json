@@ -1,0 +1,25 @@
+{
+  "arxiv_id": "2502.14051",
+  "bib_key": "rocketkv",
+  "title": "RocketKV: Accelerating Long-Context LLM Inference via Two-Stage KV Cache Compression",
+  "year": 2025,
+  "evidence_quality": "full_pdf",
+  "source_url": "https://arxiv.org/abs/2502.14051",
+  "tier": 2,
+  "one_line_claim": "Two-stage KV cache compression combining permanent token eviction and hybrid sparse attention achieves up to 400x compression and 3.7x speedup with negligible accuracy loss.",
+  "method_summary": "RocketKV applies SnapKV for coarse-grain permanent KV token eviction on input sequences, then uses hybrid sparse attention (HSA) with top-k selection and two-dimensional dimensionality reductions to perform fine-grain dynamic token selection during decoding. A multi-turn variant preserves all KV tokens across turns while filtering within turns.",
+  "key_findings": [
+    {"finding": "Existing KV token dropping methods fail to match oracle top-k attention accuracy; accuracy drops significantly below 1024 token budget.", "quote": "We observe that the accuracy of all four methods drops significantly as the token budget becomes lower than 1024", "page": 1, "section": "Introduction"},
+    {"finding": "RocketKV achieves compression ratio up to 400x with end-to-end speedup 3.7x and peak memory reduction 32.6%.", "quote": "compression ratio of up to 400x, end-to-end speedup of up to 3.7x as well as peak memory reduction of up to 32.6% in the decode phase on an NVIDIA A100 GPU", "page": 1, "section": "Abstract"},
+    {"finding": "Maintains comparable accuracy to full KV across LongBench, RULER, and Needle-in-a-Haystack while outperforming other compression methods.", "quote": "RocketKV consistently demonstrates comparable accuracy with full KV attention while significantly lowering memory bandwidth and capacity usage with a compression ratio of up to 400x", "page": 8, "section": "Experiments"}
+  ],
+  "relation_to_herald": {
+    "shared": "Both address KV cache compression as a source of inference degradation and operate during the decode phase.",
+    "differs_on": [
+      "RocketKV proposes a new compression method; HERALD treats any compressor as a black box and predicts failure modes from logit signals.",
+      "RocketKV maintains accuracy under compression through token selection heuristics; HERALD detects when compression has caused catastrophic failures.",
+      "RocketKV measures end-to-end speedup; HERALD measures early-warning prediction accuracy for collapse scenarios."
+    ]
+  },
+  "use_in_appendix": {"section": "kv_cache_compression_landscape", "weight": "secondary"}
+}

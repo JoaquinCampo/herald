@@ -1,0 +1,25 @@
+{
+  "arxiv_id": "2406.02069",
+  "bib_key": "pyramidkv",
+  "title": "Dynamic KV Cache Compression Based on Pyramidal Information Funneling",
+  "year": 2024,
+  "evidence_quality": "abstract_only",
+  "source_url": "https://arxiv.org/abs/2406.02069",
+  "tier": 2,
+  "one_line_claim": "LLMs process long contexts via pyramidal attention funneling; KV cache can be compressed layer-wise (more in lower layers, less in upper) to retain only 12% while maintaining full performance.",
+  "method_summary": "PyramidKV observes that attention disperses in lower layers, progressively consolidates in middle layers, and focuses on critical tokens in upper layers. Dynamically allocates different KV cache sizes across layers rather than uniform sizes, prioritizing critical tokens and attention sinks in higher layers.",
+  "key_findings": [
+    {"finding": "PyramidKV retains only 12% of the full KV cache while matching complete cache performance.", "quote": "Retains only 12% of the full KV cache while matching complete cache performance", "page": null, "section": "Abstract"},
+    {"finding": "At 0.7% cache retention, PyramidKV outperforms competing compression methods by up to 20.5% on TREC.", "quote": "at 0.7% cache retention...up to a 20.5 absolute accuracy improvement on TREC dataset", "page": null, "section": "Abstract"},
+    {"finding": "On Needle-in-a-Haystack, LLAMA-3-70B achieves 100% accuracy retaining only 128 KV cache entries.", "quote": "LLAMA-3-70B model achieves 100.0 Acc. performance while retaining only 128 KV cache entries", "page": null, "section": "Abstract"}
+  ],
+  "relation_to_herald": {
+    "shared": "Both address KV-cache compression in LLM inference and evaluate on long-context benchmarks.",
+    "differs_on": [
+      "PyramidKV actively designs a compression strategy; HERALD predicts failure onset from logit signals without modifying the compressor.",
+      "PyramidKV uses layer-wise attention patterns; HERALD uses token-level log-probability and logit distribution features.",
+      "PyramidKV is a compression algorithm; HERALD is a failure detector designed to work with any compression method as a black box."
+    ]
+  },
+  "use_in_appendix": {"section": "kv_cache_compression_landscape", "weight": "primary"}
+}

@@ -1,0 +1,25 @@
+{
+  "arxiv_id": "2510.01290",
+  "bib_key": "thinkv",
+  "title": "Thought-Adaptive KV Cache Compression for Efficient Reasoning Models",
+  "year": 2025,
+  "evidence_quality": "abstract_only",
+  "source_url": "https://arxiv.org/abs/2510.01290",
+  "tier": 2,
+  "one_line_claim": "Hybrid quantization-eviction KV cache compression that preserves high-precision tokens from critical reasoning steps while discarding less important ones, achieving up to 5.8x throughput improvement.",
+  "method_summary": "ThinKV applies hybrid quantization and eviction to KV caches by analyzing attention sparsity to identify thought types within chain-of-thought reasoning. Tokens from critical reasoning steps are preserved at high precision while tokens from less critical thoughts are progressively evicted. A custom kernel extends PagedAttention to enable efficient memory reuse without compaction overhead.",
+  "key_findings": [
+    {"finding": "ThinKV achieves near-lossless accuracy with less than 5% of the original KV cache size.", "quote": "near-lossless accuracy with less than 5% of the original KV cache", "page": null, "section": "Abstract"},
+    {"finding": "Delivers up to 5.8x higher inference throughput compared to state-of-the-art baselines.", "quote": "up to 5.8x higher inference throughput over state-of-the-art baselines", "page": null, "section": "Abstract"},
+    {"finding": "Attention sparsity patterns reveal distinct thought types with varying importance within chain-of-thought reasoning.", "quote": "attention sparsity reveals distinct thought types with varying importance within the CoT", "page": null, "section": "Abstract"}
+  ],
+  "relation_to_herald": {
+    "shared": "Both target KV-cache compression in LLM inference and identify token-level importance signals (attention patterns vs. logit features) to guide compression or hazard decisions.",
+    "differs_on": [
+      "ThinKV uses attention sparsity as the compression signal; HERALD uses per-token logit distributions and entropy as failure predictors.",
+      "ThinKV applies selective quantization and eviction; HERALD predicts catastrophic failures to enable intervention rather than applying static compression.",
+      "ThinKV's compression decisions are deterministic from attention patterns; HERALD's prediction is probabilistic via XGBoost on time-series logit features."
+    ]
+  },
+  "use_in_appendix": {"section": "adaptive_controller_inference", "weight": "secondary"}
+}

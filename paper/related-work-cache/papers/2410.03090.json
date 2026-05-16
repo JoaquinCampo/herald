@@ -1,0 +1,43 @@
+{
+  "arxiv_id": "2410.03090",
+  "bib_key": "uncomp",
+  "title": "UNComp: Uncertainty-aware KV-Cache Compression for Long-Context LLM Inference",
+  "year": 2024,
+  "evidence_quality": "full_pdf",
+  "source_url": "https://arxiv.org/abs/2410.03090",
+  "tier": 1,
+  "one_line_claim": "Proposes truncated matrix entropy to measure uncertainty in token representations, enabling adaptive two-stage KV-cache compression that achieves 4.74% cache retention while maintaining quality.",
+  "method_summary": "UNComp measures uncertainty in hidden states and attention heads using truncated matrix entropy (derived from spectral decomposition). It applies a two-stage compression strategy: first, evicts low-entropy hidden states based on a learned threshold; second, compresses KV heads using per-head entropy scores with dynamic token eviction. The method is tested on Llama2/3 and Qwen2.5 models across LongBench tasks.",
+  "key_findings": [
+    {
+      "finding": "Achieves extreme compression with minimal quality degradation: 4.74% compression ratio while maintaining performance comparable to full KV-cache on long-context benchmarks.",
+      "quote": "a 4.74% compression ratio",
+      "section": "Abstract",
+      "page": null
+    },
+    {
+      "finding": "Two-stage compression strategy identifies and preserves high-entropy heads (retrieval heads/layers) that are critical for maintaining model performance.",
+      "quote": "we propose a two-stage compression strategy... adaptively selecting high-entropy hidden states and KV pairs based on their information content measured by TME",
+      "section": "Section 3.3",
+      "page": null
+    },
+    {
+      "finding": "Truncated matrix entropy (TME) provides a theoretically grounded uncertainty measure that outperforms simpler alternatives in extreme compression scenarios, with superiority demonstrated over CHAI and other baselines.",
+      "quote": "truncated matrix entropy (TME), a novel metric to measure uncertainty in matrices by quantifying information retained after truncation... comprehensive experiments on LongBench demonstrate the superiority of UNComp over existing methods",
+      "section": "Section 1 (Introduction)",
+      "page": null
+    }
+  ],
+  "relation_to_herald": {
+    "shared": "Both leverage per-token distributional signals (entropy, logit variance) as runtime features to guide model behavior Both operate during generation without retraining, extracting information from forward pass outputs Both focus on long-context or memory-intensive scenarios where computational/memory efficiency is critical",
+    "differs_on": [
+      "Goal: UNComp optimizes compression efficiency during normal inference; HERALD predicts catastrophic failures caused by compression-induced KV eviction",
+      "Signal usage: UNComp uses entropy to decide which tokens to keep (optimization); HERALD uses logit features to forecast looping/non-termination before onset",
+      "Failure detection: UNComp does not explicitly detect or predict catastrophic failures; HERALD's core thesis is early hazard prediction to enable intervention"
+    ]
+  },
+  "use_in_appendix": {
+    "section": "kv_cache_compression_landscape",
+    "weight": "primary"
+  }
+}

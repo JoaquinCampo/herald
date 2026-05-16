@@ -1,0 +1,25 @@
+{
+  "arxiv_id": "2407.07071",
+  "bib_key": "lookbacklens",
+  "title": "Detecting Contextual Hallucinations Using Only Attention Maps",
+  "year": 2024,
+  "evidence_quality": "full_pdf",
+  "source_url": "https://arxiv.org/abs/2407.07071",
+  "tier": 2,
+  "one_line_claim": "Detects contextual hallucinations via attention-based lookback ratio features computed from transformer attention maps, enabling cross-model transfer without retraining.",
+  "method_summary": "Extracts the ratio of attention weights on context tokens versus newly generated tokens for each head and layer, averaging these lookback ratios across heads and layers into a feature vector. Trains a logistic regression classifier on this vector to predict hallucination probability for token spans, applied during decoding to guide generation.",
+  "key_findings": [
+    {"finding": "Lookback Lens achieves slightly better performance than hidden-states-based classifiers and significantly outperforms NLI baselines on the predefined span task.", "quote": "the Lookback Lens achieves slightly better performance than the hidden states-based classifier and significantly outperforms the NLI models (SoTA and our impl.).", "page": 3, "section": "Results"},
+    {"finding": "Lookback Lens Guided Decoding reduces hallucinations by 9.6% in XSum summarization compared to greedy decoding.", "quote": "a simple classifier-guided decoding approach is able to reduce the amount of hallucination, for example by 9.6% in the XSum summarization task", "page": 1, "section": "Abstract"},
+    {"finding": "Detectors trained on a 7B model transfer to larger 13B models without retraining.", "quote": "the Lookback Lens is found to transfer across tasks and even models, allowing a detector that is trained on a 7B model to be applied (without retraining) to a larger 13B model", "page": 1, "section": "Abstract"}
+  ],
+  "relation_to_herald": {
+    "shared": "Both detect quality degradation using runtime token-level signals during generation; both use lightweight classifiers trained on per-token features rather than hidden states; both are applied during decoding for real-time intervention.",
+    "differs_on": [
+      "Lookback Lens detects contextual hallucinations (contradictions with provided context) via attention map ratios; HERALD predicts compression-induced catastrophic failures (looping, non-termination) via logit-based time-series features.",
+      "Lookback Lens uses attention weights as the sole signal; HERALD uses log-probability sequences from the logit distribution.",
+      "Lookback Lens operates on summarization/QA tasks with pre-allocated context; HERALD targets long-context scenarios where KV-cache compression induces failures."
+    ]
+  },
+  "use_in_appendix": {"section": "hallucination_token_signal_detection", "weight": "primary"}
+}

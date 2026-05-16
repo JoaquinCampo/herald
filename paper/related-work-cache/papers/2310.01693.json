@@ -1,0 +1,25 @@
+{
+  "arxiv_id": "2310.01693",
+  "bib_key": "closingcurious",
+  "title": "Closing the Curious Case of Neural Text Degeneration",
+  "year": 2023,
+  "evidence_quality": "abstract_only",
+  "source_url": "https://arxiv.org/abs/2310.01693",
+  "tier": 2,
+  "one_line_claim": "Truncation sampling works because threshold-based methods guarantee sampled tokens have nonzero true probability, and the softmax bottleneck can identify valid tokens without arbitrary thresholds.",
+  "method_summary": "Theoretically analyzes truncation sampling methods that discard tokens below probability thresholds, proving thresholds guarantee nonzero true probability for sampled tokens. Then proposes leveraging the softmax bottleneck to identify tokens with genuine probability without threshold heuristics. The resulting sampling strategy improves over threshold-based baselines on low-entropy open-ended text generation.",
+  "key_findings": [
+    {"finding": "Threshold-based truncation methods guarantee that all sampled tokens have nonzero true probability.", "quote": "truncation methods that discard tokens below some probability threshold (the most common type of truncation) can guarantee that all sampled tokens have nonzero true probability", "page": null, "section": "Abstract"},
+    {"finding": "Thresholds are coarse heuristics that unnecessarily discard tokens with nonzero true probability.", "quote": "thresholds are a coarse heuristic, and necessarily discard some tokens with nonzero true probability as well", "page": null, "section": "Abstract"},
+    {"finding": "Softmax bottleneck can identify tokens with nonzero probability without threshold reliance.", "quote": "we can leverage a known source of model errors, the softmax bottleneck, to prove that certain tokens have nonzero true probability, without relying on a threshold", "page": null, "section": "Abstract"}
+  ],
+  "relation_to_herald": {
+    "shared": "Both examine per-token probability distributions and signals during generation to identify or prevent quality degradation.",
+    "differs_on": [
+      "This paper focuses on nucleus sampling truncation strategy and threshold-based filtering; HERALD targets compression-induced catastrophic failures (looping, non-termination) from KV-cache compression.",
+      "This paper proposes a novel sampling algorithm; HERALD uses logit-based XGBoost prediction to forecast failures.",
+      "This paper applies to general open-ended generation quality; HERALD specifically addresses failures caused by aggressive KV-cache compression."
+    ]
+  },
+  "use_in_appendix": {"section": "hallucination_token_signal_detection", "weight": "secondary"}
+}

@@ -1,0 +1,25 @@
+{
+  "arxiv_id": "2505.11737",
+  "bib_key": "tokur",
+  "title": "Token-Level Uncertainty Estimation for LLM Reasoning",
+  "year": 2025,
+  "evidence_quality": "full_pdf",
+  "source_url": "https://arxiv.org/abs/2505.11737",
+  "tier": 2,
+  "one_line_claim": "Token-level Bayesian uncertainty estimation via low-rank weight perturbation identifies incorrect reasoning paths and detects hallucinations during LLM generation.",
+  "method_summary": "TokUR applies low-rank weight perturbation to attention layer parameters, approximating the posterior over weights. Decomposes token-level uncertainty into aleatoric and epistemic components by sampling perturbed weights multiple times. Token-level uncertainties are aggregated to produce response-level predictions for hallucination detection.",
+  "key_findings": [
+    {"finding": "Token-level epistemic uncertainty achieves AUROC 80.64% and AUPRC 56.79% on MATH500 for hallucination detection.", "quote": "TokUR (TU) achieves an AUROC of 80.64% and an AUPRC of 56.79% on MATH500", "page": null, "section": "Section 4"},
+    {"finding": "Low-rank decomposition keeps original weights frozen while adding low-rank perturbation, avoiding fine-tuning.", "quote": "Our low-rank adaptation approach avoids the need for model fine-tuning, keeping the original model weights frozen while adding a low-rank perturbation matrix", "page": null, "section": "Section 3"},
+    {"finding": "Response-level aggregation of token-level signals improves top-50% accuracy on reasoning benchmarks vs. response-level baselines.", "quote": "Token-level aggregation achieves higher accuracy in identifying correct solutions compared to response-level baselines on GSM8K and MATH500", "page": null, "section": "Section 4"}
+  ],
+  "relation_to_herald": {
+    "shared": "Both operate at the token level during generation, extract per-token signals correlated with quality degradation, and use lightweight model-agnostic approaches.",
+    "differs_on": [
+      "TokUR estimates uncertainty via Bayesian weight perturbation; HERALD predicts catastrophic failures from logit entropy and patterns under KV-cache compression.",
+      "TokUR targets reasoning correctness on math tasks; HERALD targets compression-specific failure modes under constrained memory budgets.",
+      "TokUR aggregates uncertainty to a quality score; HERALD produces a binary catastrophe prediction with configurable horizon lookahead."
+    ]
+  },
+  "use_in_appendix": {"section": "runtime_quality_signals", "weight": "secondary"}
+}

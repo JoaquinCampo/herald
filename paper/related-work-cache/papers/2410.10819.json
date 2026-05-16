@@ -1,0 +1,25 @@
+{
+  "arxiv_id": "2410.10819",
+  "bib_key": "duoattention",
+  "title": "DuoAttention: Efficient Long-Context LLM Inference with Retrieval and Streaming Heads",
+  "year": 2024,
+  "evidence_quality": "abstract_only",
+  "source_url": "https://arxiv.org/abs/2410.10819",
+  "tier": 2,
+  "one_line_claim": "Differentiates attention heads into retrieval heads (requiring full KV cache) and streaming heads (constant-length cache) to reduce memory and speedup long-context inference.",
+  "method_summary": "Uses a lightweight optimization-based algorithm with synthetic data to identify which attention heads need full KV-cache retention versus which can operate with constant-length caches. Retrieval heads maintain full context for long-range dependencies; streaming heads focus on recent tokens and attention sinks.",
+  "key_findings": [
+    {"finding": "Memory reduction up to 2.55x for MHA models and 1.67x for grouped-query attention.", "quote": "Memory reduction up to 2.55x for Multi-Head Attention models... and 1.67x for grouped-query attention (GQA)", "page": null, "section": "abstract"},
+    {"finding": "Decoding speedup up to 2.18x for MHA and 1.50x for GQA.", "quote": "Decoding speedup: up to 2.18x (MHA) and 1.50x (GQA)", "page": null, "section": "abstract"},
+    {"finding": "Enables Llama-3-8B decoding with 3.3 million context length on a single A100 GPU.", "quote": "enables Llama-3-8B decoding with 3.3 million context length on a single A100 GPU", "page": null, "section": "abstract"}
+  ],
+  "relation_to_herald": {
+    "shared": "Both address KV-cache compression as a critical challenge in long-context LLM inference and focus on efficiency gains during inference.",
+    "differs_on": [
+      "DuoAttention architects the compressor itself (head-level differentiation); HERALD treats the compressor as a black box and monitors for failure signals at runtime.",
+      "DuoAttention optimizes KV cache at design time; HERALD predicts and prevents failures after compression is applied.",
+      "DuoAttention uses architectural head selection; HERALD uses per-token logit features for hazard detection."
+    ]
+  },
+  "use_in_appendix": {"section": "kv_cache_compression_landscape", "weight": "secondary"}
+}

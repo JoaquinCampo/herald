@@ -1,0 +1,30 @@
+{
+  "arxiv_id": "2510.08525",
+  "bib_key": "whichheads",
+  "title": "RL-Guided KV Cache Compression for Reasoning",
+  "year": 2025,
+  "venue": "arXiv",
+  "evidence_quality": "full_pdf",
+  "source_url": "https://arxiv.org/abs/2510.08525",
+  "tier": 2,
+  "one_line_claim": "Reinforcement learning identifies reasoning-critical attention heads to enable selective KV cache compression with 20-50% cache reduction and negligible performance loss.",
+  "method_summary": "RLKV uses mixed attention with gating adapters to dynamically allocate KV cache budget among attention heads, trained via Group Relative Policy Optimization (GRPO) to maximize reasoning performance. The method learns which heads are critical for maintaining correctness on reasoning tasks by rewarding compressed models that produce correct outputs. The resulting policy is deployed at inference time to compress KV cache by selectively dropping cache entries for non-critical heads.",
+  "key_findings": [
+    {"finding": "RLKV achieves 20-50% KV cache reduction while maintaining near-lossless reasoning performance.", "quote": "RLKV achieves 20-50% KV cache reduction and can be further combined with other compression methods for up to 1.21x speedup.", "page": null, "section": "Abstract"},
+    {"finding": "Identifies three distinct failure modes in compressed reasoning models: repetitive errors (excessive token repetition), incorrect errors, and overlength errors (exceeding context length).", "quote": "We identify three types of errors: repetitive errors, incorrect errors, and overlength errors, and further analyze their characteristics.", "page": null, "section": "Abstract"},
+    {"finding": "Mixed attention adapters enable fine-grained compression control by dynamically allocating KV cache budget to individual attention heads based on learned importance scores.", "quote": "To discover reasoning-critical heads, RLKV uses mixed attention, where the compressed and uncompressed versions run in parallel with a gating adapter that learns head-wise importance for KV cache.", "page": null, "section": "Introduction"}
+  ],
+  "limitations": [
+    "Trained on a specific task distribution (reasoning problems); generalization unclear without retraining.",
+    "GRPO training cost vs. inference speedup tradeoff not analyzed."
+  ],
+  "relation_to_herald": {
+    "shared": "Both address compression-induced failure modes in reasoning models; RLKV's three-failure taxonomy (repetitive, incorrect, overlength) is closely aligned with HERALD's looping/non-termination targets.",
+    "differs_on": [
+      "RLKV uses RL at training time to pre-select compression-safe heads; HERALD predicts failures online at inference time from per-token logit signals without retraining.",
+      "RLKV's failure analysis is post-hoc taxonomy; HERALD provides online detection with horizon-based early warning.",
+      "RLKV modifies which compression is applied; HERALD treats the compressor as a black box and predicts when any compression will catastrophically fail."
+    ]
+  },
+  "use_in_appendix": {"section": "adaptive_controller_inference", "weight": "primary", "must_cite": false}
+}

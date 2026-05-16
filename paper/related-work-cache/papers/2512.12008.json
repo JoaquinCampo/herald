@@ -1,0 +1,25 @@
+{
+  "arxiv_id": "2512.12008",
+  "bib_key": "holdonto",
+  "title": "Hold Onto That Thought: Assessing KV Cache Compression on Reasoning",
+  "year": 2025,
+  "evidence_quality": "full_pdf",
+  "source_url": "https://arxiv.org/abs/2512.12008",
+  "tier": 2,
+  "one_line_claim": "Attention-based eviction methods like H2O and SnapKV-D dominate KV cache compression for reasoning tasks, revealing a critical tradeoff between memory constraints and reasoning trace elongation.",
+  "method_summary": "Evaluates seven KV cache compression strategies (H2O, SnapKV, StreamingLLM, KNorm, R-KV, and a novel decoding-variant SnapKV-D) across four reasoning model families and eight benchmarks spanning reading comprehension, logical reasoning, commonsense, and math tasks. Reports accuracy, latency, and generation length across cache budgets of 128-512 tokens.",
+  "key_findings": [
+    {"finding": "Heavy-hitter tracking via attention scores is the most versatile estimator; SnapKV-D and H2O significantly outcompete other compression strategies across budget constraints and reasoning datasets.", "quote": "SnapKV-D and H2O are the most dominant, significantly outcompeting nearly all compression strategies across all budget constraints and datasets for our reasoning models. These methods rely on accumulated attention scores to determine the most important tokens to retain.", "section": "Section 4.7", "page": 8},
+    {"finding": "Lower cache budgets trigger longer reasoning traces, revealing a hidden tradeoff between cache budget and inference cost; KNorm causes the greatest output elongation.", "quote": "Fascinatingly, lower budgets are capable of triggering longer reasoning traces, revealing a hidden tradeoff between cache budget and inference costs specifically for reasoning models. KNorm, arguably the lowest performing strategy, tends to cause the greatest elongation of outputs.", "section": "Section 4.5", "page": 7},
+    {"finding": "No singular compression strategy fits all non-reasoning tasks; performance is heavily dataset-dependent.", "quote": "No singular strategy is dominant for the non-reasoning Llama-3.1-8B-Instruct. For models that do not produce reasoning traces, the optimal choice of strategy is dataset-dependent.", "section": "Section 4.7", "page": 8}
+  ],
+  "relation_to_herald": {
+    "shared": "Both study KV cache compression effects on LLM generation quality, recognizing that aggressive compression degrades model behavior and warrants detection mechanisms.",
+    "differs_on": [
+      "HERALD targets catastrophic failures (looping, non-termination) via per-token logit features; this paper benchmarks compression accuracy across reasoning tasks without focusing on failure detection.",
+      "HERALD uses XGBoost prediction on zero-cost logit signals; this paper empirically evaluates existing compression methods on established benchmarks.",
+      "HERALD enables intervention before failure; this paper characterizes where compression breaks (accuracy drops, trace lengthening) without proposing controls."
+    ]
+  },
+  "use_in_appendix": {"section": "empirical_limits_of_compression", "weight": "primary"}
+}

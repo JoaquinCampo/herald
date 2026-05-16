@@ -1,0 +1,25 @@
+{
+  "arxiv_id": "1904.09751",
+  "bib_key": "curiouscase",
+  "title": "The Curious Case of Neural Text Degeneration",
+  "year": 2020,
+  "evidence_quality": "full_pdf",
+  "source_url": "https://arxiv.org/abs/1904.09751",
+  "tier": 2,
+  "one_line_claim": "Nucleus Sampling prevents text degeneration (repetition, incoherence) by sampling from the dynamic nucleus of the probability distribution rather than maximizing likelihood or using fixed-size truncation.",
+  "method_summary": "Nucleus Sampling dynamically selects the smallest set of tokens whose cumulative probability exceeds a threshold p, then samples uniformly from this adaptively-sized nucleus. The method contrasts with fixed top-k and maximization-based decoding by letting the candidate set adjust based on the model's confidence distribution at each step.",
+  "key_findings": [
+    {"finding": "Beam search and maximization-based decoding cause degenerate repetition despite high likelihood, while Nucleus Sampling avoids both repetition and incoherence.", "quote": "Even with our relatively fine-grained parameter sweep, Nucleus Sampling obtains closest perplexity to human text, as shown in Table 1.", "page": 6, "section": "Section 4.2-4.3"},
+    {"finding": "Natural language text does not maximize probability; highest-probability sequences correspond to repetitive or incoherent output.", "quote": "Natural language rarely remains in a high probability zone for multiple consecutive time steps, instead veering into lower-probability but more informative tokens.", "page": 7, "section": "Section 4.3"},
+    {"finding": "The probability of a repeated phrase increases with each repetition, creating a positive feedback loop locking the model into degeneration.", "quote": "The probability of a repeated phrase increases with each repetition, creating a positive feedback loop. We found this effect to hold for the vast majority of phrases we tested.", "page": 5, "section": "Section 3.1 / Figure 4"}
+  ],
+  "relation_to_herald": {
+    "shared": "Both identify failure modes during generation (repetition/incoherence vs. compression-induced looping/non-termination), both emphasize per-token distributional properties as signals.",
+    "differs_on": [
+      "Nucleus Sampling is a decoding strategy that modulates token selection; HERALD is a predictive hazard detector that forecasts failure from logit time series.",
+      "Nucleus Sampling prevents repetition by dynamic nucleus truncation; HERALD predicts looping caused by KV-cache compression, a different mechanism.",
+      "Nucleus Sampling operates on the output probability distribution; HERALD operates on internal logit signals and is generation-strategy-agnostic."
+    ]
+  },
+  "use_in_appendix": {"section": "catastrophic_failures_long_context", "weight": "primary"}
+}

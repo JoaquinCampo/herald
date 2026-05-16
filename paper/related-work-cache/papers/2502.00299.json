@@ -1,0 +1,25 @@
+{
+  "arxiv_id": "2502.00299",
+  "bib_key": "chunkkv",
+  "title": "Semantic-Preserving KV Cache Compression for Efficient Long-Context LLM Inference",
+  "year": 2025,
+  "evidence_quality": "full_pdf",
+  "source_url": "https://arxiv.org/abs/2502.00299",
+  "tier": 2,
+  "one_line_claim": "Compresses KV cache by grouping tokens into semantic chunks and selecting top-k chunks via attention scores, with layer-wise index reuse for efficiency.",
+  "method_summary": "ChunkKV groups consecutive tokens into chunks and computes chunk-level attention scores from token attention weights. Top-k chunks are selected and concatenated to form the compressed cache. Layer-wise index reuse reuses chunk indices across transformer layers to avoid redundant computation.",
+  "key_findings": [
+    {"finding": "ChunkKV achieves 4.5x compression while maintaining 99% of full-context quality on GSM8K.", "quote": "ChunkKV achieves 4.5x compression ratio while maintaining 99% of full-context quality on GSM8K", "section": "Abstract", "page": 1},
+    {"finding": "Layer-wise index reuse improves throughput by 26.5% compared to token-by-token recomputation.", "quote": "Our layer-wise index reuse mechanism achieves 26.5% throughput improvement", "section": "Methods", "page": 7},
+    {"finding": "ChunkKV maintains quality across LongBench (BLEU), NIAH (up to 32K context), and JailbreakV while achieving 4-8x compression.", "quote": "ChunkKV maintains quality across LongBench (BLEU), NIAH (up to 32K context), and JailbreakV while achieving 4-8x compression", "section": "Experiments", "page": 11}
+  ],
+  "relation_to_herald": {
+    "shared": "Both address KV-cache compression efficiency in long-context LLM inference and aim to enable practical deployment without catastrophic failures.",
+    "differs_on": [
+      "ChunkKV uses semantic chunking and attention-based chunk selection; HERALD uses per-token logit features to predict failures before they occur.",
+      "ChunkKV is a compression method; HERALD is a failure predictor that treats any compressor as a black box.",
+      "ChunkKV operates at compression time; HERALD monitors signals during generation to forecast H tokens ahead."
+    ]
+  },
+  "use_in_appendix": {"section": "kv_cache_compression_landscape", "weight": "primary"}
+}

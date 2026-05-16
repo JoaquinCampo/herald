@@ -1,0 +1,25 @@
+{
+  "arxiv_id": "2412.10319",
+  "bib_key": "scbench",
+  "title": "SCBench: A KV Cache-Centric Analysis of Long-Context Methods",
+  "year": 2024,
+  "evidence_quality": "abstract_only",
+  "source_url": "https://arxiv.org/abs/2412.10319",
+  "tier": 2,
+  "one_line_claim": "KV cache compression methods suffer catastrophic multi-turn degradation in shared-context scenarios despite initial single-query performance.",
+  "method_summary": "SCBench benchmarks eight long-context solution categories (linear RNNs, sparse attention, KV cache dropping, quantization, retrieval, prompt compression) across 12 tasks on 8 LLMs, tracking performance through four KV cache lifecycle stages: generation, compression, retrieval, and loading.",
+  "key_findings": [
+    {"finding": "At 1/32 compression ratio, StreamingLLM achieves only 15.5% average performance versus 48.7% baseline on Llama-3.1-8B.", "quote": "At 1/32 compression (3% retention), methods like StreamingLLM achieve only 15.5% average performance on Llama-3.1-8B versus 48.7% baseline.", "page": null, "section": "Key Performance Findings"},
+    {"finding": "Sub-O(n) memory methods maintain accuracy on first queries but lose accuracy in subsequent requests, failing in multi-turn scenarios.", "quote": "sub-O(n) memory methods perform well on the first query but lose accuracy in subsequent requests in multi-turn scenarios", "page": null, "section": "Key Performance Findings"},
+    {"finding": "Exact-match retrieval tasks with incompressible content trigger sharp performance cliffs at 1/4 compression ratios.", "quote": "sub-O(n) memory methods experience a sharp performance drop at a 1/4 compression rate, particularly on exact-match retrieval tasks", "page": null, "section": "Failure Modes"}
+  ],
+  "relation_to_herald": {
+    "shared": "Both focus on KV cache compression as the primary hazard vector; both target multi-turn generation scenarios where accumulated KV state drives failures; both evaluate compression across multiple LLM scales and ratios.",
+    "differs_on": [
+      "HERALD predicts failures pre-onset from per-token logit features using XGBoost; SCBench benchmarks realized failures post-hoc via accuracy metrics on fixed tasks.",
+      "HERALD treats the compressor as a black box and operates during generation; SCBench evaluates specific compressor algorithms at design time.",
+      "HERALD targets catastrophic non-termination and looping; SCBench measures task-level accuracy degradation on semantic and retrieval tasks."
+    ]
+  },
+  "use_in_appendix": {"section": "empirical_limits_of_compression", "weight": "primary"}
+}

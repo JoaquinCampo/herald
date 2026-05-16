@@ -1,0 +1,43 @@
+{
+  "arxiv_id": "2601.14279",
+  "bib_key": "limitslearned",
+  "title": "On the Limits of Learned Importance Scoring for KV Cache Compression",
+  "year": 2026,
+  "evidence_quality": "full_pdf",
+  "source_url": "https://arxiv.org/abs/2601.14279",
+  "tier": 1,
+  "one_line_claim": "Learned importance scoring (Speculative Importance Prediction) fails to outperform simple position-based and prefill-attention heuristics for KV-cache compression because position and prefill attention already encode most of the available signal about future token importance.",
+  "method_summary": "The paper evaluates Speculative Importance Prediction (SIP), a 1.7M-parameter non-query-aware scorer using multi-horizon lookahead and cross-attention, against baselines including position-based heuristics, random selection, and prefill attention across GSM8K, MMLU, and Alpaca datasets at four retention levels (10%, 25%, 50%, 75%). It measures both task perplexity and mutual information of importance signals to quantify why learned features provide no advantage over simple heuristics.",
+  "key_findings": [
+    {
+      "finding": "SIP shows no statistically significant advantage over random token selection across compression ratios and datasets.",
+      "quote": "SIP does not outperform Random in statistical significance across all compression ratios (Figure 3), suggesting learned importance scoring does not capture meaningful patterns for KV cache compression.",
+      "page": null,
+      "section": "Results and Analysis"
+    },
+    {
+      "finding": "Position-based heuristics (keeping first 4 + last N tokens) outperform learned importance at aggressive compression (10%, 25%), while prefill attention wins at moderate compression (50%, 75%).",
+      "quote": "Position-based heuristics perform better than SIP at 10% and 25% retention, while Prefill Attention outperforms SIP at 50% and 75% retention levels across datasets.",
+      "page": null,
+      "section": "Results and Analysis"
+    },
+    {
+      "finding": "Mutual information analysis: position encodes 0.31 +/- 0.05 bits and prefill attention encodes 0.28 +/- 0.04 bits of mutual information with future token importance, while key vectors encode only 0.12 +/- 0.03 bits, explaining why simple heuristics match or exceed learned scorers.",
+      "quote": "I(pos_i; A_{t:t+tau}) = 0.31 +/- 0.05 bits, I(A_prefill; A_{t:t+tau}) = 0.28 +/- 0.04 bits, I(k_i; A_{t:t+tau}) = 0.12 +/- 0.03 bits",
+      "page": 9,
+      "section": "Section 6.2 Empirical Information Analysis"
+    }
+  ],
+  "relation_to_herald": {
+    "shared": "Both address KV-cache compression behaviour during generation. Both use per-token features (logits, attention, embeddings) to make decisions about future tokens. Both evaluate on compression-induced degradation across multiple datasets and compression levels. Both target practical deployment constraints (speed, model size).",
+    "differs_on": [
+      "HERALD predicts catastrophic failures (looping, non-termination, infinite repetition) from logit entropy time series; this paper measures perplexity degradation from learned importance scoring (different failure modes and metrics).",
+      "HERALD operates online during generation with XGBoost on logit features; this paper studies pre-hoc learned scorers (SIP) that predict token importance before generation trajectories are known.",
+      "HERALD demonstrates that lightweight per-token logit signals suffice for hazard prediction; this paper shows learned importance scorers at 1.7M parameters fail because position and prefill attention already encode most of the available mutual information."
+    ]
+  },
+  "use_in_appendix": {
+    "section": "empirical_limits_of_compression",
+    "weight": "primary"
+  }
+}

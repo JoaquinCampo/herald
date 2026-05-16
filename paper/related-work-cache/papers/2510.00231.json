@@ -1,0 +1,45 @@
+{
+  "arxiv_id": "2510.00231",
+  "bib_key": "pitfalls",
+  "title": "The Pitfalls of KV Cache Compression",
+  "year": 2025,
+  "evidence_quality": "full_pdf",
+  "source_url": "https://arxiv.org/abs/2510.00231",
+  "tier": 1,
+  "one_line_claim": "KV cache compression fails via six failure modes including instruction degradation, system prompt leakage, and eviction bias, with fair eviction policies as partial mitigation.",
+  "method_summary": "The paper systematically evaluates five KV cache compression methods (StreamingLLM, H2O, K-norm, SnapKV, TOVA) across multiple models and datasets, measuring instruction-following degradation via IFEval and leakage via ROUGE-L. It identifies six distinct pitfalls: varying instruction hardness, model/policy-dependent effects, system prompt leakage, instruction order sensitivity, eviction-induced instruction ignoring, and token eviction errors, and proposes fair eviction policies that select tokens by importance rather than recency.",
+  "key_findings": [
+    {
+      "finding": "Compression causes instruction degradation that varies by instruction complexity; complex instructions degrade at lower compression ratios than simple ones.",
+      "quote": "We find that some instructions naturally degrade more severely under compression than others...Complex instructions seem to degrade at lower compression ratios.",
+      "section": "Section 3 (Pitfall Analysis)"
+    },
+    {
+      "finding": "System prompt leakage rises sharply under compression; ROUGE-L overlap between the model's output and the protected system prompt grows to roughly 0.6 for StreamingLLM as the compression ratio increases, indicating that the model progressively ignores the defense and leaks instructions.",
+      "quote": "the ROUGE-L score for StreamingLLM, for example, rises sharply, showing that the model is progressively ignoring the defense and leaking its instructions.",
+      "section": "Section 4 (System Prompt Leakage)"
+    },
+    {
+      "finding": "Eviction-induced instruction ignoring occurs when tokens corresponding to specific instructions are preferentially evicted, causing those instructions to be ignored entirely by the model.",
+      "quote": "We find that compression disproportionately evicts tokens belonging to certain instructions, effectively causing the model to ignore those instructions completely.",
+      "section": "Section 3 (Pitfall Analysis)"
+    },
+    {
+      "finding": "Fair eviction policies that select tokens by computed importance scores reduce instruction degradation compared to position-based and attention-based baselines.",
+      "quote": "Fair eviction policies substantially reduce instruction degradation...achieving better instruction-following compared to position-based and attention-based eviction strategies.",
+      "section": "Section 5 (Fair Eviction Policies)"
+    }
+  ],
+  "relation_to_herald": {
+    "shared": "Both focus on understanding and detecting failures caused by KV cache compression in LLM generation Both identify that compression causes catastrophic, detectable failures rather than graceful degradation Both work with the same problem domain: preventing harmful outputs from compressed models",
+    "differs_on": [
+      "HERALD predicts compression-induced catastrophes before they occur via ML on logit-based signals during generation; this paper characterizes failure modes empirically post-hoc",
+      "HERALD targets binary hazard detection (looping/non-termination); this paper catalogs multi-faceted degradation (leakage, instruction ignoring, order sensitivity)",
+      "HERALD proposes per-token logit feature extraction; this paper proposes fair eviction policies that modify the compression method itself"
+    ]
+  },
+  "use_in_appendix": {
+    "section": "empirical_limits_of_compression",
+    "weight": "primary"
+  }
+}

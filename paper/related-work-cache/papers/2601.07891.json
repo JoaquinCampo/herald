@@ -1,0 +1,25 @@
+{
+  "arxiv_id": "2601.07891",
+  "bib_key": "kvzap",
+  "title": "KVzap: Fast, Adaptive, and Faithful KV Cache Pruning",
+  "year": 2026,
+  "evidence_quality": "full_pdf",
+  "source_url": "https://arxiv.org/abs/2601.07891",
+  "tier": 2,
+  "one_line_claim": "Lightweight surrogate models approximate expensive KV cache scoring, enabling 2-4x compression with negligible accuracy loss across long-context and reasoning tasks.",
+  "method_summary": "KVzap trains lightweight linear or MLP models to approximate KVzip+ scores (computed via copy-paste pretext tasks) for token importance ranking. At inference, tokens below an adaptive threshold are evicted. Operates in a prefix-agnostic manner during both prefilling and decoding phases.",
+  "key_findings": [
+    {"finding": "Achieves 2-4x KV cache compression with negligible accuracy loss.", "quote": "2-4x KV cache compression with negligible accuracy loss", "page": null, "section": "Abstract"},
+    {"finding": "State-of-the-art on RULER long-context benchmark, outperforming KVzip+ and other pruning methods.", "quote": "State-of-the-art results on RULER, a challenging long-context benchmark spanning sequences up to 1M tokens", "page": null, "section": "Abstract"},
+    {"finding": "Adaptive threshold mechanism adjusts compression dynamically across layers and generation phases.", "quote": "Adaptive compression rates can be achieved through dynamic threshold adjustment across layers and generation phases", "page": null, "section": "Experiments"}
+  ],
+  "relation_to_herald": {
+    "shared": "Both operate on per-token signals without full forward-backward passes and aim to improve efficiency of long-context inference.",
+    "differs_on": [
+      "KVzap predicts token importance for pruning decisions; HERALD predicts catastrophic failure onset from logit signals.",
+      "KVzap mitigates compression-induced degradation through selective eviction; HERALD detects when degradation occurs and enables intervention.",
+      "KVzap operates deterministically via thresholding; HERALD uses probabilistic XGBoost scores with a horizon parameter."
+    ]
+  },
+  "use_in_appendix": {"section": "kv_cache_compression_landscape", "weight": "secondary"}
+}

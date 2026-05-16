@@ -1,0 +1,25 @@
+{
+  "arxiv_id": "2502.11089",
+  "bib_key": "nsa",
+  "title": "Native Sparse Attention: Hardware-Aligned Sparse Attention",
+  "year": 2025,
+  "evidence_quality": "full_pdf",
+  "source_url": "https://arxiv.org/abs/2502.11089",
+  "tier": 2,
+  "one_line_claim": "Hierarchical sparse attention combining token compression and blockwise selection achieves 11.6x speedup at 64k context while maintaining quality on reasoning tasks.",
+  "method_summary": "NSA employs a three-branch hierarchical mechanism: blockwise token compression via residual aggregation, fine-grained token selection via learnable importance scores per block, and sliding window attention over selected tokens. Operates during inference with zero additional training.",
+  "key_findings": [
+    {"finding": "NSA achieves 11.6x end-to-end speedup at 64k context length compared to dense attention.", "quote": "NSA achieves 11.6x speedup on NVIDIA A100 at 64k context length", "page": 1, "section": "Abstract"},
+    {"finding": "Perfect retrieval accuracy (100%) on needle-in-haystack at 64k context across all positions.", "quote": "NSA maintains perfect (100%) accuracy on needle-in-haystack with 64k length across all needle positions", "page": 11, "section": "Experiments"},
+    {"finding": "Average LongBench score of 0.469 in 32k context window, with blockwise selection outperforming uniform compression baselines.", "quote": "LongBench average score reaches 0.469 under 32k context constraint", "page": 12, "section": "Long-context Evaluation"}
+  ],
+  "relation_to_herald": {
+    "shared": "Both aim to make KV-cache compression safer and more efficient for long-context generation, recognizing that uncontrolled compression causes quality degradation.",
+    "differs_on": [
+      "NSA uses learned blockwise importance scoring; HERALD predicts compression-induced failures post-hoc from logit features without modifying attention.",
+      "NSA is inference-only and trainable end-to-end within the forward pass; HERALD is a separate XGBoost classifier trained offline on labelled failure data.",
+      "NSA optimizes for latency and memory bandwidth; HERALD optimizes for failure prediction horizon and intervention timing before catastrophe."
+    ]
+  },
+  "use_in_appendix": {"section": "kv_cache_compression_landscape", "weight": "primary"}
+}

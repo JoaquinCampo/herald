@@ -1,0 +1,25 @@
+{
+  "arxiv_id": "2504.04823",
+  "bib_key": "quantreasonhurts",
+  "title": "Quantization Hurts Reasoning? An Empirical Study on Quantized Reasoning Models",
+  "year": 2025,
+  "evidence_quality": "abstract_only",
+  "source_url": "https://arxiv.org/abs/2504.04823",
+  "tier": 2,
+  "one_line_claim": "Lossless quantization of reasoning models is possible at W8A8 and W4A16, but lower bit-widths introduce significant accuracy risks.",
+  "method_summary": "Systematic empirical evaluation of weight, KV-cache, and activation quantization at varying bit-widths across open-source reasoning models (DeepSeek-R1, LLaMA, QwQ, Qwen) tested on mathematical, scientific, and programming benchmarks.",
+  "key_findings": [
+    {"finding": "W8A8 and W4A16 quantization can achieve lossless accuracy on reasoning tasks", "quote": "lossless quantization can be achieved with W8A8 or W4A16 quantization", "page": null, "section": "Abstract"},
+    {"finding": "Lower bit-widths than W4A16 introduce significant accuracy risks for reasoning tasks", "quote": "lower bit-widths introduce significant accuracy risks", "page": null, "section": "Abstract"},
+    {"finding": "Model size, origin, and task difficulty are critical variables determining quantization impact", "quote": "Model size, origin, and task difficulty emerged as decisive variables", "page": null, "section": "Abstract"}
+  ],
+  "relation_to_herald": {
+    "shared": "Both investigate quality degradation under compression (quantization vs KV-cache compression); both use empirical sweeps across multiple models and benchmarks; both measure performance on reasoning/mathematical tasks.",
+    "differs_on": [
+      "HERALD focuses on predicting catastrophic failures (looping, non-termination) via token-level logit signals; this paper measures accuracy degradation on standard benchmarks without failure prediction.",
+      "HERALD uses per-token time-series features with XGBoost to predict onset H-tokens ahead; this paper provides static accuracy analysis across configurations without temporal dynamics.",
+      "HERALD targets KV-cache compression specifically; this paper evaluates weight, KV-cache, and activation quantization as a portfolio."
+    ]
+  },
+  "use_in_appendix": {"section": "empirical_limits_of_compression", "weight": "secondary"}
+}

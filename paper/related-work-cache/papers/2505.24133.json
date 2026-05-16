@@ -1,0 +1,25 @@
+{
+  "arxiv_id": "2505.24133",
+  "bib_key": "rkv",
+  "title": "R-KV: Redundancy-aware KV Cache Compression for Reasoning Models",
+  "year": 2025,
+  "evidence_quality": "full_pdf",
+  "source_url": "https://arxiv.org/abs/2505.24133",
+  "tier": 2,
+  "one_line_claim": "Identifies and removes redundant tokens from KV cache during decoding in reasoning models by jointly balancing importance (via attention weights) and semantic similarity.",
+  "method_summary": "R-KV compresses KV cache at decoding time by scoring tokens on two axes: importance via attention weights, and redundancy via cosine similarity of key vectors. Jointly selects top-k tokens using Z = lambda*I - (1-lambda)*R to balance both metrics.",
+  "key_findings": [
+    {"finding": "Reasoning models generate 8-14x longer outputs than ground truth, with 5-7x higher 1-2-gram repetition frequency.", "quote": "Reasoning models generate substantially longer responses with 8-14x more tokens, and show higher word repetition with 5-7x higher frequency.", "page": 3, "section": "Section 2.1"},
+    {"finding": "R-KV achieves 105% of full KV cache performance on AIME-24 with only 16% of the KV cache.", "quote": "R-KV even achieves 105% accuracy of the full KV baseline with around 16% of the KV cache.", "page": 1, "section": "Abstract"},
+    {"finding": "With 34% KV cache budget, R-KV achieves lossless compression on MATH-500, outperforming SnapKV at 60% performance.", "quote": "by selectively retaining only 10-34% of the original KV cache, R-KV achieves comparable performance parity with the uncompressed reasoning model, outperforming state-of-the-art compression baselines, which reaches only 60% of the performance.", "page": 1, "section": "Abstract"}
+  ],
+  "relation_to_herald": {
+    "shared": "Both target KV-cache compression during decoding and aim to enable efficient long-sequence inference.",
+    "differs_on": [
+      "R-KV uses attention-based importance and key-vector cosine similarity; HERALD uses per-token logit features (entropy, repetition) for failure prediction.",
+      "R-KV proactively removes redundant tokens during decoding; HERALD predicts catastrophic failure onset using XGBoost.",
+      "R-KV targets reasoning-specific redundancy in chain-of-thought; HERALD addresses general compression-induced degradation."
+    ]
+  },
+  "use_in_appendix": {"section": "kv_cache_compression_landscape", "weight": "primary"}
+}

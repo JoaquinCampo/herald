@@ -1,0 +1,43 @@
+{
+  "arxiv_id": "2602.03203",
+  "bib_key": "foresightkv",
+  "title": "ForesightKV: Foresee Long-term KV Importance for Efficient Inference",
+  "year": 2026,
+  "evidence_quality": "full_pdf",
+  "source_url": "https://arxiv.org/abs/2602.03203",
+  "tier": 1,
+  "one_line_claim": "Predicts which KV pairs will be important to future tokens during generation and evicts unimportant pairs to enable aggressive compression.",
+  "method_summary": "ForesightKV uses a two-stage training framework: Golden Eviction (supervised learning via pairwise ranking loss on attention patterns) predicts long-term KV importance, then GRPO (reinforcement learning on task performance) adapts this predictor to task-specific distributions. At generation time, the importance predictor selects which KV pairs to retain within a budget constraint.",
+  "key_findings": [
+    {
+      "finding": "Low-entropy tokens show dramatically amplified loss increases when evicted: +147% loss increase in Math, +75% in Code, +187% in Summarization tasks.",
+      "quote": "As shown in Table 1, evicting low-entropy tokens causes a larger loss increase compared to evicting random tokens (+147% for Math, +75% for Code, and +187% for Summarization).",
+      "page": 5,
+      "section": "Motivation"
+    },
+    {
+      "finding": "Achieves 92-95% of full model performance at aggressive compression ratios (KV budget 2K-4K tokens) across multiple model sizes and tasks.",
+      "quote": "ForesightKV achieves around 92-95% performance with KV budget 2K-4K, as shown in Figure 3.",
+      "page": 7,
+      "section": "Main Results"
+    },
+    {
+      "finding": "End-to-end throughput improvements range from 2.69x to 9.79x on different GPU configurations while maintaining quality.",
+      "quote": "We achieve 2.69x-9.79x end-to-end throughput gain across different GPU configurations.",
+      "page": 8,
+      "section": "Main Results"
+    }
+  ],
+  "relation_to_herald": {
+    "shared": "Both address KV-cache compression failures: ForesightKV via learned eviction to prevent catastrophic quality drops; HERALD via logit-signal prediction to detect them. Both target long-context LLM inference with tight memory/latency budgets. Both operate during generation without modifying the base model.",
+    "differs_on": [
+      "ForesightKV solves the *which tokens to evict* problem via learned importance prediction; HERALD solves the *when failure will occur* problem via per-token logit features and forecasting.",
+      "ForesightKV trains an importance predictor end-to-end with task rewards; HERALD trains an XGBoost classifier on zero-cost logit statistics.",
+      "ForesightKV optimizes for task performance under a KV budget; HERALD optimizes for early detection of looping, non-termination, and instruction amnesia."
+    ]
+  },
+  "use_in_appendix": {
+    "section": "kv_cache_compression_landscape",
+    "weight": "primary"
+  }
+}

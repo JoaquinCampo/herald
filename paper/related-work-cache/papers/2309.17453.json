@@ -1,0 +1,26 @@
+{
+  "arxiv_id": "2309.17453",
+  "bib_key": "streamingllm",
+  "title": "Efficient Streaming Language Models with Attention Sinks",
+  "year": 2024,
+  "venue": "ICLR",
+  "evidence_quality": "abstract_only",
+  "source_url": "https://arxiv.org/abs/2309.17453",
+  "tier": 2,
+  "one_line_claim": "StreamingLLM enables language models to handle long contexts by preserving initial tokens as attention sinks while using a sliding window for KV-cache compression.",
+  "method_summary": "Combines attention sinks (preserving KV of initial tokens) with sliding-window attention to compress KV cache. Uses a fixed-size window of recent tokens plus initial tokens that naturally attract high attention, enabling generalization to long sequences without retraining. Optionally adds a placeholder token during pre-training as a dedicated sink.",
+  "key_findings": [
+    {"finding": "Attention sink phenomenon allows recovery of window-attention performance by retaining initial-token KV.", "quote": "keeping the KV of initial tokens will largely recover the performance of window attention", "page": null, "section": "Abstract"},
+    {"finding": "Enables Llama-2, MPT, Falcon, and Pythia to process up to 4 million tokens without fine-tuning.", "quote": "perform stable and efficient language modeling with up to 4 million tokens and more", "page": null, "section": "Abstract"},
+    {"finding": "Achieves 22.2x speedup compared to sliding-window recomputation baselines.", "quote": "StreamingLLM outperforms the sliding window recomputation baseline by up to 22.2x speedup", "page": null, "section": "Abstract"}
+  ],
+  "relation_to_herald": {
+    "shared": "Both address KV-cache compression for long-context LLM inference. StreamingLLM is one of the compression methods HERALD evaluates.",
+    "differs_on": [
+      "StreamingLLM provides lossless long-context inference; HERALD predicts when compression methods catastrophically fail.",
+      "StreamingLLM focuses on performance-stability trade-offs; HERALD detects specific failure modes (looping, non-termination).",
+      "StreamingLLM operates at design level; HERALD monitors per-token logit signals at inference time."
+    ]
+  },
+  "use_in_appendix": {"section": "kv_cache_compression_landscape", "weight": "primary"}
+}

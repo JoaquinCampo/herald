@@ -1,0 +1,30 @@
+{
+  "arxiv_id": "2505.17138",
+  "bib_key": "runtimepruning",
+  "title": "Runtime Adaptive Pruning for LLM Inference",
+  "year": 2025,
+  "venue": "arXiv",
+  "evidence_quality": "full_pdf",
+  "source_url": "https://arxiv.org/abs/2505.17138",
+  "tier": 2,
+  "one_line_claim": "An RL-guided framework dynamically prunes both model parameters and KV-cache blocks at inference time to adapt to heterogeneous workloads and memory constraints.",
+  "method_summary": "RAP observes runtime state (request characteristics, model configuration, available memory budget) and uses an RL agent to select which MHA and FFN blocks to prune from the model and KV-cache. A Greedy Sequential Importance algorithm iteratively scores block importance by measuring the impact of removing each block on perplexity. The RL agent learns to balance perplexity preservation against memory and latency budgets via an MDP formulation.",
+  "key_findings": [
+    {"finding": "RAP achieves 52.10 perplexity on Llama-2-7B under an 80% memory budget, outperforming static pruning baselines that achieve 58.67 and 92.41 perplexity.", "quote": "Our method achieves 52.10 perplexity under the 80% memory budget on the Llama-2-7B model, while the baseline methods achieve 58.67 and 92.41 perplexity respectively.", "page": null, "section": "5"},
+    {"finding": "Adapts pruning decisions dynamically based on per-request workload, memory availability, and batch size variations.", "quote": "Runtime LLM inference memory consumption varies significantly with different requests, batches, and system conditions.", "page": null, "section": "3"},
+    {"finding": "Unifies parameter-level pruning and KV-cache compression into a single adaptive framework using block-level pruning of MHA and FFN layers.", "quote": "We propose RAP, which combines parameter pruning and KV-cache compression through runtime-adaptive RL-guided block pruning.", "page": null, "section": "1"}
+  ],
+  "limitations": [
+    "Evaluation focuses on Llama models and GSM8K dataset; generalization to other architectures unclear.",
+    "RL training overhead is not analyzed."
+  ],
+  "relation_to_herald": {
+    "shared": "Both adapt inference-time interventions based on runtime signals to manage resource budgets without retraining the base LLM.",
+    "differs_on": [
+      "RAP selects which blocks to prune to maximize perplexity under a memory budget; HERALD predicts catastrophic failure onset (looping, non-termination) under KV-cache compression to enable early intervention.",
+      "RAP uses RL to learn pruning policies and importance scoring; HERALD uses XGBoost trained on logit-based features without RL.",
+      "RAP addresses both parameter pruning and KV-cache compression; HERALD focuses exclusively on detecting hazardous states induced by KV-cache eviction."
+    ]
+  },
+  "use_in_appendix": {"section": "adaptive_controller_inference", "weight": "secondary", "must_cite": false}
+}
