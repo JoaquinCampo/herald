@@ -179,6 +179,44 @@ primary target rather than falling back to diagnostic tags.
 Reviewer-facing rule: HERALD predicts future counterfactual
 compression harm. It does not merely classify abnormal text.
 
+### No-leakage protocol for run-level wrappers
+
+Any run-level second-stage wrapper used in a HERALD headline number
+must pass an explicit no-leakage audit before it can be treated as
+the per-run number. The audit has three layers, in increasing
+strictness:
+
+1. **Press-agnostic CV**: cross-validation must be
+   leave-one-press-out (the held-out press has never been seen at
+   training time), never `GroupKFold(prompt_id)` with a `press__*`
+   one-hot in scope. The latter lets the wrapper memorise
+   press-specific calibration and reports an in-distribution number
+   on a press-agnostic claim.
+2. **Strict pred-aggregates-only ablation**: a sibling fit must
+   train on the per-token-prediction aggregates alone
+   (`pred_max`, `pred_p95`, `pred_p75`, `pred_p50`, `pred_mean`,
+   `pred_std`, `pred_last5`, `pred_top3`). Drop the run-level
+   metadata features (`compression_ratio`, `task__*` one-hot,
+   `n_tokens`, `press__*` one-hot). The strict ρ is the honest
+   read of how much the per-token predictor contributes at the run
+   level.
+3. **Meta-only baseline**: a third fit must train on the run-level
+   metadata alone (`compression_ratio`, `task__*` one-hot,
+   `n_tokens`), with no per-token-prediction features at all. The
+   meta-only ρ is the floor a deployer's prior already gives them
+   at inference, with no model.
+
+Decision rule. The headline run-level number is the strict-ablation
+ρ, not the full wrapper ρ. The wrapper is reportable only if
+strict ρ - meta-only ρ is a positive, non-trivial margin (target
+≥ 0.05 in Spearman, with non-overlapping bootstrap CIs). If
+strict ρ ≈ meta-only ρ, the wrapper is metadata and the
+per-token predictor has not yet earned a per-run claim.
+
+Reviewer-facing rule: a per-run number that drops on either the
+press-agnostic CV or the strict pred-only ablation is not a HERALD
+result; it is a measurement of the deployer's prior.
+
 ### Alignment study (methodological centerpiece)
 
 Pairwise correlation and AUROC matrix across all damage metrics,
@@ -300,11 +338,17 @@ the controller design.
 
 **Intervention vocabulary is press-specific**:
 
-- StreamingLLM / mask-based: lift pressure by disabling or relaxing
-  the mask for the next segment.
-- Continuous eviction methods such as Knorm / TOVA: lift pressure by
-  stopping further eviction for the next segment where the press
-  implementation supports it.
+- Static prefill-only presses such as the installed
+  `StreamingLLMPress`: no meaningful mid-generation relaxation action.
+  The press physically prunes prompt KV during prefill and is dormant
+  during decode. Use as a fixed-compression baseline, not as the
+  primary dynamic controller substrate.
+- Decode-time wrappers such as `DecodingPress(KnormPress)` or
+  `DMSPress(KnormPress(), decoding=True)`: meaningful deployable action
+  is changing the future cache budget, target size, or threshold at
+  segment boundaries. This action is future-only: once KV has been
+  physically pruned, a later safer budget cannot restore it without
+  reprefill or an offload-based oracle path.
 - Prompt-time eviction methods such as SnapKV / ExpectedAttention:
   there may be no meaningful "stop further eviction" action after
   prefill. The deployable arm is ratio reduction only if it can be
@@ -536,29 +580,42 @@ Honest scope statement.
 
 ## Phase 4: Closed-Loop Control
 
-**Two presses (one mask-based, one eviction-based)**:
+**Runtime-controllable press first**:
 
-- StreamingLLM: mask-based, easy intervention via toggle or relaxed
-  ratio.
-- SnapKV or ExpectedAttention: eviction-based, recompute fallback or
-  temporary full-KV recovery.
+The original plan treated StreamingLLM as a mask-based press that could
+be relaxed during generation. Installed kvpress does not behave that
+way: `StreamingLLMPress` prunes prompt KV at prefill and is inactive
+during decode. Therefore StreamingLLM remains a fixed-compression
+baseline, not the primary v1 controller press.
 
-The exact action set is inherited from the Phase 1 intervention probe:
-each press has a written intervention vocabulary before controller
-training begins. The controller is not allowed to use an action that
-was not validated or bounded by the probe.
+Phase 4 v1 targets an existing decode-time controllable kvpress
+substrate:
+
+- Primary candidate: `DecodingPress(KnormPress)`.
+- Backup candidate: `DMSPress(KnormPress(), decoding=True)`.
+- Fallback only if both fail: reprefill oracle or prompt-level gating.
+
+The controller is not allowed to use an action until a feasibility
+gate verifies that the selected press actually compresses during
+decode and exposes a stable budget or threshold surface.
 
 **Controller design (segment/run risk gating, primary)**:
 
 - Every K tokens, compute risk from the previous window and/or the
   maximum predicted risk seen so far in the run.
-- If segment/run risk > threshold, relax compression for next K tokens
-  or switch to a safer mode for the remainder of the generation.
+- If segment/run risk > threshold, relax future decode-time compression
+  by raising target cache size, lowering a threshold, or skipping the
+  next compression event. This does not recover already-evicted KV.
+  If risk stays low, increase compression by lowering target cache
+  size or raising a threshold.
 - Evaluate K in {8, 16, 32}.
 - Policies:
-  - StreamingLLM: disable compression or lower ratio for next segment.
-  - SnapKV / ExpectedAttention: recompute next segment with full KV,
-    or fall back to lower compression ratio.
+  - `RiskBudgetStep`: move one budget level safer or more aggressive
+    at segment boundaries.
+  - `RiskSafeRest`: switch to safe budget for the rest of generation
+    after high accumulated risk.
+  - `RiskAIMD`: TCP-style additive increase / multiplicative decrease
+    after feasibility and smoke are green.
 
 The segment design also makes compute accounting cleaner.
 
@@ -573,11 +630,18 @@ not as deployable controller.
 
 **Comparisons (Pareto curve of compute vs accuracy)**:
 
-- Fixed compression at each ratio.
-- No compression.
-- Random gating at matched compute (load-bearing control: proves the
-  predictor's gating policy helps, not that any intervention helps).
-- Predictor gating.
+- Fixed decode-time budgets.
+- No compression or large-cache decode-time budget.
+- Static Phase 1 presses, including StreamingLLM, as reference
+  baselines.
+- Random budget changes at matched compute (load-bearing control:
+  proves the predictor's policy helps, not that any intervention
+  helps).
+- Constant-rate AIMD without HERALD risk, to test whether generic
+  adaptive budgets are sufficient.
+- LoopGuard-style heuristic for loop and non-termination failures,
+  plus a lead-time comparison against HERALD segment risk.
+- HERALD risk-guided budget control.
 
 **Success criterion**: Predictor gating recovers >= 50% of
 compression-induced quality loss at <= 50% of the compute cost of
@@ -615,19 +679,22 @@ goes in v2.
 
 ## Implementation Priority
 
-Phase 0, Phase 1, and the Phase 2 baseline predictor are complete.
-The next concrete blockers are:
+Phase 0, Phase 1, Phase 2, and Phase 2b are complete. The next
+concrete blockers are:
 
-1. Add paired-bootstrap CIs for the cross-fold predictor-vs-baseline
-   deltas in Phase 2.
-2. Run Phase 2b: XGBoost / LightGBM headroom check plus alternative
-   label families (`future_sum_kl`, `future_max_js`) and segment-risk
-   aggregation.
-3. Update paper figures/tables from `gold/phase-2-results.md`:
-   baseline table, split-transfer table, per-run validation table, and
-   lead-time limitation.
-4. Decide whether to run the Phase 1 intervention probe now or roll it
-   into Phase 4 as the first controller feasibility experiment.
-5. For control, implement the smallest segment-risk gating demo on one
-   mask-based press first, with random matched-compute gating as the
-   load-bearing control.
+1. Update paper figures/tables from `gold/phase-2-results.md` and
+   `gold/phase-2b-results.md`: baseline table, split-transfer table,
+   per-run validation table, label-family table, XGBoost headroom
+   table, segment-risk table, and lead-time limitation.
+2. For control, run the decode-time press feasibility gate
+   (`DecodingPress(KnormPress)` first, `DMSPress(..., decoding=True)`
+   second). Require kvpress >= 0.5.3, `compression_interval=16`, hook
+   fire counts, and retained-cache-length logging. Only after
+   fixed-budget decode-time compression is green, implement the
+   smallest segment-risk budget controller with random matched-compute,
+   entropy, constant-rate AIMD, and LoopGuard-style baselines.
+3. Export the Phase 4 predictor and isotonic calibrator, then validate
+   online feature parity against the Phase 2 offline feature builder.
+4. Decide whether the Phase 1 intervention probe is still needed as a
+   separate recoverability study or whether the decode-time feasibility
+   and smoke runs supersede it.

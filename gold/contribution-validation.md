@@ -163,12 +163,20 @@ substitute for Phase 4.
 
 Minimum Phase 4 evidence:
 
-- One mask-based controller demo, preferably StreamingLLM toggle /
-  relax.
-- One eviction-based or recompute-fallback demo if feasible; if not,
-  explicitly state that the v1 controller result is mask-based only.
-- Pareto curve against fixed compression, no compression, and random
-  gating at matched compute.
+- One runtime-controllable decode-time compression demo, preferably
+  `DecodingPress(KnormPress)` or `DMSPress(KnormPress(),
+  decoding=True)`.
+- StreamingLLM may appear as a static fixed-compression baseline, but
+  not as the primary dynamic controller press unless a future kvpress
+  implementation exposes a real decode-time control surface.
+- Pareto curve against fixed decode-time budgets, no or large-cache
+  decoding, entropy control, and random budget changes at matched
+  compute.
+- Constant-rate AIMD without HERALD risk, to separate learned risk
+  from generic adaptive scheduling.
+- LoopGuard-style loop baseline (arXiv:2604.10044), with a lead-time
+  comparison for loop failures and separate reporting on non-loop
+  failures.
 - Predictor overhead included in the cost accounting.
 
 Without this, the paper should frame control as future work and lean on

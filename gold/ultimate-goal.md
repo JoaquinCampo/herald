@@ -32,6 +32,12 @@ logit signals, predicts whether the current compression is degrading
 *this* generation, and intervenes before the damage manifests in
 user-visible output. The cost-quality frontier moves outward.
 
+The strongest version is not merely a detector. It is a
+risk-and-recoverability monitor: it estimates whether the current
+generation is healthy, becoming unstable, already collapsed, or
+recovering after an intervention, and it chooses the cheapest action
+that keeps quality within tolerance.
+
 ## The Three Pillars (Maximal Form)
 
 ### 1. Measurement Methodology
@@ -75,6 +81,11 @@ across models, tasks, and compression methods.
   useful, not just accurate. If exact onset lead time is weak for a
   failure family, evaluate segment/run risk as the deployable control
   signal instead of forcing an onset framing.
+- **Failure-specific risk**: generic trajectory damage is not enough.
+  The predictor should distinguish, where data supports it, future
+  looping, non-termination, format break, instruction drift, semantic
+  drift, and task-outcome harm. Different failures require different
+  interventions.
 - **Generalization across the full matrix**: held-out model family,
   held-out task, held-out compression method, held-out ratio. The
   predictor that only works on the training distribution is not the
@@ -83,7 +94,10 @@ across models, tasks, and compression methods.
   carry the signal. How the signal relates to the underlying KV
   eviction dynamics. The point is not just "XGBoost beats entropy
   threshold" but "here is what compression damage looks like at the
-  logit level, and here is why it is detectable."
+  logit level, and here is why it is detectable." A strong version
+  tests whether compression damage behaves like a dynamical
+  instability, with early-warning signatures such as rising variance,
+  autocorrelation, skewness, or flickering before visible collapse.
 - **Counterfactual target discipline**: the predictor is trained to
   forecast compression-attributable damage relative to the paired
   uncompressed baseline, not to detect generic abnormal text. Looping
@@ -96,14 +110,21 @@ Predictor-guided dynamic compression that demonstrably improves the
 cost-quality Pareto frontier across compression methods and
 deployment regimes.
 
-- **Multiple compression methods**: mask-based (StreamingLLM),
-  eviction-based (SnapKV, ExpectedAttention), score-based, with the
-  controller adapted to each press's intervention vocabulary.
+- **Multiple compression methods**: static prefill presses,
+  decode-time budgeted presses, eviction-based presses, score-based
+  presses, with the controller adapted to each press's actual
+  intervention vocabulary. A press that only prunes during prefill is a
+  valid fixed-compression baseline, but it is not a runtime controller
+  substrate unless it exposes a real decode-time control surface.
 - **Controllability before control**: before training a full
   controller, explicitly measure whether a generation can recover
   after an intervention and which interventions are meaningful for
   each press. Reactive control, anticipatory control, and oracle
   recompute fallback are different regimes and must not be conflated.
+- **Controller state model**: the controller should reason in states,
+  not just thresholds: healthy, unstable, collapsed, and recovering.
+  This makes the action policy explicit and prevents treating
+  detection, prevention, and recovery as the same problem.
 - **Per-segment and per-token gating**: deployable per-segment as the
   practical controller, per-token as the oracle upper bound on what
   responsiveness buys.
@@ -157,6 +178,9 @@ years.
   JS at multiple horizons, sequence BERTScore at completion, task
   outcome, judge severity. Multi-task regularization plus a richer
   output that can support different downstream uses.
+- **Risk and recoverability outputs**: beyond "damage likely," the
+  predictor should estimate severity, time-to-risk, failure family, and
+  whether a cheap intervention is still likely to recover quality.
 - **Tier 0, 1, and 2 features**: zero-cost logit signals, cheap
   derived signals, and model internals (attention entropy, hidden
   state dynamics) for the ablation that defends the "lightweight"
@@ -172,11 +196,13 @@ years.
   intervention policies (toggle, ratio reduction, recompute fallback,
   KV restoration where the press allows).
 - **Press-specific action vocabularies**: the controller's action
-  space is not universal. Mask-based methods can often be toggled or
-  relaxed mid-generation; continuous eviction methods may allow
-  "stop further eviction"; prompt-time eviction methods may require
-  reprefill or recompute fallback. The action space must be measured,
-  not assumed.
+  space is not universal. Decode-time methods may expose a live cache
+  budget or threshold; prompt-time methods may require reprefill or
+  recompute fallback; static prefill-only methods may have no
+  deployable mid-generation action at all. The action space must be
+  measured, not assumed. Physical KV eviction makes most runtime
+  actions future-only unless the system explicitly stores or recomputes
+  evicted entries.
 - **Per-token, per-segment, and per-request gating** evaluated and
   compared.
 - **Production deployment study**: latency, throughput, cost on real
@@ -212,6 +238,11 @@ The ultimate version therefore requires:
 
 - Strong baselines beaten, especially entropy/EWMA, position-only, and
   single-feature thresholds.
+- Surface-output baselines beaten or scoped honestly, including
+  LoopGuard-style repetition detectors such as type-token ratio,
+  repetition compression ratio, suffix overlap, and top-1 confidence
+  streaks. If those solve a narrow failure mode better, HERALD should
+  concede that and claim the broader multi-damage monitor.
 - A canonical run-level damage table showing that intrinsic predictor
   scores align with lexical/semantic drift, diagnostic catastrophes,
   and task-quality loss where deterministic graders exist.
@@ -222,6 +253,11 @@ The ultimate version therefore requires:
   position/ratio proxies.
 - At least one closed-loop controller demo that beats random gating at
   matched compute.
+- For a top-tier controller claim, a cost-quality Pareto result: the
+  HERALD-guided policy must recover a meaningful fraction of
+  compression-induced quality loss while preserving a meaningful
+  fraction of compression savings, beating fixed compression and
+  random matched-budget gating.
 
 If those do not hold, the work can still be valuable as a measurement
 methodology or negative-result paper, but it should not be framed as a
