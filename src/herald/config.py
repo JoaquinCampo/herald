@@ -1,132 +1,124 @@
-"""Experiment configuration and data models."""
+"""Experiment configuration for the HERALD generation sweep.
 
-import hashlib
-from dataclasses import dataclass, field
+A single `Config` instance is the full, reproducible spec of one sweep:
+which models, tasks, compressors, and ratios to run, the switch stride,
+and how many prompts per task. Defaults describe the full sweep; pass
+overrides to construct a slice.
+"""
+
 from pathlib import Path
-from typing import Annotated, Any
 
-import torch
-from pydantic import BaseModel, BeforeValidator
-from pydantic_settings import BaseSettings
+from pydantic import BaseModel, Field, field_validator
 
+# Base models: two distinct families (different tokenizer + pretraining)
+# so the cross-family transfer claim is non-trivial.
+MODELS: dict[str, str] = {
+    "llama": "meta-llama/Llama-3.1-8B-Instruct",
+    "qwen3": "Qwen/Qwen3-8B",
+}
 
-def _none_to_nan(v: object) -> float:
-    """Coerce None → NaN for JSON roundtrip (NaN→null→None)."""
-    if v is None:
-        return float("nan")
-    return float(v)  # type: ignore[arg-type]
+# Five compressors spanning distinct selection principles, so holding
+# one out is a real transfer test. All weight-free, none need eager.
+COMPRESSORS: tuple[str, ...] = (
+    "streaming_llm",
+    "snapkv",
+    "expected_attention",
+    "knorm",
+    "random",
+)
 
-
-NanFloat = Annotated[float, BeforeValidator(_none_to_nan)]
-
-
-def compute_prompt_hash(prompt_text: str) -> str:
-    return hashlib.sha256(prompt_text.encode("utf-8")).hexdigest()
-
-
-def make_run_id(
-    prompt_id: str, press: str, compression_ratio: float, seed: int
-) -> str:
-    body = f"{prompt_id}|{press}|{compression_ratio:.6f}|{seed}"
-    return hashlib.sha1(body.encode("utf-8")).hexdigest()[:16]
+# Compression ratio = fraction of KV pairs REMOVED (kvpress convention).
+RATIOS: tuple[float, ...] = (0.25, 0.5, 0.75, 0.875)
 
 
-@dataclass(slots=True)
-class GenerationArtifact:
-    run_id: str
-    input_ids: torch.Tensor
-    input_len: int
-    generated_token_ids: list[int]
-    compressed_scores: list[torch.Tensor] = field(default_factory=list)
+class TaskSpec(BaseModel):
+    """One task: where to load it and its generation budget.
+
+    `max_new_tokens` is M, the cap applied identically to the reference
+    run and every hybrid, so the only difference between paired runs is
+    compression, never the budget.
+    """
+
+    name: str
+    hf_path: str
+    hf_subset: str | None = None
+    split: str = "test"
+    max_new_tokens: int
 
 
-class ExperimentConfig(BaseSettings):
-    model_name: str = "Qwen/Qwen2.5-7B-Instruct"
-    press_name: str = "streaming_llm"
-    compression_ratio: float = 0.875
-    max_new_tokens: int = 512
-    num_prompts: int = 10
-    seed: int = 42
-    device: str = "auto"
-    output_dir: Path = Path("results")
-    prompt_timeout_seconds: float = 300.0
-    # Iteration-2 prep: enable to also capture lookback_ratio
-    # via model.generate(output_attentions=True). Off by
-    # default — adds ~quadratic memory in seq length.
-    capture_attention: bool = False
-
-    def resolve_device(self) -> str:
-        if self.device != "auto":
-            return self.device
-        import torch
-
-        if torch.cuda.is_available():
-            return "cuda"
-        if torch.backends.mps.is_available():
-            return "mps"
-        return "cpu"
-
-
-class TokenSignals(BaseModel):
-    entropy: float
-    top1_prob: float
-    top5_prob: float
-    top5_logprobs: list[float] = []
-    h_alts: float = 0.0
-    avg_logp: float = 0.0
-    delta_h: NanFloat = float("nan")
-    delta_h_valid: bool = False
-    kl_div: NanFloat = float("nan")
-    top10_jaccard: NanFloat = float("nan")
-    eff_vocab_size: float = 0.0
-    tail_mass: float = 0.0
-    logit_range: float = 0.0
-    # Iteration-2 attention-derived feature. NaN if
-    # ExperimentConfig.capture_attention was False.
-    lookback_ratio: NanFloat = float("nan")
+TASKS: dict[str, TaskSpec] = {
+    "gsm8k": TaskSpec(
+        name="gsm8k",
+        hf_path="openai/gsm8k",
+        hf_subset="main",
+        split="test",
+        max_new_tokens=512,
+    ),
+    "humaneval": TaskSpec(
+        name="humaneval",
+        hf_path="openai/openai_humaneval",
+        split="test",
+        max_new_tokens=512,
+    ),
+    # ifeval and longbench use custom loaders (herald.ifeval /
+    # herald.longbench); the spec fields are documentation, only
+    # max_new_tokens (the budget cap M) is read by the runner. The model
+    # stops early at EOS, so the cap mainly bounds rambling outputs.
+    "ifeval": TaskSpec(
+        name="ifeval",
+        hf_path="google/IFEval",
+        split="train",
+        max_new_tokens=1024,
+    ),
+    "longbench": TaskSpec(
+        name="longbench",
+        hf_path="THUDM/LongBench",
+        split="test",
+        max_new_tokens=512,
+    ),
+}
 
 
-class RunResult(BaseModel):
-    run_id: str
-    prompt_id: str
-    prompt_text: str
-    prompt_hash: str
-    model: str
-    model_revision: str | None = None
-    tokenizer_revision: str | None = None
-    dtype: str = "float16"
-    device_class: str = "unknown"
-    press: str
-    compression_ratio: float
-    max_new_tokens: int = 512
-    seed: int
-    decoding_config: dict[str, Any] = {}
-    task: str = "gsm8k"
-    baseline_run_id: str
-    generated_text: str
-    generated_token_ids: list[int] = []
-    ground_truth: str
-    predicted_answer: str | None
-    correct: bool | None
-    stop_reason: str
-    catastrophes: list[str]
-    num_tokens_generated: int
-    catastrophe_onsets: dict[str, int] = {}
-    signals: list[TokenSignals]
-    replay_status: str = "pending"
-    replay_error: str | None = None
-    created_at: str | None = None
-    herald_git_sha: str | None = None
-    # Cost telemetry. Captured at generation boundaries; no per-token
-    # cuda syncs (would perturb timing). NaN where the platform does
-    # not expose the underlying counter (e.g. peak_memory on CPU/MPS,
-    # kv_size_at_end where the press does not implement it).
-    wall_clock_per_token: NanFloat = float("nan")
-    peak_memory_mb: NanFloat = float("nan")
-    kv_size_at_end: NanFloat = float("nan")
-    policy_name: str = "fixed_ratio"
-    # Replay wall-clock (the matched-prefix uncompressed forward).
-    # NaN when the run did not replay (`run_single` without replay).
-    # Surfaced separately so Block 2 can measure replay-fraction
-    # without re-instrumenting later.
-    replay_wall_clock_seconds: NanFloat = float("nan")
+class Config(BaseModel):
+    """Full spec of one generation sweep."""
+
+    models: list[str] = Field(default_factory=lambda: list(MODELS))
+    tasks: list[str] = Field(default_factory=lambda: ["gsm8k", "humaneval"])
+    compressors: list[str] = Field(default_factory=lambda: list(COMPRESSORS))
+    ratios: list[float] = Field(default_factory=lambda: list(RATIOS))
+    # k: switch positions are {0, k, 2k, ...} up to the run length.
+    switch_stride: int = 16
+    prompts_per_task: int = 200
+    # Used only to seed RandomPress evictions for reproducibility;
+    # prompt selection is first-N in dataset order and already stable.
+    seed: int = 0
+    dtype: str = "bfloat16"
+    attn_implementation: str = "sdpa"
+    results_dir: Path = Path("results")
+    # References batch freely (no press). Hybrids default to batch 1:
+    # left-pad batching may corrupt compression (pad tokens enter the
+    # press), so it stays 1 until validated equal to batch 1 per press.
+    ref_batch_size: int = 16
+    hybrid_batch_size: int = 1
+
+    @field_validator("ratios")
+    @classmethod
+    def _ratios_in_unit_interval(cls, v: list[float]) -> list[float]:
+        for r in v:
+            if not 0.0 < r < 1.0:
+                raise ValueError(
+                    f"ratio {r} must be in the open interval (0, 1)"
+                )
+        return v
+
+    @field_validator(
+        "switch_stride",
+        "prompts_per_task",
+        "ref_batch_size",
+        "hybrid_batch_size",
+    )
+    @classmethod
+    def _positive(cls, v: int) -> int:
+        if v < 1:
+            raise ValueError("must be >= 1")
+        return v

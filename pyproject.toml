@@ -1,88 +1,136 @@
 [project]
 name = "herald"
 version = "0.1.0"
-description = "Hazard Estimation via Real-time Analysis of Logit Distributions: predicting catastrophic failures in KV-cache compression"
-readme = "README.md"
+description = "Online prediction of KV-cache compression damage from logit statistics"
 requires-python = ">=3.12"
-authors = [{ name = "Joaquin Campo", email = "jcamponario@gmail.com" }]
 dependencies = [
-  "datasets>=4.7.0",
-  "loguru>=0.7.3",
-  "polars>=1.18.0",
-  "pyarrow>=18.0.0",
-  "pydantic>=2.12.5",
-  "pydantic-settings>=2.13.1",
-  "scikit-learn>=1.6.0",
-  "scipy>=1.14.0",
-  "torch>=2.10.0",
-  "transformers>=5.3.0",
-  "typer>=0.24.1",
-  "xgboost>=3.0.0",
+    # Pinned to match Orion's warm uv cache (qa-lora-lab uses
+    # 2.10.0+cu128), so the GPU install reuses cached wheels instead of
+    # pulling multi-GB CUDA wheels over the choke-prone proxy.
+    "torch==2.10.0",
+    # kvpress 0.5.2's prefill hook reads cache_position from the
+    # attention forward kwargs; the transformers v5 attention refactor
+    # stopped threading it there, so the press never fires. The 4.57.x
+    # line still passes cache_position and supports Llama-3.1 + Qwen3.
+    "transformers>=4.57,<5",
+    "kvpress>=0.5.1",
+    "pydantic>=2.6",
+    "datasets>=3.0",
+    "numpy>=1.26",
+    "pyarrow>=16.0",
+    # LongBench scoring deps (rouge_score and code_sim_score)
+    "rouge>=1.0",
+    "fuzzywuzzy>=0.18",
+    # IFEval instruction-following eval (vendored Google code deps)
+    "langdetect>=1.0.9",
+    "nltk>=3.8",
+    "immutabledict>=2.0",
+    "absl-py>=1.0",
+    # torch's CUDA stack, declared as linux-only direct deps so the
+    # tool.uv.sources routing below pulls them from the cu128 index
+    # (already in Orion's uv cache) rather than pythonhosted. Versions
+    # are pinned transitively by torch==2.10.0.
+    "nvidia-cublas-cu12 ; sys_platform == 'linux'",
+    "nvidia-cuda-cupti-cu12 ; sys_platform == 'linux'",
+    "nvidia-cuda-nvrtc-cu12 ; sys_platform == 'linux'",
+    "nvidia-cuda-runtime-cu12 ; sys_platform == 'linux'",
+    "nvidia-cudnn-cu12 ; sys_platform == 'linux'",
+    "nvidia-cufft-cu12 ; sys_platform == 'linux'",
+    "nvidia-cufile-cu12 ; sys_platform == 'linux'",
+    "nvidia-curand-cu12 ; sys_platform == 'linux'",
+    "nvidia-cusolver-cu12 ; sys_platform == 'linux'",
+    "nvidia-cusparse-cu12 ; sys_platform == 'linux'",
+    "nvidia-cusparselt-cu12 ; sys_platform == 'linux'",
+    "nvidia-nccl-cu12 ; sys_platform == 'linux'",
+    "nvidia-nvjitlink-cu12 ; sys_platform == 'linux'",
+    "nvidia-nvshmem-cu12 ; sys_platform == 'linux'",
+    "nvidia-nvtx-cu12 ; sys_platform == 'linux'",
+    "triton ; sys_platform == 'linux'",
 ]
-
-[project.optional-dependencies]
-metrics = [
-  "bert-score>=0.3.13",
-  "editdistance>=0.8.1",
-  "rouge-score>=0.1.2",
-  "sentence-transformers>=3.3.0",
-]
-
-[project.scripts]
-herald = "herald:main"
 
 [dependency-groups]
 dev = [
-  "mypy>=1.0",
-  "poethepoet",
-  "pre-commit",
-  "ruff>=0.8",
-]
-test = [
-  "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "pytest>=8.0",
+    "poethepoet>=0.27",
 ]
 
 [build-system]
-requires = ["uv_build>=0.8.15,<0.9.0"]
-build-backend = "uv_build"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# On Orion (linux) resolve torch and its whole CUDA stack from the
+# PyTorch CUDA index so the install reuses the warm 2.10.0+cu128 wheels
+# already in the uv cache (qa-lora-lab pulled them from this index). On
+# macOS the default PyPI CPU wheels are used (linux-only markers).
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+nvidia-cublas-cu12 = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+nvidia-cuda-cupti-cu12 = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+nvidia-cuda-nvrtc-cu12 = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+nvidia-cuda-runtime-cu12 = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+nvidia-cudnn-cu12 = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+nvidia-cufft-cu12 = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+nvidia-cufile-cu12 = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+nvidia-curand-cu12 = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+nvidia-cusolver-cu12 = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+nvidia-cusparse-cu12 = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+nvidia-cusparselt-cu12 = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+nvidia-nccl-cu12 = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+nvidia-nvjitlink-cu12 = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+nvidia-nvshmem-cu12 = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+nvidia-nvtx-cu12 = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+triton = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/herald"]
+
+[tool.ruff]
+line-length = 78
+src = ["src", "tests"]
+extend-exclude = ["src/herald/_ifeval_vendor"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
+files = ["src", "tests"]
 
 [[tool.mypy.overrides]]
-module = [
-  "bert_score.*",
-  "datasets.*",
-  "editdistance",
-  "joblib",
-  "joblib.*",
-  "kvpress.*",
-  "pyarrow.*",
-  "rouge_score.*",
-  "scikit-learn.*",
-  "scipy.*",
-  "sentence_transformers.*",
-  "sklearn.*",
-  "transformers.*",
-  "xgboost.*",
-]
+module = ["kvpress.*"]
 ignore_missing_imports = true
 
-# --- Task runner ---
-[tool.poe]
-include = "poe_tasks.toml"
+[[tool.mypy.overrides]]
+module = ["herald._ifeval_vendor.*"]
+ignore_errors = true
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["langdetect.*", "absl.*", "immutabledict.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# rouge and fuzzywuzzy ship no type stubs.
+module = ["rouge.*", "fuzzywuzzy.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
-  "gpu: requires a real LLM forward pass (run on Orion only)",
-  "e2e: end-to-end Phase 0 sweep (large; opt-in)",
+    "model: integration tests that load a real (tiny) model; slow",
 ]
 
-[tool.ruff]
-line-length = 78
-target-version = "py312"
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "W"]
+[tool.poe.tasks]
+fmt = "ruff format src tests"
+lint = "ruff check --fix src tests"
+typecheck = "mypy"
+test = "pytest -q"
+check = ["fmt", "lint", "typecheck", "test"]

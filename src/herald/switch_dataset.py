@@ -1,0 +1,232 @@
+"""Build switch-level predictor rows from HERALD sweep artifacts.
+
+The sweep stores references as one JSON plus one NPY feature matrix per
+prompt, and hybrids as JSONL shards per compressor and ratio. This
+module joins them into rows where the observation is one possible switch
+decision:
+
+    (task, prompt_id, compressor, ratio, s) -> dq
+
+Feature columns are causal: row ``s`` uses only the reference logit
+features up to and including generated token position ``s``.
+"""
+
+import json
+from collections.abc import Iterator, Sequence
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+
+from herald.features import derive_features
+from herald.storage import legacy_safe_id, safe_id
+
+
+@dataclass(frozen=True)
+class ReferenceArtifact:
+    prompt_id: str
+    q: float
+    ref_len: int
+    features_path: Path
+
+
+@dataclass(frozen=True)
+class HybridRecord:
+    prompt_id: str
+    compressor: str
+    ratio: float
+    s: int
+    q: float
+    dq: float
+
+
+def parse_hybrid_shard(path: Path) -> tuple[str, float]:
+    """Return ``(compressor, ratio)`` from a hybrid shard filename."""
+    compressor, sep, ratio_text = path.stem.partition("__")
+    if not sep:
+        raise ValueError(f"bad hybrid shard name: {path.name}")
+    return compressor, float(ratio_text)
+
+
+def load_references(task_dir: Path) -> dict[str, ReferenceArtifact]:
+    """Load reference metadata for one ``{model}/{task}`` directory."""
+    ref_dir = task_dir / "references"
+    if not ref_dir.is_dir():
+        return {}
+
+    refs: dict[str, ReferenceArtifact] = {}
+    for json_path in sorted(ref_dir.glob("*.json")):
+        if json_path.name == "_done.jsonl":
+            continue
+        data = json.loads(json_path.read_text())
+        prompt_id = str(data["prompt_id"])
+        gen_ids = data.get("gen_ids", [])
+        features_path = ref_dir / f"{safe_id(prompt_id)}.npy"
+        if not features_path.exists():
+            legacy_path = ref_dir / f"{legacy_safe_id(prompt_id)}.npy"
+            if legacy_path.exists():
+                features_path = legacy_path
+        refs[prompt_id] = ReferenceArtifact(
+            prompt_id=prompt_id,
+            q=float(data["q"]),
+            ref_len=len(gen_ids) if isinstance(gen_ids, list) else 0,
+            features_path=features_path,
+        )
+    return refs
+
+
+def iter_hybrids(task_dir: Path) -> Iterator[HybridRecord]:
+    """Yield hybrid rows from all JSONL shards under one task directory."""
+    hyb_dir = task_dir / "hybrids"
+    if not hyb_dir.is_dir():
+        return
+
+    for shard in sorted(hyb_dir.glob("*.jsonl")):
+        compressor, ratio = parse_hybrid_shard(shard)
+        with shard.open() as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                yield HybridRecord(
+                    prompt_id=str(data["prompt_id"]),
+                    compressor=compressor,
+                    ratio=ratio,
+                    s=int(data["s"]),
+                    q=float(data["q"]),
+                    dq=float(data["dq"]),
+                )
+
+
+def build_switch_rows(
+    task_dir: Path,
+    *,
+    model: str,
+    task: str,
+    feature_prefix: str = "feat__",
+    max_rows: int | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Build switch-level rows for one task directory.
+
+    Rows with missing references, missing feature files, or switch
+    positions outside the reference feature matrix are skipped and
+    counted in the summary.
+    """
+    refs = load_references(task_dir)
+    feature_cache: dict[str, tuple[np.ndarray, list[str]]] = {}
+    rows: list[dict[str, Any]] = []
+    skipped_missing_ref = 0
+    skipped_missing_features = 0
+    skipped_s_out_of_range = 0
+    n_hybrids_seen = 0
+
+    for hybrid in iter_hybrids(task_dir):
+        n_hybrids_seen += 1
+        ref = refs.get(hybrid.prompt_id)
+        if ref is None:
+            skipped_missing_ref += 1
+            continue
+        if not ref.features_path.exists():
+            skipped_missing_features += 1
+            continue
+        if hybrid.prompt_id not in feature_cache:
+            per_step = np.load(ref.features_path).astype(np.float32)
+            derived, names = derive_features(per_step)
+            feature_cache[hybrid.prompt_id] = (derived, names)
+        derived, names = feature_cache[hybrid.prompt_id]
+        if hybrid.s < 0 or hybrid.s >= derived.shape[0]:
+            skipped_s_out_of_range += 1
+            continue
+
+        row: dict[str, Any] = {
+            "model": model,
+            "task": task,
+            "prompt_id": hybrid.prompt_id,
+            "compressor": hybrid.compressor,
+            "ratio": hybrid.ratio,
+            "s": hybrid.s,
+            "relative_s": (
+                float(hybrid.s / ref.ref_len) if ref.ref_len > 0 else np.nan
+            ),
+            "ref_len": ref.ref_len,
+            "q_ref": ref.q,
+            "q_hybrid": hybrid.q,
+            "dq": hybrid.dq,
+            "damaged": int(hybrid.dq > 0.0),
+            "major_damage": int(hybrid.dq >= 0.5),
+        }
+        values = derived[hybrid.s]
+        for name, value in zip(names, values, strict=True):
+            row[f"{feature_prefix}{name}"] = float(value)
+        rows.append(row)
+        if max_rows is not None and len(rows) >= max_rows:
+            break
+
+    summary = {
+        "model": model,
+        "task": task,
+        "n_references": len(refs),
+        "n_hybrids_seen": n_hybrids_seen,
+        "n_rows": len(rows),
+        "n_feature_matrices_loaded": len(feature_cache),
+        "skipped_missing_ref": skipped_missing_ref,
+        "skipped_missing_features": skipped_missing_features,
+        "skipped_s_out_of_range": skipped_s_out_of_range,
+    }
+    return rows, summary
+
+
+def iter_task_dirs(
+    results_dir: Path,
+    *,
+    models: Sequence[str] | None = None,
+    tasks: Sequence[str] | None = None,
+) -> Iterator[tuple[str, str, Path]]:
+    """Yield ``(model, task, task_dir)`` directories in storage layout."""
+    model_filter = set(models) if models is not None else None
+    task_filter = set(tasks) if tasks is not None else None
+    for model_dir in sorted(p for p in results_dir.iterdir() if p.is_dir()):
+        model = model_dir.name
+        if model_filter is not None and model not in model_filter:
+            continue
+        for task_dir in sorted(p for p in model_dir.iterdir() if p.is_dir()):
+            task = task_dir.name
+            if task_filter is not None and task not in task_filter:
+                continue
+            yield model, task, task_dir
+
+
+def build_switch_dataset(
+    results_dir: Path,
+    *,
+    models: Sequence[str] | None = None,
+    tasks: Sequence[str] | None = None,
+    max_rows_per_task: int | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Build switch rows across a sweep results directory."""
+    rows: list[dict[str, Any]] = []
+    task_summaries: list[dict[str, Any]] = []
+    for model, task, task_dir in iter_task_dirs(
+        results_dir, models=models, tasks=tasks
+    ):
+        task_rows, summary = build_switch_rows(
+            task_dir,
+            model=model,
+            task=task,
+            max_rows=max_rows_per_task,
+        )
+        rows.extend(task_rows)
+        task_summaries.append(summary)
+
+    summary = {
+        "results_dir": str(results_dir),
+        "n_rows": len(rows),
+        "n_tasks": len(task_summaries),
+        "tasks": task_summaries,
+    }
+    return rows, summary

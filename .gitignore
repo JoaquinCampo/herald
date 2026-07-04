@@ -1,35 +1,27 @@
-# Python-generated files
+# Local environments
+.venv/
+.env
+.env.*
+
+# Python caches
 __pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
-
-# Virtual environments
-.venv
-
-# Experiment output
-results/
-
-# Packaged dataset for HuggingFace upload
-dataset_release/
-
-# Trained XGBoost model weights (large, regenerable from sweep+train)
-models/hazard_*.json
-
-# IDE / editor
-.ruff_cache/
-.mypy_cache/
+*.py[cod]
 .pytest_cache/
-.DS_Store
+.mypy_cache/
+.ruff_cache/
 
-# Claude Code local settings
-.claude/settings.local.json
-.claude/scheduled_tasks.lock
+# Project artifacts and large data
+results/
+models/
+
+# Agent/session artifacts
+.pi-subagents/
+
+# OS/editor noise
+.DS_Store
+.vscode/
+.idea/
 
 # Logs
-logs/
-
-# Orion sync manifest
-.orion-sync
+*.log
+nohup.out

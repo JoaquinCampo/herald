@@ -42,6 +42,38 @@ per task, and the per-token feature set.
 - Never present a guess as fact. If something cannot be observed
   (a server is unreachable, a value is unknown), say so.
 
+## Subagents
+
+- Use Codex model IDs, not Claude aliases such as `haiku`, `sonnet`, or
+  `opus`.
+- Use only `model: "gpt-5.3-codex-spark"`,
+  `model: "gpt-5.4-mini"`, and `model: "gpt-5.5"` for subagents.
+- Prefer Spark for speed. Explore subagents and well-specified bounded
+  workers use `model: "gpt-5.3-codex-spark"` first.
+- Use `model: "gpt-5.4-mini"` when Spark is too shallow or when a cheap
+  subagent needs more reliability for edits, checks, or synthesis.
+- Use `model: "gpt-5.5"` only for truly complex work, such as
+  paper-critical methodology, architecture-setting decisions, or hard
+  audits.
+- Parent-model inheritance is an exception for genuinely ambiguous,
+  paper-critical, or architecture-setting work.
+- Set `reasoning_effort` explicitly on subagents. Use `medium` for Spark
+  exploration and mechanical tasks, `medium` for `gpt-5.4-mini` edits or
+  checks, `medium` for `gpt-5.5` by default, and `high` only when truly
+  needed. Never use `xhigh`.
+- Do not assume subagents inherit loaded skills or main-thread context.
+  Every subagent prompt must explicitly name required skills, project
+  constraints, files to read first, and expected return shape.
+- Reusable prompt profiles live in `.agents/subagents/`. Use them as
+  templates for consistent `agent_type`, `model`, `reasoning_effort`,
+  required skills, and return shapes.
+- Before spawning a subagent, confirm: task is atomic, model is explicit,
+  `reasoning_effort` is explicit, required skills are named, files to read
+  first are named, write scope or read-only status is clear, expected return
+  shape is clear, and escalation criteria are clear.
+- Do not delegate credentials, Orion hardware actions, commits, dependency
+  changes, final methodology calls, or architecture-setting decisions.
+
 ## Experiment environment
 
 - **GPU:** Orion, `ssh orion`, a single RTX 5090 (~32GB), runs
