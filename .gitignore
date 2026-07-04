@@ -16,6 +16,7 @@ models/
 
 # Agent/session artifacts
 .pi-subagents/
+.claude/
 
 # OS/editor noise
 .DS_Store
