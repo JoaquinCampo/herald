@@ -21,10 +21,10 @@ def _features(steps: int) -> np.ndarray:
 
 
 def test_parse_hybrid_shard() -> None:
-    assert parse_hybrid_shard(Path("snapkv__0.7500.jsonl")) == (
-        "snapkv",
-        0.75,
-    )
+    compressor, ratio = parse_hybrid_shard(Path("snapkv__0.7500.jsonl"))
+
+    assert compressor == "snapkv"
+    assert ratio == 0.75
 
 
 def test_build_switch_rows_joins_hybrid_to_reference_features(
@@ -77,6 +77,47 @@ def test_build_switch_rows_joins_hybrid_to_reference_features(
     assert row["relative_s"] == 1 / 3
     assert "feat__entropy" in row
     assert "feat__entropy_delta" in row
+
+
+def test_build_switch_rows_deduplicates_hybrid_retries(
+    tmp_path: Path,
+) -> None:
+    save_reference(
+        tmp_path,
+        "llama",
+        "gsm8k",
+        prompt_id="p0",
+        prompt_input_ids=[],
+        gen_ids=[1, 2],
+        text="ref",
+        q=1.0,
+        features=_features(2),
+    )
+    for q, dq in ((0.0, 1.0), (0.5, 0.5)):
+        append_hybrid(
+            tmp_path,
+            "llama",
+            "gsm8k",
+            "snapkv",
+            0.5,
+            prompt_id="p0",
+            s=1,
+            new_ids=[],
+            text="hyb",
+            q=q,
+            dq=dq,
+        )
+
+    rows, summary = build_switch_rows(
+        tmp_path / "llama" / "gsm8k",
+        model="llama",
+        task="gsm8k",
+    )
+
+    assert summary["n_rows"] == 1
+    assert summary["n_hybrids_seen"] == 1
+    assert rows[0]["q_hybrid"] == 0.5
+    assert rows[0]["dq"] == 0.5
 
 
 def test_build_switch_rows_counts_skips(tmp_path: Path) -> None:

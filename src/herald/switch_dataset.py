@@ -12,6 +12,7 @@ features up to and including generated token position ``s``.
 """
 
 import json
+import math
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -46,7 +47,7 @@ def parse_hybrid_shard(path: Path) -> tuple[str, float]:
     compressor, sep, ratio_text = path.stem.partition("__")
     if not sep:
         raise ValueError(f"bad hybrid shard name: {path.name}")
-    return compressor, float(ratio_text)
+    return compressor, _finite_float(ratio_text)
 
 
 def load_references(task_dir: Path) -> dict[str, ReferenceArtifact]:
@@ -59,8 +60,12 @@ def load_references(task_dir: Path) -> dict[str, ReferenceArtifact]:
     for json_path in sorted(ref_dir.glob("*.json")):
         if json_path.name == "_done.jsonl":
             continue
-        data = json.loads(json_path.read_text())
-        prompt_id = str(data["prompt_id"])
+        try:
+            data = _read_json_object(json_path)
+            prompt_id = str(data["prompt_id"])
+            q = _finite_float(data["q"])
+        except (KeyError, ValueError):
+            continue
         gen_ids = data.get("gen_ids", [])
         features_path = ref_dir / f"{safe_id(prompt_id)}.npy"
         if not features_path.exists():
@@ -69,7 +74,7 @@ def load_references(task_dir: Path) -> dict[str, ReferenceArtifact]:
                 features_path = legacy_path
         refs[prompt_id] = ReferenceArtifact(
             prompt_id=prompt_id,
-            q=float(data["q"]),
+            q=q,
             ref_len=len(gen_ids) if isinstance(gen_ids, list) else 0,
             features_path=features_path,
         )
@@ -84,6 +89,7 @@ def iter_hybrids(task_dir: Path) -> Iterator[HybridRecord]:
 
     for shard in sorted(hyb_dir.glob("*.jsonl")):
         compressor, ratio = parse_hybrid_shard(shard)
+        records: dict[tuple[str, int], HybridRecord] = {}
         with shard.open() as f:
             for line in f:
                 line = line.strip()
@@ -91,16 +97,20 @@ def iter_hybrids(task_dir: Path) -> Iterator[HybridRecord]:
                     continue
                 try:
                     data = json.loads(line)
-                except json.JSONDecodeError:
+                    prompt_id = str(data["prompt_id"])
+                    s = _integer(data["s"])
+                    records[(prompt_id, s)] = HybridRecord(
+                        prompt_id=prompt_id,
+                        compressor=compressor,
+                        ratio=ratio,
+                        s=s,
+                        q=_finite_float(data["q"]),
+                        dq=_finite_float(data["dq"]),
+                    )
+                except (json.JSONDecodeError, KeyError, ValueError):
                     continue
-                yield HybridRecord(
-                    prompt_id=str(data["prompt_id"]),
-                    compressor=compressor,
-                    ratio=ratio,
-                    s=int(data["s"]),
-                    q=float(data["q"]),
-                    dq=float(data["dq"]),
-                )
+        for record in records.values():  # noqa: UP028
+            yield record
 
 
 def build_switch_rows(
@@ -150,19 +160,17 @@ def build_switch_rows(
             "compressor": hybrid.compressor,
             "ratio": hybrid.ratio,
             "s": hybrid.s,
-            "relative_s": (
-                float(hybrid.s / ref.ref_len) if ref.ref_len > 0 else np.nan
-            ),
+            "relative_s": _relative_position(hybrid.s, ref.ref_len),
             "ref_len": ref.ref_len,
             "q_ref": ref.q,
             "q_hybrid": hybrid.q,
             "dq": hybrid.dq,
-            "damaged": int(hybrid.dq > 0.0),
-            "major_damage": int(hybrid.dq >= 0.5),
+            "damaged": _flag(hybrid.dq > 0.0),
+            "major_damage": _flag(hybrid.dq >= 0.5),
         }
         values = derived[hybrid.s]
         for name, value in zip(names, values, strict=True):
-            row[f"{feature_prefix}{name}"] = float(value)
+            row[f"{feature_prefix}{name}"] = _feature_float(value)
         rows.append(row)
         if max_rows is not None and len(rows) >= max_rows:
             break
@@ -179,6 +187,71 @@ def build_switch_rows(
         "skipped_s_out_of_range": skipped_s_out_of_range,
     }
     return rows, summary
+
+
+def _read_json_object(path: Path) -> dict[str, Any]:
+    """Read a JSON object from disk or raise ``ValueError``."""
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"could not read JSON object from {path}") from exc
+    if not isinstance(data, dict):
+        raise ValueError(f"expected JSON object in {path}")
+    return data
+
+
+def _finite_float(value: object) -> float:
+    """Return ``value`` as a finite float."""
+    try:
+        out = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"expected finite float, got {value!r}") from exc
+    if not math.isfinite(out):
+        raise ValueError(f"expected finite float, got {value!r}")
+    return out
+
+
+def _feature_float(value: object) -> float:
+    """Return a feature value as float, preserving NaN feature sentinels."""
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"expected numeric feature, got {value!r}") from exc
+
+
+def _integer(value: object) -> int:
+    """Return ``value`` as an integer."""
+    if isinstance(value, bool):
+        raise ValueError(f"expected int, got {value!r}")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError as exc:
+            raise ValueError(f"expected int, got {value!r}") from exc
+    if (
+        isinstance(value, float)
+        and math.isfinite(value)
+        and value.is_integer()
+    ):
+        try:
+            return int(value)
+        except (OverflowError, ValueError) as exc:
+            raise ValueError(f"expected int, got {value!r}") from exc
+    raise ValueError(f"expected int, got {value!r}")
+
+
+def _relative_position(s: int, ref_len: int) -> float:
+    """Return switch position as a fraction of reference length."""
+    if ref_len <= 0:
+        return np.nan
+    return _finite_float(s / ref_len)
+
+
+def _flag(condition: bool) -> int:
+    """Return an integer indicator for a boolean condition."""
+    return 1 if condition else 0
 
 
 def iter_task_dirs(
