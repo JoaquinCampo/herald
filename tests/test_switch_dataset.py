@@ -202,3 +202,100 @@ def test_build_switch_dataset_filters_tasks(tmp_path: Path) -> None:
     assert len(rows) == 1
     assert rows[0]["task"] == "humaneval"
     assert summary["n_tasks"] == 1
+
+
+def test_build_switch_rows_probe_and_press_columns(
+    tmp_path: Path,
+) -> None:
+    save_reference(
+        tmp_path,
+        "llama",
+        "gsm8k",
+        prompt_id="p0",
+        prompt_input_ids=[1, 2],
+        gen_ids=[3, 4, 5, 6],
+        text="ref",
+        q=1.0,
+        features=_features(4),
+    )
+    hyb_feats = (_features(2) + 100.0).astype(np.float32)
+    append_hybrid(
+        tmp_path,
+        "llama",
+        "gsm8k",
+        "snapkv",
+        0.5,
+        prompt_id="p0",
+        s=1,
+        new_ids=[4, 9],
+        text="hyb",
+        q=0.25,
+        dq=0.75,
+        features=hyb_feats,
+        press_features={
+            "press_evicted_reliance_lmean": 0.125,
+            "press_evicted_reliance_lvar": 0.01,
+        },
+    )
+
+    rows, _ = build_switch_rows(
+        tmp_path / "llama" / "gsm8k",
+        model="llama",
+        task="gsm8k",
+    )
+    row = rows[0]
+    # first hybrid token 4 == ref token at s=1; second diverges
+    assert row["probe__token_match"] == 1.0
+    assert row["probe__match_len4"] == 1.0
+    # hybrid step-0 scalar and its delta vs the reference at s
+    ent = FEATURE_NAMES.index("entropy")
+    assert row["probe__h0_entropy"] == float(hyb_feats[0, ent])
+    ref_at_s = _features(4)[1, ent]
+    assert (
+        abs(row["probe__d0_entropy"] - (hyb_feats[0, ent] - ref_at_s)) < 1e-4
+    )
+    assert row["press__evicted_reliance_lmean"] == 0.125
+    assert row["press__evicted_reliance_lvar"] == 0.01
+
+
+def test_build_switch_rows_widened_reference_features(
+    tmp_path: Path,
+) -> None:
+    names = list(FEATURE_NAMES) + ["attn_entropy_lmean"]
+    wide = np.concatenate(
+        [_features(3), np.full((3, 1), 7.0, dtype=np.float32)],
+        axis=1,
+    )
+    save_reference(
+        tmp_path,
+        "llama",
+        "gsm8k",
+        prompt_id="p0",
+        prompt_input_ids=[1, 2],
+        gen_ids=[3, 4, 5],
+        text="ref",
+        q=1.0,
+        features=wide,
+        feature_names=names,
+    )
+    append_hybrid(
+        tmp_path,
+        "llama",
+        "gsm8k",
+        "snapkv",
+        0.5,
+        prompt_id="p0",
+        s=1,
+        new_ids=[4],
+        text="hyb",
+        q=0.25,
+        dq=0.75,
+    )
+    rows, _ = build_switch_rows(
+        tmp_path / "llama" / "gsm8k",
+        model="llama",
+        task="gsm8k",
+    )
+    row = rows[0]
+    assert row["feat__attn_entropy_lmean"] == 7.0
+    assert "feat__entropy_delta" in row

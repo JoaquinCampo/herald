@@ -164,14 +164,18 @@ class FeatureCollector(LogitsProcessor):
 def derive_features(
     per_step: np.ndarray,
     *,
+    names: Sequence[str] | None = None,
     bases: Sequence[str] = DYNAMIC_BASES,
     short_window: int = 8,
     long_window: int = 32,
 ) -> tuple[np.ndarray, list[str]]:
     """Expand a single run's stored features with causal dynamics.
 
-    `per_step` is `(steps, len(FEATURE_NAMES))`, trimmed to the run's
-    real generated length. Returns the augmented array and column names.
+    `per_step` is `(steps, n_stored)`, trimmed to the run's real
+    generated length; `names` gives its column names (default: the
+    legacy FEATURE_NAMES order). Extra stored columns (e.g. attention
+    tap moments) pass through raw. Returns the augmented array and
+    column names.
 
     Adds, for each base signal: first difference (delta), second
     difference (acceleration), short/long EWMA, linear slope over each
@@ -181,16 +185,22 @@ def derive_features(
     online with O(1) per-token state. This is a downstream transform; it
     is not part of the persisted artifact.
     """
+    stored = list(FEATURE_NAMES) if names is None else list(names)
+    if per_step.shape[1] != len(stored):
+        raise ValueError(
+            f"feature matrix width {per_step.shape[1]} does not "
+            f"match its {len(stored)} column names"
+        )
     steps = per_step.shape[0]
     cols: list[np.ndarray] = [
         per_step[:, i] for i in range(per_step.shape[1])
     ]
-    names = list(FEATURE_NAMES)
+    names = list(stored)
 
     cols.append(np.arange(steps, dtype=np.float32))
     names.append("position")
 
-    idx = {name: i for i, name in enumerate(FEATURE_NAMES)}
+    idx = {name: i for i, name in enumerate(stored)}
     for base in bases:
         x = per_step[:, idx[base]].astype(np.float64)
         cols.append(_diff(x))
