@@ -196,3 +196,69 @@ def test_padded_batch_matches_solo_run() -> None:
     assert solo.shape == (1, 4, batched.shape[2])
     assert batched.shape[0] == 2
     np.testing.assert_allclose(solo[0], batched[0], rtol=1e-3, atol=1e-4)
+
+
+def test_generate_reference_with_tap(monkeypatch: Any) -> None:
+    """End-to-end glue: widened matrix + names through the harness."""
+    from transformers import GenerationConfig
+
+    from herald import generate as gen_mod
+    from herald.features import FEATURE_NAMES
+    from herald.generate import LoadedModel, generate_reference
+    from herald.tasks import PromptRecord
+
+    model = _tiny_model("sdpa")
+
+    class FakeTokenizer:
+        def decode(self, ids: Any, **kwargs: Any) -> str:
+            return " ".join(str(i) for i in ids)
+
+    gc = cast(Any, GenerationConfig)(do_sample=False, pad_token_id=0)
+    lm = LoadedModel(
+        model=model,
+        tokenizer=cast(Any, FakeTokenizer()),
+        gen_config=gc,
+        eos_ids=set(),
+        pad_id=0,
+        key="llama",
+    )
+    records = [
+        PromptRecord(
+            task="gsm8k",
+            prompt_id=f"p{i}",
+            messages=[{"role": "user", "content": "x"}],
+            gold={},
+        )
+        for i in range(2)
+    ]
+    fake_prompts = [
+        (torch.arange(7) % 128),
+        (torch.arange(11) % 96 + 3),
+    ]
+
+    def fake_build(lm_arg: Any, record: Any) -> torch.Tensor:
+        return fake_prompts[int(record.prompt_id[1:])]
+
+    monkeypatch.setattr(gen_mod, "build_input_ids", fake_build)
+
+    tap = AttentionTap(model, layer_indices=[1, 3])
+    runs = generate_reference(lm, records, max_new_tokens=5, tap=tap)
+    tap.remove()
+
+    tap_names = tap_feature_names()
+    for run in runs:
+        assert run.feature_names is not None
+        assert run.feature_names == list(FEATURE_NAMES) + tap_names
+        assert run.features.shape == (
+            len(run.gen_ids),
+            len(run.feature_names),
+        )
+        # legacy columns contain design NaNs (kl_prev at t=0);
+        # tap columns must be finite everywhere
+        tap_cols = run.features[:, len(FEATURE_NAMES) :]
+        assert np.all(np.isfinite(tap_cols))
+
+    # tap columns must differ across prompts (prompt-specific signal)
+    a = runs[0].features[:, len(FEATURE_NAMES) :]
+    b = runs[1].features[: a.shape[0], len(FEATURE_NAMES) :]
+    assert not np.allclose(a, b)
