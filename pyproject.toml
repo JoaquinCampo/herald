@@ -54,6 +54,7 @@ dev = [
     "mypy>=1.11",
     "pytest>=8.0",
     "poethepoet>=0.27",
+    "xgboost>=3.3.0",
 ]
 
 [build-system]

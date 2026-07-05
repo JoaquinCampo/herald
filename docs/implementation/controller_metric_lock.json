@@ -1,0 +1,191 @@
+{
+  "version": 1,
+  "metric": "savings_at_quality_budget",
+  "epsilon": 0.01,
+  "spec": "docs/implementation/controller_metrics.md",
+  "config": {
+    "seed": 0,
+    "test_group_fraction": 0.25,
+    "compressors": [
+      "streaming_llm",
+      "expected_attention",
+      "knorm"
+    ],
+    "bootstrap_resamples": 200
+  },
+  "dataset_fingerprint": "2a2a1b5104916c26b26c98cf2d3071dceb4be512d38e0d07ec63d3381f50467f",
+  "n_rows": 136756,
+  "heldout": {
+    "expected_attention": {
+      "locked_mean_baseline": {
+        "tau": 0.05459770114942528,
+        "mean_savings": 0.04059403220774024,
+        "mean_cost": 0.0,
+        "budget_respected": true,
+        "switch_rate": 0.187984496124031,
+        "catastrophe_recall_at_10_fpr": 0.47581552305961755,
+        "bootstrap_ci": {
+          "cluster_fields": [
+            "model",
+            "task",
+            "prompt_id"
+          ],
+          "n_clusters": 129,
+          "n_bootstrap": 200,
+          "savings_low": 0.028849714880200047,
+          "savings_high": 0.05199673496431991,
+          "cost_low": 0.0,
+          "cost_high": 0.0
+        }
+      },
+      "median_mean_mix": {
+        "tau": 0.005459770114942529,
+        "mean_savings": 0.04059403220774024,
+        "mean_cost": 0.0,
+        "budget_respected": true,
+        "switch_rate": 0.187984496124031,
+        "catastrophe_recall_at_10_fpr": 0.47581552305961755,
+        "bootstrap_ci": {
+          "cluster_fields": [
+            "model",
+            "task",
+            "prompt_id"
+          ],
+          "n_clusters": 129,
+          "n_bootstrap": 200,
+          "savings_low": 0.028849714880200047,
+          "savings_high": 0.05199673496431991,
+          "cost_low": 0.0,
+          "cost_high": 0.0
+        }
+      },
+      "oracle": {
+        "mean_savings": 0.9532405767295121,
+        "mean_cost": -0.0377906976744186
+      },
+      "always_s0": {
+        "mean_savings": 1.0,
+        "mean_cost": 0.13049095607235145
+      },
+      "never": {
+        "mean_savings": 0.0,
+        "mean_cost": 0.0
+      },
+      "n_test_groups": 516
+    },
+    "knorm": {
+      "locked_mean_baseline": {
+        "tau": 0.1388888888888889,
+        "mean_savings": 0.5533440431884645,
+        "mean_cost": 0.2328811369509044,
+        "budget_respected": false,
+        "switch_rate": 0.7306201550387597,
+        "catastrophe_recall_at_10_fpr": 0.4295374628076819,
+        "bootstrap_ci": {
+          "cluster_fields": [
+            "model",
+            "task",
+            "prompt_id"
+          ],
+          "n_clusters": 129,
+          "n_bootstrap": 200,
+          "savings_low": 0.5395623065239891,
+          "savings_high": 0.5666794573909449,
+          "cost_low": 0.1824127906976744,
+          "cost_high": 0.2813630490956073
+        }
+      },
+      "median_mean_mix": {
+        "tau": 0.01388888888888889,
+        "mean_savings": 0.5533440431884645,
+        "mean_cost": 0.2328811369509044,
+        "budget_respected": false,
+        "switch_rate": 0.7306201550387597,
+        "catastrophe_recall_at_10_fpr": 0.4295374628076819,
+        "bootstrap_ci": {
+          "cluster_fields": [
+            "model",
+            "task",
+            "prompt_id"
+          ],
+          "n_clusters": 129,
+          "n_bootstrap": 200,
+          "savings_low": 0.5395623065239891,
+          "savings_high": 0.5666794573909449,
+          "cost_low": 0.1824127906976744,
+          "cost_high": 0.2813630490956073
+        }
+      },
+      "oracle": {
+        "mean_savings": 0.6692550957571091,
+        "mean_cost": -0.042958656330749356
+      },
+      "always_s0": {
+        "mean_savings": 1.0,
+        "mean_cost": 0.45478036175710596
+      },
+      "never": {
+        "mean_savings": 0.0,
+        "mean_cost": 0.0
+      },
+      "n_test_groups": 516
+    },
+    "streaming_llm": {
+      "locked_mean_baseline": {
+        "tau": 0.11949685534591195,
+        "mean_savings": 0.4305109519464075,
+        "mean_cost": 0.08074935400516797,
+        "budget_respected": false,
+        "switch_rate": 0.6298449612403101,
+        "catastrophe_recall_at_10_fpr": 0.42513368983957217,
+        "bootstrap_ci": {
+          "cluster_fields": [
+            "model",
+            "task",
+            "prompt_id"
+          ],
+          "n_clusters": 129,
+          "n_bootstrap": 200,
+          "savings_low": 0.39555528159581765,
+          "savings_high": 0.4644911781152833,
+          "cost_low": 0.04569605943152455,
+          "cost_high": 0.11822512919896641
+        }
+      },
+      "median_mean_mix": {
+        "tau": 0.011949685534591196,
+        "mean_savings": 0.4305109519464075,
+        "mean_cost": 0.08074935400516797,
+        "budget_respected": false,
+        "switch_rate": 0.6298449612403101,
+        "catastrophe_recall_at_10_fpr": 0.42513368983957217,
+        "bootstrap_ci": {
+          "cluster_fields": [
+            "model",
+            "task",
+            "prompt_id"
+          ],
+          "n_clusters": 129,
+          "n_bootstrap": 200,
+          "savings_low": 0.39555528159581765,
+          "savings_high": 0.4644911781152833,
+          "cost_low": 0.04569605943152455,
+          "cost_high": 0.11822512919896641
+        }
+      },
+      "oracle": {
+        "mean_savings": 0.8087882699450335,
+        "mean_cost": -0.02810077519379845
+      },
+      "always_s0": {
+        "mean_savings": 1.0,
+        "mean_cost": 0.32041343669250644
+      },
+      "never": {
+        "mean_savings": 0.0,
+        "mean_cost": 0.0
+      },
+      "n_test_groups": 516
+    }
+  }
+}

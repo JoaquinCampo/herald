@@ -1,0 +1,26 @@
+{
+  "baseline": "task_ratio_position_bucket",
+  "config": {
+    "bootstrap_resamples": 200,
+    "compressors": [
+      "streaming_llm",
+      "expected_attention",
+      "knorm"
+    ],
+    "locked_baseline": "task_ratio_position_bucket",
+    "position_bucket_size": 16,
+    "seed": 0,
+    "test_group_fraction": 0.25
+  },
+  "dataset_fingerprint": "69381fee1d4e2adf6f89aaf6b8b01dc0e83b42da33ed9f5b5ea277977b1076ad",
+  "heldout": {
+    "expected_attention": 0.30488295542430405,
+    "knorm": 0.3450499224178299,
+    "streaming_llm": 0.2966649687087274
+  },
+  "metric": "mae",
+  "n_rows": 136756,
+  "n_splits": 3,
+  "tolerance": 1e-09,
+  "version": 1
+}

@@ -1,3 +1,10 @@
+> **SUPERSEDED (2026-07-05).** The MAE and pooled-lift tier ladder in
+> this file is retired. The locked target is now the controller
+> metric suite: `docs/implementation/controller_metrics.md` with
+> reference numbers in `controller_metric_lock.json`. MAE against
+> `switch_baseline_lock.json` survives only as a legacy diagnostic.
+> The dataset, feature, and harness sections below remain accurate.
+
 # Predictor pilot
 
 ## Aim

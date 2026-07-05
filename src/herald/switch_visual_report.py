@@ -393,9 +393,9 @@ def _bar_rows(values: dict[str, int], *, max_width: int) -> str:
 
 
 def _damage_stack(labels: dict[str, Any]) -> str:
-    damage = float(labels["frac_damage"]) * 100.0
-    lift = float(labels["frac_lift"]) * 100.0
-    zero = float(labels["frac_zero"]) * 100.0
+    damage = _as_float(labels["frac_damage"]) * 100.0
+    lift = _as_float(labels["frac_lift"]) * 100.0
+    zero = _as_float(labels["frac_zero"]) * 100.0
     return f"""
     <div class="stack">
       <div class="seg" style="width:{damage:.4f}%;background:var(--rust)"></div>
@@ -413,7 +413,7 @@ def _damage_stack(labels: dict[str, Any]) -> str:
 def _metric_bars(values: dict[str, float | None]) -> str:
     rows: list[str] = []
     for label, value in values.items():
-        v = float(value or 0.0)
+        v = 0.0 if value is None else _as_float(value)
         rows.append(
             '<div class="bar-row">'
             f"<span>{escape(label)}</span>"
@@ -448,21 +448,21 @@ def _heatmap(grouped: dict[str, dict[str, Any]]) -> str:
 def _heat_cell(value: object) -> str:
     if value is None:
         return '<div class="hm-cell" style="background:#EEE7DB">NA</div>'
-    v = max(-0.1, min(0.9, float(value)))
+    number = _as_float(value)
+    v = max(-0.1, min(0.9, number))
     norm = (v + 0.1) / 1.0
     hue = 172.0 - 160.0 * norm
     light = 88.0 - 34.0 * norm
     bg = f"hsl({hue:.1f} 55% {light:.1f}%)"
     return (
-        f'<div class="hm-cell" style="background:{bg}">'
-        f"{_num(float(value))}</div>"
+        f'<div class="hm-cell" style="background:{bg}">{_num(number)}</div>'
     )
 
 
 def _corr_chart(rows: list[dict[str, Any]]) -> str:
     out = ['<div class="corr">']
     for row in rows:
-        corr = float(row["corr"])
+        corr = _as_float(row["corr"])
         pos = 50.0 + max(-0.25, min(0.25, corr)) * 200.0
         dot_class = "dot pos" if corr >= 0 else "dot"
         label = escape(str(row["feature"]).replace("feat__", ""))
@@ -480,12 +480,36 @@ def _corr_chart(rows: list[dict[str, Any]]) -> str:
 
 
 def _pct(value: object) -> str:
-    return f"{100.0 * float(value):.1f}%"
+    return f"{100.0 * _as_float(value):.1f}%"
 
 
 def _num(value: object) -> str:
-    return f"{float(value):.3f}"
+    return f"{_as_float(value):.3f}"
 
 
 def _fmt_int(value: object) -> str:
-    return f"{int(value):,}"
+    return f"{_as_int(value):,}"
+
+
+def _as_float(value: object) -> float:
+    if isinstance(value, int | float | str):
+        try:
+            return float(value)
+        except ValueError as exc:
+            raise ValueError(
+                f"expected numeric value, got {value!r}"
+            ) from exc
+    raise TypeError(f"expected numeric value, got {value!r}")
+
+
+def _as_int(value: object) -> int:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError as exc:
+            raise ValueError(
+                f"expected integer value, got {value!r}"
+            ) from exc
+    raise TypeError(f"expected integer value, got {value!r}")

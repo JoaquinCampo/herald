@@ -9,9 +9,13 @@ See `docs/goal.md` (thesis and contributions), `docs/methodology.md`
 
 ## Status
 
-Greenfield. Design docs exist; no source code yet. The methodology is
-provisional, and some scope is still open: compression ratios, prompts
-per task, and the per-token feature set.
+Active. Generation harness, switch dataset (5 compressors), and
+predictor experiments exist under `src/herald/` and `scripts/`. The
+locked target is the controller metric suite
+(`docs/implementation/controller_metrics.md` +
+`controller_metric_lock.json`); MAE vs `switch_baseline_lock.json` is
+a legacy diagnostic only. The current mission and its stop conditions
+live in `docs/implementation/mission.md`.
 
 ## Conventions
 
