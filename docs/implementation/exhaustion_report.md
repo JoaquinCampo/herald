@@ -44,15 +44,17 @@ experiment_log.md`.
    the variance-hardened run 3 (seed ensembles, one-SE rule) passed
    all budgets at only 0.0072 worst-case. Safety and savings trade
    off inside a frontier that tops out near 0.03-0.07.
-4. **Consensus risk** (candidate D, 1 run). P(consensus dq > 0)
+4. **Consensus risk** (candidate D, 2 runs). P(consensus dq > 0)
    classifier + magnitude head on the mean-over-others label, the
    label family with the highest transfer ceiling (see below).
-   Honest prompt-disjoint knob selection collapsed to never-switch
-   on all three splits: every probability cut that admits switches
-   busts at least one internal fold, exactly as the model-space
-   ceiling predicts.
+   Honest prompt-disjoint knob selection collapsed to (near)
+   never-switch on all splits in both runs, the second with a cut
+   grid centred on the frontier located by the first: every cut
+   that admits switches busts at least one internal fold (the
+   streaming_llm fold is always the binding one), exactly as the
+   model-space ceiling predicts.
 
-Session-scale context: 15 canonical controller runs across the 4
+Session-scale context: 16 canonical controller runs across the 4
 families, plus the earlier MAE-target program (linear ablations,
 MLP, XGBoost, median-mean mix) on the same dataset.
 
@@ -132,9 +134,9 @@ In order of expected value:
 
 ## 4. Status of the stop rules
 
-- 4 consecutive canonical experiments without improving the verified
-  best worst-case (severity runs 1-3, consensus run 1; rule triggers
-  at 5).
+- 5 consecutive canonical experiments without improving the verified
+  best worst-case (severity runs 1-3, consensus runs 1-2): the 5-run
+  stop rule is formally triggered; this report is the response.
 - This report claims unreachability under the mission's exhaustion
   clause: 4 hypothesis families with canonical falsifying results, a
   quantitative ceiling argument, and named unblocking resources. It

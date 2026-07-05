@@ -54,7 +54,7 @@ from herald.switch_risk import (
 
 PRIMARY_COMPRESSORS = ["streaming_llm", "expected_attention", "knorm"]
 DONOR_COMPRESSORS = ["random", "snapkv"]
-CUTS = [0.02, 0.05, 0.1, 0.2, 0.35, 0.5]
+CUTS = [0.1, 0.12, 0.14, 0.16, 0.18, 0.2, 0.25]
 CONFIG = "deep"
 ENSEMBLE_SEEDS = 3
 
