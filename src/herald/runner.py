@@ -30,6 +30,7 @@ from herald.generate import (
     load_model,
     switch_positions,
 )
+from herald.press_features import PressScoreRecorder
 from herald.presses import get_press
 from herald.scoring import score
 from herald.tasks import PromptRecord, load_prompts
@@ -196,6 +197,18 @@ def _run_hybrids(
                 for batch in _chunks(by_s[s], config.hybrid_batch_size):
                     try:
                         press = get_press(compressor, ratio)
+                        # Score features need one press per item to
+                        # attribute layers; hybrids run batch 1.
+                        recorder = (
+                            PressScoreRecorder(press)
+                            if len(batch) == 1
+                            else None
+                        )
+                        if recorder is not None:
+                            ref0, s0 = batch[0]
+                            recorder.begin(
+                                prompt_len=len(ref0.prompt_input_ids)
+                            )
                         hybrids = generate_hybrids(
                             lm,
                             batch,
@@ -221,6 +234,12 @@ def _run_hybrids(
                                 q=q_hyb,
                                 dq=dq,
                                 features=hyb.features,
+                                press_features=(
+                                    recorder.features()
+                                    if recorder is not None
+                                    and recorder.layers_seen() > 0
+                                    else None
+                                ),
                             )
                             _log(
                                 "hybrid_done",

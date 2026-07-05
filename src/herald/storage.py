@@ -291,6 +291,7 @@ def append_hybrid(
     q: float,
     dq: float,
     features: npt.NDArray[np.float32] | None = None,
+    press_features: dict[str, float] | None = None,
 ) -> None:
     """Append one JSON line to the shard JSONL for (compressor, ratio).
 
@@ -310,6 +311,8 @@ def append_hybrid(
         "q": q,
         "dq": dq,
     }
+    if press_features is not None:
+        rec["press_features"] = press_features
     if features is not None:
         feat_path = save_hybrid_features(
             results_dir,
