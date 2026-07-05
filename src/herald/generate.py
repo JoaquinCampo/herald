@@ -32,8 +32,9 @@ from transformers import (
     PreTrainedTokenizerBase,
 )
 
+from herald.attention_features import AttentionTap
 from herald.config import MODELS
-from herald.features import FeatureCollector
+from herald.features import FEATURE_NAMES, FeatureCollector
 from herald.tasks import PromptRecord
 
 
@@ -45,6 +46,9 @@ class ReferenceRun:
     text: str
     # (len(gen_ids), n_features); row t produced gen token t.
     features: np.ndarray
+    # Column names of `features`; None means the legacy logit-only
+    # superset (herald.features.FEATURE_NAMES order).
+    feature_names: list[str] | None = None
 
 
 @dataclass
@@ -210,13 +214,33 @@ def generate_reference(
     lm: LoadedModel,
     records: list[PromptRecord],
     max_new_tokens: int,
+    *,
+    tap: "AttentionTap | None" = None,
 ) -> list[ReferenceRun]:
-    """Generate references for a batch of prompts with inline features."""
+    """Generate references for a batch of prompts with inline features.
+
+    With an ``AttentionTap`` attached, its per-step cross-layer
+    moments are appended as extra feature columns and the run carries
+    explicit ``feature_names`` describing the widened matrix.
+    """
     prompts = [build_input_ids(lm, r) for r in records]
     collector = FeatureCollector()
+    if tap is not None:
+        tap.begin(prompt_lens=[int(p.shape[-1]) for p in prompts])
     gen_ids, _ = _generate(lm, prompts, max_new_tokens, collector=collector)
     feats = collector.stacked()  # (steps, batch, n_feat)
     argmax = collector.argmax_tokens()  # (steps, batch)
+    names: list[str] | None = None
+    if tap is not None:
+        tap_matrix, tap_names = tap.matrix()  # (batch, steps, n_tap)
+        if tap_matrix.shape[1] != feats.shape[0]:
+            raise RuntimeError(
+                "attention tap saw a different step count than the "
+                f"feature collector: {tap_matrix.shape[1]} != "
+                f"{feats.shape[0]}"
+            )
+        feats = np.concatenate([feats, tap_matrix.transpose(1, 0, 2)], axis=2)
+        names = list(FEATURE_NAMES) + tap_names
 
     runs: list[ReferenceRun] = []
     for b, record in enumerate(records):
@@ -239,6 +263,7 @@ def generate_reference(
                 gen_ids=ids,
                 text=text,
                 features=feats[:length, b, :].copy(),
+                feature_names=names,
             )
         )
     return runs

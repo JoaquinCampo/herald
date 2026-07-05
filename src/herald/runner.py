@@ -20,6 +20,7 @@ from typing import cast
 import numpy as np
 
 from herald import storage
+from herald.attention_features import AttentionTap
 from herald.config import TASKS, Config
 from herald.generate import (
     LoadedModel,
@@ -71,6 +72,14 @@ def _run_references(
     config: Config,
 ) -> None:
     m = TASKS[task].max_new_tokens
+    tap = (
+        AttentionTap(
+            lm.model,
+            list(config.tap_layer_indices) or None,
+        )
+        if config.tap_attention
+        else None
+    )
     done = storage.reference_done(config.results_dir, lm.key, task)
     todo = [r for r in records if r.prompt_id not in done]
     _log(
@@ -80,42 +89,50 @@ def _run_references(
         total=len(records),
         todo=len(todo),
     )
-    for batch in _chunks(todo, config.ref_batch_size):
-        # Isolate failures per batch: a poison item (OOM, a degenerate
-        # prompt) must not abort the unattended sweep. Unwritten items
-        # stay un-done and are retried on the next resume.
-        try:
-            refs = generate_reference(lm, batch, m)
-            for ref, rec in zip(refs, batch, strict=True):
-                q = score(task, ref.text, rec.gold)
-                storage.save_reference(
-                    config.results_dir,
-                    lm.key,
-                    task,
-                    prompt_id=ref.prompt_id,
-                    prompt_input_ids=ref.prompt_input_ids,
-                    gen_ids=ref.gen_ids,
-                    text=ref.text,
-                    q=q,
-                    features=ref.features,
-                )
+    # The tap MUST be detached before hybrid runs: its hooks assume a
+    # growing full-attention cache, and a press-compressed cache would
+    # feed them shrunken shapes.
+    try:
+        for batch in _chunks(todo, config.ref_batch_size):
+            # Isolate failures per batch: a poison item (OOM, a
+            # degenerate prompt) must not abort the unattended sweep.
+            # Unwritten items stay un-done and are retried on resume.
+            try:
+                refs = generate_reference(lm, batch, m, tap=tap)
+                for ref, rec in zip(refs, batch, strict=True):
+                    q = score(task, ref.text, rec.gold)
+                    storage.save_reference(
+                        config.results_dir,
+                        lm.key,
+                        task,
+                        prompt_id=ref.prompt_id,
+                        prompt_input_ids=ref.prompt_input_ids,
+                        gen_ids=ref.gen_ids,
+                        text=ref.text,
+                        q=q,
+                        features=ref.features,
+                        feature_names=ref.feature_names,
+                    )
+                    _log(
+                        "reference_done",
+                        model=lm.key,
+                        task=task,
+                        prompt_id=ref.prompt_id,
+                        run_len=len(ref.gen_ids),
+                        q=q,
+                    )
+            except Exception as exc:  # noqa: BLE001
                 _log(
-                    "reference_done",
+                    "batch_error",
+                    phase="reference",
                     model=lm.key,
                     task=task,
-                    prompt_id=ref.prompt_id,
-                    run_len=len(ref.gen_ids),
-                    q=q,
+                    prompt_ids=[r.prompt_id for r in batch],
+                    error=f"{type(exc).__name__}: {exc}",
                 )
-        except Exception as exc:  # noqa: BLE001
-            _log(
-                "batch_error",
-                phase="reference",
-                model=lm.key,
-                task=task,
-                prompt_ids=[r.prompt_id for r in batch],
-                error=f"{type(exc).__name__}: {exc}",
-            )
+    finally:
+        if tap is not None:
+            tap.remove()
 
 
 def _run_hybrids(

@@ -100,6 +100,11 @@ class Config(BaseModel):
     # press), so it stays 1 until validated equal to batch 1 per press.
     ref_batch_size: int = 16
     hybrid_batch_size: int = 1
+    # Attention-reliance tap on reference runs (feature extension
+    # phase 1). Off by default: the legacy dataset stays exactly
+    # reproducible. Empty tap_layer_indices means quarter-depth.
+    tap_attention: bool = False
+    tap_layer_indices: tuple[int, ...] = ()
 
     @field_validator("ratios")
     @classmethod

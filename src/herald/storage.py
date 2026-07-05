@@ -112,6 +112,7 @@ def save_reference(
     text: str,
     q: float,
     features: npt.NDArray[np.float32],
+    feature_names: list[str] | None = None,
 ) -> None:
     """Atomically write reference files, then record in the manifest.
 
@@ -126,16 +127,18 @@ def save_reference(
     json_path = ref_dir / f"{sid}.json"
     npy_path = ref_dir / f"{sid}.npy"
 
-    # Write JSON atomically
-    payload = json.dumps(
-        {
-            "prompt_id": prompt_id,
-            "prompt_input_ids": prompt_input_ids,
-            "gen_ids": gen_ids,
-            "text": text,
-            "q": q,
-        }
-    ).encode()
+    # Write JSON atomically. feature_names describes the npy columns
+    # when the superset is wider than the legacy FEATURE_NAMES order.
+    record: dict[str, object] = {
+        "prompt_id": prompt_id,
+        "prompt_input_ids": prompt_input_ids,
+        "gen_ids": gen_ids,
+        "text": text,
+        "q": q,
+    }
+    if feature_names is not None:
+        record["feature_names"] = feature_names
+    payload = json.dumps(record).encode()
     with tempfile.NamedTemporaryFile(delete=False, dir=ref_dir) as tf:
         tf.write(payload)
         tf.flush()
