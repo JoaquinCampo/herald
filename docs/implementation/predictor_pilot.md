@@ -96,6 +96,87 @@ The model must beat train-only deployable baselines, especially:
 The key question is whether causal logit features add predictive power
 beyond task, ratio, and position.
 
+## Metric hierarchy
+
+The evaluator must make the primary metric explicit so model iteration
+cannot cherry-pick whichever metric looks best.
+
+### Primary scientific metric
+
+Relative MAE improvement against the locked best deployable baseline:
+
+```text
+relative_mae_improvement = (baseline_mae - model_mae) / baseline_mae
+```
+
+The locked baseline is `task, ratio, position_bucket`. This answers:
+
+> Do causal logit features predict continuous damage magnitude beyond the
+> obvious task, ratio, and position structure?
+
+Current baseline floors for the first three-compressor matrix are:
+
+| Held-out compressor | Baseline MAE |
+| --- | ---: |
+| `expected_attention` | 0.3049 |
+| `knorm` | 0.3450 |
+| `streaming_llm` | 0.2967 |
+
+### Primary controller metric
+
+Top-decile lift for harmful switch points. Rank test rows by predicted
+risk and inspect the riskiest 10 percent:
+
+```text
+top_decile_lift = damage_rate(top 10% predicted risk) / damage_rate(all test rows)
+```
+
+Report this for both:
+
+- `dq > 0`
+- high-damage switch points, initially `dq >= 0.5`
+
+This answers:
+
+> If a controller blocks or delays compression only at the riskiest
+> predicted switch points, are those points truly enriched for harm?
+
+### Secondary metrics
+
+- AUPRC for `dq > 0`, always reported with damage prevalence.
+- Recall at 10 percent false-positive rate for `dq > 0`.
+- Prompt-cluster bootstrap confidence intervals for MAE improvement.
+- Calibration by predicted-risk bins as a diagnostic, not a headline
+  pass or fail criterion unless a later controller consumes calibrated
+  probabilities directly.
+
+### Success bands
+
+Minimum evidence of signal:
+
+- mean relative MAE improvement at least 3 percent
+- improvement on at least 2 of 3 held-out compressors
+- no held-out compressor worse by more than 1 percent
+- top-decile lift at least 1.25x
+- prompt-cluster bootstrap interval is not strongly negative
+
+Good evidence of signal:
+
+- mean relative MAE improvement at least 5 percent
+- top-decile lift at least 1.5x
+- AUPRC at least 25 percent above prevalence
+- no-position ablation retains some improvement over baseline
+
+Exceptional evidence for this use case:
+
+- mean relative MAE improvement of 10 to 15 percent
+- improvement on all three held-out compressors
+- top-decile lift at least 2x
+- prompt-cluster bootstrap interval excludes zero on at least two
+  held-out compressors
+- gains survive `snapkv` held-out and cannot be explained by task,
+  ratio, position, duplicate artifacts, or leakage
+
 ## First model
 
 Use a dependency-clean baseline first:
