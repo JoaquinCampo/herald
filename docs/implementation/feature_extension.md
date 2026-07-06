@@ -162,3 +162,20 @@ Local Mac, tiny random-weight llama (hf-internal-testing), CPU:
 
 On Orion, the standard 10-second nohup smoke check plus one
 single-prompt end-to-end shard before the sweep.
+
+## Outcome (2026-07-05, night)
+
+The headline test ran: tapped references regenerated for all 3 tasks
+(token-identical or prefix-salvaged against the legacy grid, zero
+drops), dataset rebuilt with 16 `feat__attn_*` columns (215,759 rows),
+canonical leave-one-compressor oracle-tau readout. Result: the
+attention-reliance aggregates do not lift the compressor-agnostic
+worst-case ceiling. Across XGB seeds the classifier worst-case
+averages 0.049 with the attention columns vs 0.061 without; the
+regressor collapses on knorm held-out (0.044 to 0.001). The per-cell
+pattern (streaming_llm consistently helped, knorm consistently hurt,
+worst-case knorm-bound) indicates the layer-mean/var aggregates carry
+an eviction-adjacent component that misleads under knorm shift rather
+than a universal fragility signature. Details in
+`results/predictor/experiments/experiment_log.md`
+(attn_ceiling_canonical entry).
