@@ -94,7 +94,13 @@ evicted information is gone. "Decompress" therefore means one of:
    Requires trajectory-executing sweeps (deepen/alarm/re-prefill
    sequences); not replayable from single-switch records.
 
-Priority: none of these gate the current claim. First harden the
-single-switch 0.128 result (split robustness, locked-evaluator
-confirmation, selection rule as code), then the multi-task capture,
-then dynamic policies as the follow-up paper section.
+Priority (agreed 2026-07-06): sweeps are the scarce resource, so
+TCP is prototyped BEFORE scaling to avoid re-sweeping tasks for
+trajectory data. Order: (1) harden the single-switch 0.128 (split
+robustness, locked-evaluator confirmation, selection rule as code);
+(2) AIMD feasibility study from existing ifeval streams, zero GPU
+(alarm operating points, detection-latency sweep, idealized
+free-revert upper bound - kills or funds the idea cheaply);
+(3) trajectory harness + TCP prototype on ifeval; (4) one combined
+gsm8k/humaneval campaign capturing single-switch streams AND
+trajectories in the same pass.
