@@ -135,6 +135,14 @@ knorm on 4/5 splits; XGB keeps ea and sllm); the 0.128 headline
 number does not. Full tables: experiment log entry
 `fleet_robustness`.
 
+The budget itself is operator-chosen, and calibration fidelity
+improves as it loosens (overshoot 3.1x at eps 0.01 shrinks to
+1.1x at 0.05, a small-budget pathology): at eps 0.03 the point
+rule delivers worst-case median 0.152 savings with realized cost
+<= 0.04; at 0.05, 0.216 with <= 0.057. The paper-level claim is
+the savings(epsilon) frontier with promised-vs-realized fidelity
+along the curve (experiment log entry `epsilon_frontier`).
+
 ## Open items
 
 - Multi-task claim needs gsm8k/humaneval hybrid-stream capture on
