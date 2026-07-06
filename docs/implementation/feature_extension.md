@@ -179,3 +179,7 @@ an eviction-adjacent component that misleads under knorm shift rather
 than a universal fragility signature. Details in
 `results/predictor/experiments/experiment_log.md`
 (attn_ceiling_canonical entry).
+
+The follow-up arc (online forecasting from the post-switch hybrid
+stream, the within-compressor reframe, and the settled deployable
+calibration pipeline) is documented in `online_forecasting.md`.
