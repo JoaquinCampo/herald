@@ -46,3 +46,16 @@ Three sources, chosen for what they measure and what they cost:
 Decision rule embedded in the plan: validate the cheap
 reconstruction (Phase 0) before regenerating data; regenerate only
 what moves the measured ceiling.
+
+## Update (2026-07-05, evening)
+
+The probe family is excluded from the deployed controller (its ~6
+percent forward-pass cost sets a savings bar the controller would
+have to clear on top of the baseline); it stays in the dataset as a
+free diagnostic. The deployed design is: attention-reliance
+internals as the primary (compressor-agnostic) fragility signal,
+press-score features as a measured ablation of compressor-awareness.
+Grounding: the consensus label clears the savings rung in label
+space, so compressor-blind prediction is not information-starved at
+the label level; logit internals were the wrong sensor, attention
+internals are the candidate right one.

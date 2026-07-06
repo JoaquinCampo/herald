@@ -319,3 +319,52 @@ def test_rows_to_table_keeps_late_columns(tmp_path: Path) -> None:
     got = table.to_pylist()
     assert got[0]["probe__h0_entropy"] is None
     assert got[1]["probe__h0_entropy"] == 3.5
+
+
+def _write_ref(
+    ref_dir: Path,
+    prompt_id: str,
+    gen_ids: list[int],
+    names: list[str] | None = None,
+) -> None:
+    import json
+
+    import numpy as np
+
+    ref_dir.mkdir(parents=True, exist_ok=True)
+    data = {"prompt_id": prompt_id, "q": 1.0, "gen_ids": gen_ids}
+    if names is not None:
+        data["feature_names"] = names
+    (ref_dir / f"{prompt_id}.json").write_text(json.dumps(data))
+    width = len(names) if names is not None else 20
+    np.save(ref_dir / f"{prompt_id}.npy", np.zeros((len(gen_ids), width)))
+
+
+def test_merge_tapped_references(tmp_path: Path) -> None:
+    """Tapped refs replace legacy ones only on exact gen_ids match."""
+    from herald.switch_dataset import (
+        load_references,
+        merge_tapped_references,
+    )
+
+    names = [f"f{i}" for i in range(21)]
+    old = tmp_path / "old"
+    new = tmp_path / "new"
+    merged = tmp_path / "merged"
+    _write_ref(old / "references", "p0", [1, 2, 3])
+    _write_ref(old / "references", "p1", [4, 5])
+    _write_ref(old / "references", "p2", [6])
+    _write_ref(new / "references", "p0", [1, 2, 3], names)
+    _write_ref(new / "references", "p1", [4, 9], names)
+    (old / "hybrids").mkdir()
+    (old / "hybrids" / "knorm__0.2500.jsonl").write_text("")
+
+    report = merge_tapped_references(old, new, merged)
+    assert report["matched"] == 1
+    assert report["mismatched"] == 1
+    assert report["missing_in_new"] == 1
+
+    refs = load_references(merged)
+    assert set(refs) == {"p0"}
+    assert refs["p0"].feature_names == tuple(names)
+    assert (merged / "hybrids" / "knorm__0.2500.jsonl").exists()

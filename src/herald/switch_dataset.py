@@ -297,6 +297,56 @@ def _attach_probe_columns(
             row[f"probe__d0_{name}"] = h0 - float(ref_step[ref_idx[name]])
 
 
+def merge_tapped_references(
+    old_dir: Path,
+    new_dir: Path,
+    merged_dir: Path,
+) -> dict[str, Any]:
+    """Assemble a task dir: tapped references + legacy hybrids.
+
+    A regenerated (tap-widened) reference is only valid for the
+    legacy hybrid rows if its greedy continuation is token-identical
+    to the stored one; mismatching or missing prompts are excluded
+    (the builder then skips their hybrids as missing-ref). Hybrid
+    artifacts are symlinked from ``old_dir`` unchanged.
+    """
+    import shutil
+
+    old_refs = load_references(old_dir)
+    new_refs = load_references(new_dir)
+    ref_out = merged_dir / "references"
+    ref_out.mkdir(parents=True, exist_ok=True)
+    matched = 0
+    mismatched: list[str] = []
+    missing: list[str] = []
+    for prompt_id, old_ref in old_refs.items():
+        new_ref = new_refs.get(prompt_id)
+        if new_ref is None:
+            missing.append(prompt_id)
+            continue
+        if new_ref.gen_ids != old_ref.gen_ids:
+            mismatched.append(prompt_id)
+            continue
+        matched += 1
+        stem = safe_id(prompt_id)
+        shutil.copy2(
+            new_dir / "references" / f"{stem}.json",
+            ref_out / f"{stem}.json",
+        )
+        shutil.copy2(new_ref.features_path, ref_out / f"{stem}.npy")
+    for name in ("hybrids", "hybrid_features"):
+        source = (old_dir / name).resolve()
+        target = merged_dir / name
+        if source.is_dir() and not target.exists():
+            target.symlink_to(source, target_is_directory=True)
+    return {
+        "matched": matched,
+        "mismatched": len(mismatched),
+        "missing_in_new": len(missing),
+        "mismatched_ids": mismatched,
+    }
+
+
 def rows_to_table(rows: Sequence[dict[str, Any]]) -> Any:
     """Arrow table over the union of row keys.
 

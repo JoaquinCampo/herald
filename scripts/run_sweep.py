@@ -43,6 +43,12 @@ def main() -> None:
     p.add_argument("--hybrid-batch", type=int, default=1)
     p.add_argument("--results-dir", type=Path, default=Path("results"))
     p.add_argument("--device", default="cuda")
+    p.add_argument("--tap-attention", action="store_true")
+    p.add_argument(
+        "--tap-layers",
+        type=lambda v: tuple(int(x) for x in _csv(v)),
+        default=(),
+    )
     args = p.parse_args()
 
     config = Config(
@@ -58,6 +64,8 @@ def main() -> None:
         ref_batch_size=args.ref_batch,
         hybrid_batch_size=args.hybrid_batch,
         results_dir=args.results_dir,
+        tap_attention=args.tap_attention,
+        tap_layer_indices=args.tap_layers,
     )
     args.results_dir.mkdir(parents=True, exist_ok=True)
     (args.results_dir / "config.json").write_text(

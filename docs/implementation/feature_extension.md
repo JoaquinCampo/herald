@@ -7,6 +7,37 @@ stream logit statistics do not carry prompt-level fragility; the
 moment, how much the generation depends on what compression would
 destroy. Rationale: `docs/_why/5_attention_features.md`.
 
+## Revision (2026-07-05, evening): hierarchy after Phase 0
+
+Decisions from the Phase 0 diagnostics and review with the user:
+
+1. HEADLINE HYPOTHESIS: compressor-agnostic fragility from
+   attention internals. The exhaustion analysis showed the
+   consensus (compressor-blind) label clears the 0.10 rung on all
+   three held-out compressors; what failed was distilling it from
+   LOGIT internals. Attention-reliance features are the candidate
+   internals that measure dependence rather than confidence.
+2. PROBE DEMOTED to dataset-only diagnostic. Its ~6 percent
+   deployment compute means the controller must beat the no-probe
+   baseline by well more than that in KV savings; it is excluded
+   from the deployed controller feature set. (Phase 0: token-match
+   direction confirmed; raw step-0 h0/d0 scalars falsified as-is,
+   they mislead across the compressor shift; any native probe
+   would need distribution-level divergence, not raw deltas.)
+3. PRESS FEATURES are a secondary ablation, not the headline. They
+   are captured for free during hybrid regeneration and quantify
+   what compressor-awareness is worth on top of pure internals.
+   They measure the eviction about to happen (defined for any
+   press), never compressor identity.
+4. FAST PATH: regenerate REFERENCES ONLY (all 3 tasks, tap on,
+   hours of GPU). Existing hybrid rows (all dq labels) join the
+   widened reference features by (prompt_id, s) provided the
+   regenerated greedy gen_ids are identical to the stored ones;
+   validate token-identity per prompt after the run and exclude
+   mismatching prompts. The headline experiment then runs on the
+   full 224k-row dataset without re-running any hybrid. The gsm8k
+   hybrid pilot (press ablation) follows only if still wanted.
+
 All designs below keep `attn_implementation="sdpa"`: nothing
 materializes an N x N attention matrix. Row/column statistics are
 reconstructed from one 1 x N attention row per decode step, computed
