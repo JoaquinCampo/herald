@@ -81,6 +81,19 @@ evicted information is gone. "Decompress" therefore means one of:
    single-shot policy without any decompression at all. Also needs
    new sweep data (multi-step compression grid).
 
+4. TCP-style congestion control (proposed 2026-07-06, unifies 2+3):
+   treat compression ratio like a congestion window. Additive
+   increase (deepen compression) while the online forecaster reads
+   safe; multiplicative decrease via re-prefill on alarm. The
+   forecaster plays ECN: an early signal that fires before damage
+   is visible in text (loss-based control would be too late by
+   construction). Slow-start analogue: deepen aggressively until
+   the first alarm, then probe linearly. Detection latency k is the
+   control loop's RTT. Design trade: false alarms cost prefills
+   (compute), misses cost quality (the epsilon budget is the SLA).
+   Requires trajectory-executing sweeps (deepen/alarm/re-prefill
+   sequences); not replayable from single-switch records.
+
 Priority: none of these gate the current claim. First harden the
 single-switch 0.128 result (split robustness, locked-evaluator
 confirmation, selection rule as code), then the multi-task capture,
