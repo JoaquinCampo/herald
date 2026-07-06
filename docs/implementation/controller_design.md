@@ -65,8 +65,15 @@ evicted information is gone. "Decompress" therefore means one of:
 1. Grace window (cheapest): keep the uncompressed cache alive for
    the first k post-switch tokens; commit (free the memory) only if
    the online forecaster stays quiet, revert otherwise. Memory
-   savings start at commit. This is the planned safety net; it is
-   evaluable with a modest extension of existing data.
+   savings start at commit. FEASIBILITY CONFIRMED (2026-07-06,
+   zero-GPU replay, experiment log `aimd_feasibility`): with
+   rollback-to-reference semantics multi-attempt policies replay
+   from single-switch records. k=2 detection latency, full-
+   information alarm (pre-switch features + post-switch stream):
+   at eps 0.03, ea 0.61 / sllm 0.30 / knorm 0.15 median savings
+   across 5 splits at 4-13% token overhead, dominating or matching
+   the static frontier per compressor; perfect-alarm ceiling
+   0.73-0.96. knorm stays calibration-fragile below ~3% budgets.
 2. Alarm-triggered re-prefill (real recovery): run compressed; if
    the forecaster raises an alarm mid-generation, recompute the
    full cache with one prefill over prompt + generated tokens and
