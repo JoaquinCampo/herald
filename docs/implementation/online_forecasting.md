@@ -93,12 +93,27 @@ on knorm (the hardest cell) and directionally positive there across
 seeds (mean 0.053 vs 0.042), though inside seed noise; on the other
 two compressors the pre-switch features suffice.
 
+## TabFM update (2026-07-06)
+
+Google TabFM 1.0.0 (zero-shot tabular FM, GPU-only in practice) run
+through the same crossfit protocol unlocked the binding cell: knorm
+0.1285 savings at 0.0091 cost, in budget with a frozen tau, 2.2x the
+XGB pipeline and above the 0.10 deployable rung. Identical AUROC to
+XGB; the gain is score shape near the threshold. TabFM calibrates
+worse elsewhere (ea point overshoots budget, boot90 rescues;
+streaming_llm over budget under every method), so the deployable
+design is a per-compressor MIXED FLEET: XGB on expected_attention
+(0.484) and streaming_llm (0.227), TabFM on knorm (0.128) ->
+worst-case 0.128, all in budget. Scorer/variant selection must be
+train-side and budget-aware (select by the OOF bootstrap bound, not
+OOF savings alone). Full numbers in the experiment log
+(tabfm_crossfit entry).
+
 ## Open items
 
-- knorm is the binding cell (~0.058) and is score-quality limited:
-  its label-space ceiling is ~0.115. Candidate lever: a stronger
-  scorer (TabFM zero-shot tabular FM trial queued); real unblock may
-  be more prompts.
+- Scorer/variant/method selection rule needs formalizing
+  (budget-aware OOF selection) and a locked-protocol confirmation
+  run through `herald.controller_metrics` proper.
 - Multi-task claim needs gsm8k/humaneval hybrid-stream capture on
   Orion (days of GPU; user decision).
 - Detection latency k=16 post-switch tokens is the current operating
