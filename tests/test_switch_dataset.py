@@ -299,3 +299,23 @@ def test_build_switch_rows_widened_reference_features(
     row = rows[0]
     assert row["feat__attn_entropy_lmean"] == 7.0
     assert "feat__entropy_delta" in row
+
+
+def test_rows_to_table_keeps_late_columns(tmp_path: Path) -> None:
+    """Columns appearing only in later rows must survive the write."""
+    from herald.switch_dataset import rows_to_table
+
+    rows = [
+        {"task": "gsm8k", "dq": 0.0, "feat__entropy": 1.0},
+        {
+            "task": "ifeval",
+            "dq": 1.0,
+            "feat__entropy": 2.0,
+            "probe__h0_entropy": 3.5,
+        },
+    ]
+    table = rows_to_table(rows)
+    assert "probe__h0_entropy" in table.column_names
+    got = table.to_pylist()
+    assert got[0]["probe__h0_entropy"] is None
+    assert got[1]["probe__h0_entropy"] == 3.5

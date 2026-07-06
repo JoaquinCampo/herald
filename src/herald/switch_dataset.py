@@ -297,6 +297,23 @@ def _attach_probe_columns(
             row[f"probe__d0_{name}"] = h0 - float(ref_step[ref_idx[name]])
 
 
+def rows_to_table(rows: Sequence[dict[str, Any]]) -> Any:
+    """Arrow table over the union of row keys.
+
+    ``pa.Table.from_pylist`` infers the schema from leading rows and
+    silently drops columns that first appear later (e.g. probe
+    columns present only on tasks with hybrid feature files).
+    """
+    import pyarrow as pa
+
+    keys: dict[str, None] = {}
+    for row in rows:
+        for key in row:
+            keys.setdefault(key)
+    filled = [{key: row.get(key) for key in keys} for row in rows]
+    return pa.Table.from_pylist(filled)
+
+
 def _read_json_object(path: Path) -> dict[str, Any]:
     """Read a JSON object from disk or raise ``ValueError``."""
     try:

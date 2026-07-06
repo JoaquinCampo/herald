@@ -10,10 +10,9 @@ import argparse
 import json
 from pathlib import Path
 
-import pyarrow as pa
 import pyarrow.parquet as pq
 
-from herald.switch_dataset import build_switch_dataset
+from herald.switch_dataset import build_switch_dataset, rows_to_table
 
 
 def main() -> None:
@@ -38,7 +37,7 @@ def main() -> None:
         max_rows_per_task=args.max_rows_per_task,
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    table = pa.Table.from_pylist(rows)
+    table = rows_to_table(rows)
     pq.write_table(table, args.out)
     summary_path = args.out.with_name(args.out.stem + "_summary.json")
     summary["output_path"] = str(args.out)
