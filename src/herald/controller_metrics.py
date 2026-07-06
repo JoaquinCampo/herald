@@ -124,6 +124,32 @@ def evaluate_controller_split(
     tau = select_tau(
         train_rows, prediction_key=prediction_key, epsilon=epsilon
     )
+    return evaluate_frozen_tau(
+        test_rows,
+        prediction_key=prediction_key,
+        tau=tau,
+        epsilon=epsilon,
+        seed=seed,
+        bootstrap_resamples=bootstrap_resamples,
+    )
+
+
+def evaluate_frozen_tau(
+    test_rows: Sequence[dict[str, Any]],
+    *,
+    prediction_key: str,
+    tau: float,
+    epsilon: float = EPSILON,
+    seed: int = 0,
+    bootstrap_resamples: int = 200,
+) -> dict[str, Any]:
+    """Evaluate test rows under the locked policy at a frozen tau.
+
+    Same replay and reporting as ``evaluate_controller_split``, but
+    the threshold is supplied by the caller (e.g. calibrated on
+    cross-fitted out-of-fold scores) instead of selected on train
+    rows scored by the final model.
+    """
     groups = decision_groups(test_rows)
     choices = {
         key: policy_choice(group, prediction_key=prediction_key, tau=tau)
