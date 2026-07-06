@@ -104,13 +104,38 @@ evicted information is gone. "Decompress" therefore means one of:
    Requires trajectory-executing sweeps (deepen/alarm/re-prefill
    sequences); not replayable from single-switch records.
 
-Priority (agreed 2026-07-06): sweeps are the scarce resource, so
-TCP is prototyped BEFORE scaling to avoid re-sweeping tasks for
-trajectory data. Order: (1) harden the single-switch 0.128 (split
-robustness, locked-evaluator confirmation, selection rule as code);
-(2) AIMD feasibility study from existing ifeval streams, zero GPU
-(alarm operating points, detection-latency sweep, idealized
-free-revert upper bound - kills or funds the idea cheaply);
-(3) trajectory harness + TCP prototype on ifeval; (4) one combined
-gsm8k/humaneval campaign capturing single-switch streams AND
-trajectories in the same pass.
+## Roadmap to the paper (updated 2026-07-06 evening)
+
+Steps 1-2 of the original ordering are DONE: (1) hardening revised
+the single-switch headline to a savings-vs-budget frontier
+(experiment log `fleet_robustness`, `epsilon_frontier`); (2) the
+AIMD feasibility replay FUNDED the recovery direction (`aimd_
+feasibility`). Remaining phases:
+
+PHASE A - live grace-window controller on ifeval (the active
+mission, `mission.md`): runtime harness on Orion implementing the
+replay semantics (k=2 window, rollback to held cache); replay-
+fidelity validation on held-out prompts (the replay methodology is
+itself a paper claim); scorer-gated attempt scheduling to cut the
+4-13% overhead; progressive deepening (additive increase - first
+piece that cannot be replayed); measured wall-clock and peak
+memory to settle net-positivity in GPU-seconds.
+
+PHASE B - ONE combined gsm8k/humaneval campaign (days of GPU, user
+gate): hybrid-stream capture AND trajectory execution in the same
+pass; multi-task generalization of the static frontier, the alarm,
+and the TCP policy.
+
+PHASE C - consolidation: claims are (i) online forecastability of
+compression damage from cheap logit stats, per compressor family,
+as an honest savings-vs-budget frontier; (ii) recovery dominates
+prediction (grace-window controller, 2-token detection latency);
+(iii) the replay methodology for dynamic policies from
+single-switch records; (iv) the negative results (cross-compressor
+transfer falsified, split/seed-luck autopsy, budget-aware
+selection). Related-work note: VeriCache (arXiv 2605.17613) is the
+nearest neighbor but is lossless verify-against-full-KV kept in a
+slower tier; HERALD forecasts without consulting the full cache
+under an explicit quality budget. Open user decisions: second
+model in scope (default: future work), venue/deadline (sets Phase
+B grid size).
