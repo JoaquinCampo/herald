@@ -38,11 +38,12 @@ def main() -> None:
             reports[f"{model}/{task}"] = report
             print(
                 f"{model}/{task}: matched={report['matched']} "
-                f"mismatched={report['mismatched']} "
+                f"prefix_salvaged={report['prefix_salvaged']} "
+                f"dropped={report['dropped']} "
                 f"missing_in_new={report['missing_in_new']}"
             )
-            if report["mismatched_ids"]:
-                print(f"  mismatched: {report['mismatched_ids'][:10]}")
+            if report["salvaged_ids"]:
+                print(f"  salvaged: {report['salvaged_ids'][:10]}")
 
     out = args.merged_dir / "merge_report.json"
     out.parent.mkdir(parents=True, exist_ok=True)

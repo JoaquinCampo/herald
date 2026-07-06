@@ -361,10 +361,19 @@ def test_merge_tapped_references(tmp_path: Path) -> None:
 
     report = merge_tapped_references(old, new, merged)
     assert report["matched"] == 1
-    assert report["mismatched"] == 1
+    assert report["prefix_salvaged"] == 1
     assert report["missing_in_new"] == 1
 
     refs = load_references(merged)
-    assert set(refs) == {"p0"}
+    assert set(refs) == {"p0", "p1"}
     assert refs["p0"].feature_names == tuple(names)
     assert (merged / "hybrids" / "knorm__0.2500.jsonl").exists()
+
+    import numpy as np
+
+    # p1 diverges at index 1: gen_ids/ref_len stay the legacy ones
+    # (labels reference them), tapped features truncate to the
+    # common prefix so only causal rows survive downstream.
+    assert refs["p1"].gen_ids == (4, 5)
+    assert refs["p1"].feature_names == tuple(names)
+    assert np.load(refs["p1"].features_path).shape == (1, len(names))

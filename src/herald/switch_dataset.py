@@ -317,23 +317,45 @@ def merge_tapped_references(
     ref_out = merged_dir / "references"
     ref_out.mkdir(parents=True, exist_ok=True)
     matched = 0
-    mismatched: list[str] = []
+    salvaged: list[str] = []
+    dropped: list[str] = []
     missing: list[str] = []
     for prompt_id, old_ref in old_refs.items():
         new_ref = new_refs.get(prompt_id)
         if new_ref is None:
             missing.append(prompt_id)
             continue
-        if new_ref.gen_ids != old_ref.gen_ids:
-            mismatched.append(prompt_id)
-            continue
-        matched += 1
         stem = safe_id(prompt_id)
-        shutil.copy2(
-            new_dir / "references" / f"{stem}.json",
-            ref_out / f"{stem}.json",
-        )
-        shutil.copy2(new_ref.features_path, ref_out / f"{stem}.npy")
+        if new_ref.gen_ids == old_ref.gen_ids:
+            matched += 1
+            shutil.copy2(
+                new_dir / "references" / f"{stem}.json",
+                ref_out / f"{stem}.json",
+            )
+            shutil.copy2(new_ref.features_path, ref_out / f"{stem}.npy")
+            continue
+        # Diverging regeneration: rows at switch point s depend on
+        # the reference only up to s (features are causal, labels
+        # never read the tail), so the common prefix stays usable.
+        # Keep the LEGACY gen_ids/q (the labels' reference) and the
+        # tapped features truncated to the prefix; the builder then
+        # skips rows past it as s_out_of_range.
+        prefix = 0
+        for a, b in zip(old_ref.gen_ids, new_ref.gen_ids, strict=False):
+            if a != b:
+                break
+            prefix += 1
+        if prefix == 0:
+            dropped.append(prompt_id)
+            continue
+        salvaged.append(prompt_id)
+        legacy = _read_json_object(old_dir / "references" / f"{stem}.json")
+        new_json = _read_json_object(new_dir / "references" / f"{stem}.json")
+        if "feature_names" in new_json:
+            legacy["feature_names"] = new_json["feature_names"]
+        (ref_out / f"{stem}.json").write_text(json.dumps(legacy))
+        features = np.load(new_ref.features_path)[:prefix]
+        np.save(ref_out / f"{stem}.npy", features)
     for name in ("hybrids", "hybrid_features"):
         source = (old_dir / name).resolve()
         target = merged_dir / name
@@ -341,9 +363,11 @@ def merge_tapped_references(
             target.symlink_to(source, target_is_directory=True)
     return {
         "matched": matched,
-        "mismatched": len(mismatched),
+        "prefix_salvaged": len(salvaged),
+        "dropped": len(dropped),
         "missing_in_new": len(missing),
-        "mismatched_ids": mismatched,
+        "salvaged_ids": salvaged,
+        "dropped_ids": dropped,
     }
 
 
