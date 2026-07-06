@@ -36,9 +36,12 @@ For one request:
   group-mean cost <= epsilon (0.01). Frozen before test.
 - Evaluation: policy replay against recorded reality (the switch
   dataset holds true damage at every candidate switch point), test
-  prompts disjoint from training. Deployable results: ea 0.484,
-  sllm 0.227 (XGB), knorm 0.128 (TabFM), all within budget;
-  worst-case 0.128.
+  prompts disjoint from training. Robustness (5 prompt splits,
+  locked evaluator, budget-aware selection): fleet worst-case
+  savings 0.034-0.083 across splits (median 0.040) with 1/15
+  budget violations; the earlier single-split worst-case 0.128
+  needed point calibration, which violates the budget on most
+  draws (see `online_forecasting.md`, robustness update).
 
 ## Not yet built (engineering, not science)
 

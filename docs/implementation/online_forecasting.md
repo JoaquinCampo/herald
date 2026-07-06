@@ -109,13 +109,39 @@ train-side and budget-aware (select by the OOF bootstrap bound, not
 OOF savings alone). Full numbers in the experiment log
 (tabfm_crossfit entry).
 
+## Robustness update (2026-07-06, revises the numbers above)
+
+The hardening pass (5 prompt-split seeds, 3 TabFM random_states on
+split 0, all candidates confirmed through the locked evaluator at
+cross-fit frozen taus) shows the single-split numbers above sat on
+a favorable draw:
+
+- knorm/TabFM/point is over budget on 4/5 splits and on 2/3 scorer
+  seeds of split 0 itself; seed-ensembling does not fix it. AUROC
+  is stable (0.747-0.750) everywhere; the variance is calibration
+  transfer, not ranking.
+- The legacy selection (point tau, argmax OOF savings) violates
+  the budget in 6/15 (compressor, split) cells, up to 3.1x
+  epsilon. Per-split fleet worst-case: 0.069/0.093/0.158
+  (min/median/max).
+- The budget-aware rule (`herald.fleet_selection`: admit iff OOF
+  boot90 cost bound <= epsilon, then argmax OOF savings) yields
+  1/15 marginal violation and worst-case 0.034/0.040/0.083.
+
+The honest deployable statement is a savings-vs-violation-risk
+frontier; at epsilon 0.01 with the bound rule the worst-case
+median is ~0.04. The mixed-fleet design survives (TabFM still wins
+knorm on 4/5 splits; XGB keeps ea and sllm); the 0.128 headline
+number does not. Full tables: experiment log entry
+`fleet_robustness`.
+
 ## Open items
 
-- Scorer/variant/method selection rule needs formalizing
-  (budget-aware OOF selection) and a locked-protocol confirmation
-  run through `herald.controller_metrics` proper.
 - Multi-task claim needs gsm8k/humaneval hybrid-stream capture on
   Orion (days of GPU; user decision).
+- Recovering the savings lost to conservative calibration is the
+  job of the dynamic-policy arc (`controller_design.md` section
+  4): recover from bad switches instead of insuring against them.
 - Detection latency k=16 post-switch tokens is the current operating
   point; the k-sweep showed signal from k=2. The rollback-cost
   accounting (k tokens regenerated on rejection) is not yet in the
