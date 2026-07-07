@@ -47,6 +47,7 @@ class ReplayOutcome:
     savings: np.ndarray
     cost: np.ndarray
     overhead: np.ndarray
+    n_attempts: np.ndarray
     # Index into the group's attempt list, -1 when never committed.
     commit_index: np.ndarray
 
@@ -79,7 +80,7 @@ def replay_matrices(
     ref_len = np.zeros(n)
     keys: list[tuple[str, float]] = []
     for i, (key, members) in enumerate(order.items()):
-        members.sort()
+        members.sort(key=lambda item: item[0])
         keys.append(key)
         valid[i] = len(members)
         ref_len[i] = members[0][4]
@@ -110,11 +111,53 @@ def replay(mats: ReplayMatrices, *, theta: float, k: int) -> ReplayOutcome:
     cost = np.where(any_hit, mats.dq[idx, first], 0.0)
     reverts = np.where(any_hit, first, mats.valid)
     overhead = k * reverts / mats.ref_len
+    n_attempts = np.where(any_hit, first + 1, mats.valid)
     commit_index = np.where(any_hit, first, -1)
     return ReplayOutcome(
         savings=savings,
         cost=cost,
         overhead=overhead,
+        n_attempts=n_attempts,
+        commit_index=commit_index,
+    )
+
+
+def gated_replay(
+    mats: ReplayMatrices,
+    scores: Sequence[float] | np.ndarray,
+    gate_scores: Sequence[float] | np.ndarray,
+    *,
+    g_tau: float,
+    theta: float,
+    k: int,
+) -> ReplayOutcome:
+    """Sequential replay with an attempt gate before the alarm check."""
+    alarm = _slot_matrix(scores, mats=mats, name="scores")
+    gate = _slot_matrix(gate_scores, mats=mats, name="gate_scores")
+    steps = np.arange(alarm.shape[1])[None, :]
+    valid = steps < mats.valid[:, None]
+    gate = np.nan_to_num(gate, nan=np.inf)
+    attempted = valid & (gate >= g_tau)
+    hit = attempted & (alarm <= theta)
+    any_hit = hit.any(axis=1)
+    first = hit.argmax(axis=1)
+    idx = np.arange(alarm.shape[0])
+    savings = np.where(any_hit, mats.sav[idx, first], 0.0)
+    cost = np.where(any_hit, mats.dq[idx, first], 0.0)
+    before_commit = steps < first[:, None]
+    reverts = np.where(
+        any_hit,
+        (attempted & before_commit).sum(axis=1),
+        attempted.sum(axis=1),
+    )
+    overhead = k * reverts / mats.ref_len
+    n_attempts = np.where(any_hit, reverts + 1, reverts)
+    commit_index = np.where(any_hit, first, -1)
+    return ReplayOutcome(
+        savings=savings,
+        cost=cost,
+        overhead=overhead,
+        n_attempts=n_attempts,
         commit_index=commit_index,
     )
 
@@ -196,3 +239,27 @@ def _stable_seed(seed: int, *parts: str) -> int:
     """Process-independent seed (Python's hash() is salted)."""
     digest = hashlib.sha256("\0".join([str(seed), *parts]).encode()).digest()
     return int.from_bytes(digest[:8], "big")
+
+
+def _slot_matrix(
+    values: Sequence[float] | np.ndarray,
+    *,
+    mats: ReplayMatrices,
+    name: str,
+) -> np.ndarray:
+    """Return a padded slot matrix aligned to ``mats``."""
+    arr = np.asarray(values, dtype=np.float64)
+    if arr.shape == mats.pred.shape:
+        return arr
+    if arr.ndim != 1 or arr.size != int(mats.valid.sum()):
+        raise ValueError(
+            f"{name} must have shape {mats.pred.shape} or "
+            f"{int(mats.valid.sum())} flat valid-slot values"
+        )
+    out = np.full(mats.pred.shape, np.inf, dtype=np.float64)
+    offset = 0
+    for i, count in enumerate(mats.valid.tolist()):
+        width = int(count)
+        out[i, :width] = arr[offset : offset + width]
+        offset += width
+    return out

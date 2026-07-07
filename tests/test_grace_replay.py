@@ -6,17 +6,54 @@ recorded grid point in ascending s, commit at the first alarm score
 <= theta, overhead = k * reverts / ref_len.
 """
 
+from pathlib import Path
+
 import numpy as np
+import pandas as pd
 import pytest
 
 from herald.grace_replay import (
     ReplayMatrices,
     bootstrap_group_ci,
     calibrate_theta,
+    gated_replay,
     oracle_replay,
     replay,
     replay_matrices,
 )
+from herald.switch_baselines import leave_one_compressor_splits
+
+PARQUET = Path("results/predictor/switch_dataset_attn.parquet")
+COMPRESSORS = ("expected_attention", "knorm", "streaming_llm")
+
+
+def _load_real_train_rows() -> list[dict[str, object]]:
+    df = pd.read_parquet(PARQUET)
+    df = df[df["task"] == "ifeval"].reset_index(drop=True)
+    mask = df["compressor"].isin(COMPRESSORS)
+    rows = df[mask].to_dict("records")
+    splits = leave_one_compressor_splits(
+        rows,
+        compressors=("expected_attention", "knorm", "streaming_llm"),
+        seed=0,
+        test_group_fraction=0.25,
+    )
+    split = splits[0]
+    for candidate in splits:
+        if candidate.heldout_compressor == "expected_attention":
+            split = candidate
+            break
+    test_prompt_ids = {
+        str(row["prompt_id"])
+        for row in split.test
+        if str(row["compressor"]) == split.heldout_compressor
+    }
+    return [
+        row
+        for row in rows
+        if str(row["compressor"]) == split.heldout_compressor
+        and str(row["prompt_id"]) not in test_prompt_ids
+    ]
 
 
 def make_rows() -> tuple[list[dict[str, object]], list[float]]:
@@ -64,6 +101,27 @@ class TestReplayMatrices:
             mats.sav[i_a], [1.0, 1.0 - 16 / 64, 1.0 - 32 / 64]
         )
 
+    def test_equal_s_preserves_row_order(self) -> None:
+        rows = [
+            {
+                "prompt_id": "a",
+                "ratio": 0.5,
+                "s": 16,
+                "dq": 0.3,
+                "ref_len": 64,
+            },
+            {
+                "prompt_id": "a",
+                "ratio": 0.5,
+                "s": 16,
+                "dq": 0.1,
+                "ref_len": 64,
+            },
+        ]
+        mats = replay_matrices(rows, [0.9, 0.2])
+        np.testing.assert_allclose(mats.pred[0], [0.9, 0.2])
+        np.testing.assert_allclose(mats.dq[0], [0.3, 0.1])
+
 
 class TestReplay:
     def test_commit_at_first_hit(self) -> None:
@@ -89,6 +147,112 @@ class TestReplay:
         out = replay(mats, theta=-1.0, k=2)
         assert (out.savings == 0.0).all()
         assert (out.commit_index == -1).all()
+
+
+class TestGatedReplay:
+    def test_minus_inf_gate_matches_ungated_replay(self) -> None:
+        rows, scores = make_rows()
+        mats = replay_matrices(rows, scores)
+        gate_scores = np.full_like(mats.pred, 0.0)
+        ungated = replay(mats, theta=0.2, k=2)
+        gated = gated_replay(
+            mats,
+            scores=mats.pred,
+            gate_scores=gate_scores,
+            g_tau=float("-inf"),
+            theta=0.2,
+            k=2,
+        )
+        np.testing.assert_allclose(gated.savings, ungated.savings)
+        np.testing.assert_allclose(gated.cost, ungated.cost)
+        np.testing.assert_allclose(gated.overhead, ungated.overhead)
+        np.testing.assert_array_equal(
+            gated.commit_index, ungated.commit_index
+        )
+        np.testing.assert_array_equal(gated.n_attempts, [2, 2])
+
+    def test_skipped_hit_delays_commit_and_counts_kept_attempts(self) -> None:
+        rows, scores = make_rows()
+        mats = replay_matrices(rows, scores)
+        gate_scores = np.full_like(mats.pred, -1.0)
+        i_a = mats.keys.index(("a", 0.5))
+        gate_scores[i_a, 0] = 1.0
+        gate_scores[i_a, 2] = 1.0
+        out = gated_replay(
+            mats,
+            scores=mats.pred,
+            gate_scores=gate_scores,
+            g_tau=0.0,
+            theta=0.2,
+            k=2,
+        )
+        assert out.commit_index[i_a] == 2
+        assert out.savings[i_a] == pytest.approx(1.0 - 32 / 64)
+        assert out.cost[i_a] == pytest.approx(0.5)
+        assert out.overhead[i_a] == pytest.approx(2 * 1 / 64)
+        assert out.n_attempts[i_a] == 2
+
+    def test_no_commit_overhead_counts_only_kept_attempts(self) -> None:
+        rows, scores = make_rows()
+        mats = replay_matrices(rows, scores)
+        gate_scores = np.full_like(mats.pred, -1.0)
+        i_b = mats.keys.index(("b", 0.5))
+        gate_scores[i_b, 1] = 1.0
+        out = gated_replay(
+            mats,
+            scores=mats.pred,
+            gate_scores=gate_scores,
+            g_tau=0.0,
+            theta=0.2,
+            k=2,
+        )
+        assert out.commit_index[i_b] == -1
+        assert out.savings[i_b] == 0.0
+        assert out.cost[i_b] == 0.0
+        assert out.overhead[i_b] == pytest.approx(2 * 1 / 32)
+        assert out.n_attempts[i_b] == 1
+
+    def test_nan_gate_scores_are_treated_as_kept(self) -> None:
+        rows, scores = make_rows()
+        mats = replay_matrices(rows, scores)
+        gate_scores = np.full_like(mats.pred, np.nan)
+        out = gated_replay(
+            mats,
+            scores=mats.pred,
+            gate_scores=gate_scores,
+            g_tau=0.0,
+            theta=0.2,
+            k=2,
+        )
+        ungated = replay(mats, theta=0.2, k=2)
+        np.testing.assert_allclose(out.savings, ungated.savings)
+        np.testing.assert_allclose(out.cost, ungated.cost)
+        assert np.array_equal(out.commit_index, ungated.commit_index)
+
+    def test_minus_inf_matches_ungated_on_real_train_matrices(self) -> None:
+        rows = _load_real_train_rows()
+        score_seed = np.arange(len(rows), dtype=np.float64)
+        scores = ((score_seed * 0.001) % 1.0).tolist()
+        mats = replay_matrices(rows, scores)
+        ungated = replay(mats, theta=0.2, k=2)
+        gated = gated_replay(
+            mats,
+            scores=mats.pred,
+            gate_scores=np.full_like(mats.pred, 0.0),
+            g_tau=float("-inf"),
+            theta=0.2,
+            k=2,
+        )
+        np.testing.assert_allclose(gated.savings, ungated.savings)
+        np.testing.assert_allclose(gated.cost, ungated.cost)
+        np.testing.assert_allclose(gated.overhead, ungated.overhead)
+        np.testing.assert_array_equal(
+            gated.commit_index,
+            ungated.commit_index,
+        )
+        assert float(gated.n_attempts.sum()) == float(
+            ungated.n_attempts.sum()
+        )
 
 
 class TestOracleReplay:
