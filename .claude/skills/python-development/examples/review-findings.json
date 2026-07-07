@@ -1,0 +1,41 @@
+{
+  "clean_review": {
+    "findings": [],
+    "checked": [
+      "src/package/module.py",
+      "tests/test_module.py",
+      "pyproject.toml"
+    ],
+    "evidence": [
+      "Reviewed public API, error handling, and tests",
+      "Focused tests pass: pytest tests/test_module.py -q"
+    ],
+    "residual_risk": "No full suite was run"
+  },
+  "review_with_findings": {
+    "findings": [
+      {
+        "file": "src/package/config.py",
+        "line": 37,
+        "symbol": "load_config",
+        "category": "errors",
+        "severity": "high",
+        "title": "Configuration parse errors lose the original cause",
+        "why": "The wrapper raises ConfigError without chaining, so production tracebacks hide the invalid JSON location.",
+        "fix": "Catch JSONDecodeError as exc and raise ConfigError(...) from exc.",
+        "validation": "Add a pytest.raises(ConfigError, match=...) case for malformed JSON and inspect __cause__."
+      },
+      {
+        "file": "tests/test_service.py",
+        "line": 58,
+        "symbol": "test_saves_item",
+        "category": "testing",
+        "severity": "medium",
+        "title": "Test asserts only that a mock was called",
+        "why": "The test can pass even if the saved value is wrong, because it checks implementation mechanics rather than observable behavior.",
+        "fix": "Use a fake repository and assert that the stored item has the expected fields.",
+        "validation": "Run pytest tests/test_service.py -q and confirm the test fails when the stored value is intentionally changed."
+      }
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "task_id": "plan-no-edit",
+  "reviewer": "example-reviewer",
+  "date": "2026-07-05",
+  "scores": {
+    "discovery": 2,
+    "contract": 2,
+    "test_strategy": 1,
+    "implementation_simplicity": 2,
+    "validation_evidence": 2,
+    "review_discipline": 2,
+    "safety": 2,
+    "project_adaptation": 2,
+    "reporting_clarity": 2
+  },
+  "notes": [
+    "Agent preserved no-edit scope and reported evidence clearly."
+  ],
+  "command_evidence": [
+    "Read-only inspection only."
+  ],
+  "residual_risks": [
+    "No runtime commands were expected for this planning-only task."
+  ],
+  "final_verdict": "pass"
+}

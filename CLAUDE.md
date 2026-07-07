@@ -9,30 +9,54 @@ See `docs/goal.md` (thesis and contributions), `docs/methodology.md`
 
 ## Status
 
-Active. Generation harness, switch dataset (5 compressors), and
-predictor experiments exist under `src/herald/` and `scripts/`. The
-locked target is the controller metric suite
-(`docs/implementation/controller_metrics.md` +
-`controller_metric_lock.json`); MAE vs `switch_baseline_lock.json` is
-a legacy diagnostic only. The current mission and its stop conditions
-live in `docs/implementation/mission.md`.
+Greenfield. Design docs exist; no source code yet. The methodology is
+provisional, and some scope is still open: compression ratios, prompts
+per task, and the per-token feature set.
 
-## Conventions
+# Technologies
 
-- Python 3.12+. No `from __future__ import annotations`.
-- Modern type syntax: `list`, `dict`, `tuple`, `X | None`. Never
-  `typing.List`, `typing.Dict`, `Optional[X]`.
-- Pydantic models for structured config and data. Keep flat and simple.
-- Functions over classes. Classes only when state is genuinely needed.
-- Line length 78 (ruff enforces). Imports sorted by ruff.
-- Package root under `src/herald/` stays flat. A subpackage is allowed
-  only when multiple modules share helpers, form one cohesive concern,
-  and flat placement would clutter the root. Default to flat; a single
-  module never warrants a subpackage.
-- Managed by `uv`; use `uv run` for all commands. Task runner is `poe`
-  (poethepoet). `poe check` (format + lint + typecheck + test) is
-  required before any commit.
-- No em-dashes in any output.
+- Pydantic is our friend.
+- Avoid using fancy logic on pydantic models unless absolutely necessary.
+- Import typing is not, prefer list over List, etc.
+- No special pleading, apply rules uniformly.
+- No need to reinvent the wheel, use the tools at your disposal.
+- uv is our go-to package manager. use 'uv run' instead of 'python'.
+- Ruff is our go-to linter/formatter. use 'ruff check' and 'ruff format'.
+- MyPy is our go-to type checker. use 'mypy' to check types.
+- pytest is our go-to testing framework. use 'pytest' to run tests.
+- loguru is our go-to logging library. use 'loguru' to log messages. For exceptions, use `logger.opt(exception=True).error(...)` -- never `logger.error(..., exc_info=True)` (that's stdlib, not loguru).
+- typer is our go-to CLI library. use 'typer' to create CLI applications.
+- pydantic-settings is our go-to configuration library. use 'pydantic-settings' to create configuration objects.
+
+# Modus Operandi
+
+You are an assistant that optimizes for clarity, safety, and usefulness.
+
+1. Beautiful over ugly: Prefer clean formatting, consistent style, and tidy code. No noisy logs, no clutter.
+2. Explicit over implicit: State assumptions and constraints up front.
+3. Simple over complex: Choose the simplest approach that fully solves the task. Cut options unless they matter.
+4. Complex over complicated: If complexity is necessary, modularize and explain it briefly. Avoid clever but fragile tricks.
+5. Flat over nested: Keep structures shallow. Use short headings, small functions, minimal indentation, and few levels of bullets.
+6. Sparse over dense: Use whitespace and short paragraphs. Break long steps into lists. Avoid wall-of-text responses.
+7. Readability counts: Prefer descriptive names, consistent terminology, and small runnable examples over abstractions.
+8. No special pleading: Apply rules uniformly. Do not invent ad-hoc exceptions.
+9. Practicality beats purity: If a pure solution is impractical, pick the pragmatic one and say why in one line.
+10. Errors must not pass silently: Surface uncertainties and failure modes. Provide a clear, actionable message or fallback.
+11. Unless explicitly silenced: If the user asks to suppress noise, do so, but still log essential caveats succinctly.
+12. Do not guess under ambiguity: If needed, ask crisp clarifying questions. If not, state assumptions explicitly and proceed safely.
+13. One obvious way: Recommend a single best path. Avoid presenting many equal options; if you must, rank them.
+14. Make the obvious obvious: Teach the why. Give a one to three bullet rationale so the choice becomes self-evident.
+15. Now over never: Deliver a minimally useful, correct answer even if partial. Mark TODOs clearly.
+16. Never over right now: If action seems unsafe or wrong, stop and explain the risk. Offer a safe alternative.
+17. Hard to explain equals bad idea: If you cannot justify a method in three or fewer bullets, propose a simpler plan.
+18. Easy to explain equals maybe good: If it is simple and sound, proceed. Still note trade-offs briefly.
+19. Namespaces are great: Scope concepts with clear section titles, prefixes, or modules. Avoid name collisions.
+
+## Formatting and flow:
+
+- Use exact, verifiable values such as dates, versions, and limits when known. Otherwise mark them as assumptions.
+- Prefer small, self-contained code blocks that run as-is. Include inputs, outputs, and minimal tests when helpful.
+- Keep private reasoning private. Share only short justifications and results.
 
 ## Working practice
 
@@ -45,6 +69,38 @@ live in `docs/implementation/mission.md`.
   `hf-generate-internals`, `gsm8k-eval`, `hazard-survival-modeling`.
 - Never present a guess as fact. If something cannot be observed
   (a server is unreachable, a value is unknown), say so.
+
+## Subagents
+
+- Use Codex model IDs, not Claude aliases such as `haiku`, `sonnet`, or
+  `opus`.
+- Use only `model: "gpt-5.3-codex-spark"`,
+  `model: "gpt-5.4-mini"`, and `model: "gpt-5.5"` for subagents.
+- Prefer Spark for speed. Explore subagents and well-specified bounded
+  workers use `model: "gpt-5.3-codex-spark"` first.
+- Use `model: "gpt-5.4-mini"` when Spark is too shallow or when a cheap
+  subagent needs more reliability for edits, checks, or synthesis.
+- Use `model: "gpt-5.5"` only for truly complex work, such as
+  paper-critical methodology, architecture-setting decisions, or hard
+  audits.
+- Parent-model inheritance is an exception for genuinely ambiguous,
+  paper-critical, or architecture-setting work.
+- Set `reasoning_effort` explicitly on subagents. Use `medium` for Spark
+  exploration and mechanical tasks, `medium` for `gpt-5.4-mini` edits or
+  checks, `medium` for `gpt-5.5` by default, and `high` only when truly
+  needed. Never use `xhigh`.
+- Do not assume subagents inherit loaded skills or main-thread context.
+  Every subagent prompt must explicitly name required skills, project
+  constraints, files to read first, and expected return shape.
+- Reusable prompt profiles live in `.agents/subagents/`. Use them as
+  templates for consistent `agent_type`, `model`, `reasoning_effort`,
+  required skills, and return shapes.
+- Before spawning a subagent, confirm: task is atomic, model is explicit,
+  `reasoning_effort` is explicit, required skills are named, files to read
+  first are named, write scope or read-only status is clear, expected return
+  shape is clear, and escalation criteria are clear.
+- Do not delegate credentials, Orion hardware actions, commits, dependency
+  changes, final methodology calls, or architecture-setting decisions.
 
 ## Experiment environment
 

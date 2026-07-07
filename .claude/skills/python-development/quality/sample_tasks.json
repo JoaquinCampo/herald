@@ -1,0 +1,290 @@
+[
+  {
+    "id": "plan-no-edit",
+    "mode": "planning",
+    "prompt": "Review this proposed Python refactor and tell me whether it is a good idea. Do not change files.",
+    "fixture": "library-service",
+    "required_behaviors": [
+      "States that no files will be edited",
+      "Inspects relevant code and tests before judging",
+      "Returns a plan or recommendation rather than a patch"
+    ],
+    "forbidden_behaviors": [
+      "Edits files",
+      "Runs broad formatters",
+      "Claims validation that was not run"
+    ],
+    "primary_references": [
+      "project-discovery.md",
+      "review-schema.md",
+      "maintenance.md"
+    ],
+    "scoring_focus": [
+      "safety",
+      "discovery",
+      "reporting_clarity"
+    ]
+  },
+  {
+    "id": "feature-cli",
+    "mode": "feature",
+    "prompt": "Add a CLI command that reads a config file and prints normalized JSON.",
+    "fixture": "cli-config-app",
+    "required_behaviors": [
+      "Discovers existing CLI framework and commands",
+      "Keeps command handler thin",
+      "Tests exit code, stdout, stderr, and config validation"
+    ],
+    "forbidden_behaviors": [
+      "Hardcodes a different package manager",
+      "Puts business logic only inside the command function",
+      "Logs machine-readable output to stderr"
+    ],
+    "primary_references": [
+      "cli-apps.md",
+      "configuration.md",
+      "testing.md",
+      "validation.md"
+    ],
+    "scoring_focus": [
+      "contract",
+      "test_strategy",
+      "project_adaptation"
+    ]
+  },
+  {
+    "id": "bug-config-cause",
+    "mode": "bugfix",
+    "prompt": "Fix the config loader so malformed JSON gives a useful domain error.",
+    "fixture": "library-service",
+    "required_behaviors": [
+      "Adds or identifies a regression test",
+      "Preserves the original exception cause",
+      "Reports focused validation"
+    ],
+    "forbidden_behaviors": [
+      "Uses from None without justification",
+      "Catches BaseException",
+      "Returns None as an error sentinel"
+    ],
+    "primary_references": [
+      "errors-logging.md",
+      "configuration.md",
+      "testing.md"
+    ],
+    "scoring_focus": [
+      "test_strategy",
+      "validation_evidence",
+      "safety"
+    ]
+  },
+  {
+    "id": "review-risky-diff",
+    "mode": "review",
+    "prompt": "Review this diff that changes a public API and a data migration.",
+    "fixture": "migration-api-change",
+    "required_behaviors": [
+      "Triage by risk before line-level comments",
+      "Checks premise, callers, tests, and rollback path",
+      "Uses structured findings with verification gaps"
+    ],
+    "forbidden_behaviors": [
+      "Only comments on style",
+      "Approves without naming unverified areas",
+      "Bundles multiple issues into one finding"
+    ],
+    "primary_references": [
+      "review-schema.md",
+      "generated-code-and-migrations.md",
+      "validation.md"
+    ],
+    "scoring_focus": [
+      "review_discipline",
+      "safety",
+      "reporting_clarity"
+    ]
+  },
+  {
+    "id": "typing-forward-refs",
+    "mode": "typing",
+    "prompt": "Modernize annotations in a package that supports Python 3.10 through 3.14.",
+    "fixture": "typed-library",
+    "required_behaviors": [
+      "Discovers supported Python versions",
+      "Keeps syntax compatible with Python 3.10",
+      "Handles future annotations with version-aware reasoning"
+    ],
+    "forbidden_behaviors": [
+      "Uses PEP 695 syntax in Python 3.10 code",
+      "Adds future annotations just for list or union syntax",
+      "Breaks runtime annotation consumers"
+    ],
+    "primary_references": [
+      "typing.md",
+      "project-discovery.md",
+      "imports-packaging.md"
+    ],
+    "scoring_focus": [
+      "project_adaptation",
+      "contract",
+      "safety"
+    ]
+  },
+  {
+    "id": "io-security",
+    "mode": "security",
+    "prompt": "Implement archive extraction for user-uploaded files.",
+    "fixture": "file-processing-app",
+    "required_behaviors": [
+      "Treats archive names as untrusted paths",
+      "Prevents path traversal",
+      "Tests malicious member names"
+    ],
+    "forbidden_behaviors": [
+      "Extracts archives without filters or path checks",
+      "Logs uploaded file contents",
+      "Writes outside the intended directory"
+    ],
+    "primary_references": [
+      "security.md",
+      "io-filesystem.md",
+      "testing.md"
+    ],
+    "scoring_focus": [
+      "safety",
+      "test_strategy",
+      "validation_evidence"
+    ]
+  },
+  {
+    "id": "async-cleanup",
+    "mode": "concurrency",
+    "prompt": "Fix flaky async worker tests that sometimes leave pending tasks.",
+    "fixture": "async-worker",
+    "required_behaviors": [
+      "Reproduces or explains the leak path",
+      "Handles cancellation and cleanup",
+      "Uses tests with timeouts rather than sleeps alone"
+    ],
+    "forbidden_behaviors": [
+      "Adds arbitrary long sleeps as the only fix",
+      "Swallows CancelledError without cleanup reasoning",
+      "Ignores unawaited task warnings"
+    ],
+    "primary_references": [
+      "concurrency.md",
+      "debugging.md",
+      "validation.md"
+    ],
+    "scoring_focus": [
+      "discovery",
+      "safety",
+      "validation_evidence"
+    ]
+  },
+  {
+    "id": "dependency-upgrade",
+    "mode": "packaging",
+    "prompt": "Upgrade the HTTP client dependency used by this package.",
+    "fixture": "packaged-library",
+    "required_behaviors": [
+      "Discovers package manager and lockfile",
+      "Separates runtime and development dependencies",
+      "Runs integration-focused validation around the dependency boundary"
+    ],
+    "forbidden_behaviors": [
+      "Edits dependency files without updating the lockfile policy",
+      "Adds a new client library without checking existing adapters",
+      "Claims release safety without import or package smoke checks"
+    ],
+    "primary_references": [
+      "dependency-management.md",
+      "imports-packaging.md",
+      "ci-release.md",
+      "boundaries.md"
+    ],
+    "scoring_focus": [
+      "project_adaptation",
+      "validation_evidence",
+      "safety"
+    ]
+  },
+  {
+    "id": "data-model-choice",
+    "mode": "feature",
+    "prompt": "Design the result object for a parser that returns status, warnings, and normalized data.",
+    "fixture": "library-service",
+    "required_behaviors": [
+      "Chooses a named data shape instead of a bare tuple",
+      "Explains whether dataclass, TypedDict, or Pydantic is appropriate",
+      "Keeps runtime validation at the boundary"
+    ],
+    "forbidden_behaviors": [
+      "Uses a tuple whose positions become public API",
+      "Adds Pydantic when no runtime validation is needed",
+      "Adds speculative fields or future options"
+    ],
+    "primary_references": [
+      "data-modeling.md",
+      "api-design.md",
+      "configuration.md"
+    ],
+    "scoring_focus": [
+      "contract",
+      "implementation_simplicity",
+      "project_adaptation"
+    ]
+  },
+  {
+    "id": "observability-boundary",
+    "mode": "feature",
+    "prompt": "Add diagnostics around a retrying external service adapter.",
+    "fixture": "library-service",
+    "required_behaviors": [
+      "Uses the project's existing logging or observability style",
+      "Adds useful boundary context without secrets",
+      "Keeps metrics or tracing conditional on existing infrastructure"
+    ],
+    "forbidden_behaviors": [
+      "Introduces a new observability stack without request",
+      "Logs secrets or full sensitive payloads",
+      "Adds noisy per-item logs in a hot loop"
+    ],
+    "primary_references": [
+      "observability.md",
+      "errors-logging.md",
+      "boundaries.md"
+    ],
+    "scoring_focus": [
+      "safety",
+      "project_adaptation",
+      "reporting_clarity"
+    ]
+  },
+  {
+    "id": "docs-style-cleanup",
+    "mode": "refactor",
+    "prompt": "Clean up names, comments, and docstrings in a small module without changing behavior.",
+    "fixture": "typed-library",
+    "required_behaviors": [
+      "Preserves behavior with existing tests or focused validation",
+      "Improves misleading names rather than formatting preferences",
+      "Adds docstrings only where they clarify contract or intent"
+    ],
+    "forbidden_behaviors": [
+      "Bikesheds formatter-owned style",
+      "Changes public API names without migration plan",
+      "Adds comments that restate obvious code"
+    ],
+    "primary_references": [
+      "style-naming.md",
+      "documentation.md",
+      "refactoring.md"
+    ],
+    "scoring_focus": [
+      "implementation_simplicity",
+      "validation_evidence",
+      "reporting_clarity"
+    ]
+  }
+]

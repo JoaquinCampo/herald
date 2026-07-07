@@ -1,0 +1,12 @@
+{
+  "enabledPlugins": {
+    "agent-debate@my-plugins": true,
+    "dev@my-plugins": true,
+    "pr-review@my-plugins": true,
+    "tools@my-plugins": true,
+    "tui-use@my-plugins": true,
+    "writing-great-skills@my-plugins": true,
+    "orchestrating-subagents@my-plugins": true,
+    "fable-delegation-to-codex@my-plugins": true
+  }
+}

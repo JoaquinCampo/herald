@@ -16,7 +16,8 @@ models/
 
 # Agent/session artifacts
 .pi-subagents/
-.claude/
+.agents/
+.claude/settings.local.json
 
 # OS/editor noise
 .DS_Store
