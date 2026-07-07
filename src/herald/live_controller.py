@@ -29,14 +29,13 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-import numpy as np
 import torch
 from kvpress.presses.base_press import BasePress
 from transformers import StoppingCriteria, StoppingCriteriaList
 
-from herald.features import FeatureCollector
+from herald.features import FeatureCollector, IncrementalDerived
 from herald.generate import LoadedModel, build_input_ids
-from herald.grace_window import assemble_alarm_row
+from herald.grace_window import assemble_alarm_row_from_state
 from herald.tasks import PromptRecord
 
 
@@ -155,7 +154,7 @@ def _attempt(
     prefix_ids: list[int],
     press: BasePress,
     alarm: AlarmLike,
-    ref_raw: np.ndarray,
+    ref_state: IncrementalDerived,
     s: int,
     ratio: float,
     max_new: int,
@@ -181,8 +180,8 @@ def _attempt(
 
     def decide() -> bool:
         block = collector.stacked()[: alarm.k, 0, :]
-        row = assemble_alarm_row(
-            ref_raw=ref_raw, s=s, block=block, ratio=ratio, k=alarm.k
+        row = assemble_alarm_row_from_state(
+            state=ref_state, block=block, ratio=ratio, k=alarm.k
         )
         score = alarm.score(row)
         holder["score"] = score
@@ -222,6 +221,8 @@ def run_episode(
         torch.cuda.reset_peak_memory_stats()
     prompt_ids = build_input_ids(lm, record)
     ref_collector = FeatureCollector()
+    ref_state = IncrementalDerived()
+    n_state_rows = 0
     ref_ids: list[int] = []
     cache: Any = None
     ref_done = False
@@ -254,6 +255,10 @@ def run_episode(
             _sync(device)
             episode.ref_wall_s += time.perf_counter() - t0
             ref_ids.extend(new_ref)
+            ref_raw = ref_collector.stacked()[:, 0, :]
+            while n_state_rows < ref_raw.shape[0]:
+                ref_state.update(ref_raw[n_state_rows])
+                n_state_rows += 1
             if (
                 len(new_ref) < budget
                 or (new_ref and new_ref[-1] in lm.eos_ids)
@@ -263,7 +268,6 @@ def run_episode(
         if len(ref_ids) < target:
             break  # reference ended before this grid point
 
-        ref_raw = ref_collector.stacked()[:, 0, :]
         _sync(device)
         t0 = time.perf_counter()
         new_ids, score, committed = _attempt(
@@ -272,7 +276,7 @@ def run_episode(
             ref_ids[:s],
             press_factory(),
             alarm,
-            ref_raw,
+            ref_state,
             s,
             ratio,
             max_new_tokens - s,

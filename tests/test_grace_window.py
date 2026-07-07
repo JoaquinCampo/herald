@@ -16,10 +16,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from herald.features import FEATURE_NAMES, derive_features
+from herald.features import FEATURE_NAMES, IncrementalDerived, derive_features
 from herald.grace_window import (
     AlarmBundle,
     assemble_alarm_row,
+    assemble_alarm_row_from_state,
     hyb_feature_names,
     hybrid_block_summary,
     preswitch_features,
@@ -274,6 +275,11 @@ class TestArtifactParity:
             SWEEP_DIR / "references" / f"{safe_id(row['prompt_id'])}.npy"
         ).astype(np.float32)
         got = preswitch_features(ref_raw, int(row["s"]))
+        engine = IncrementalDerived()
+        for raw_row in ref_raw[: int(row["s"]) + 1]:
+            engine.update(raw_row)
+        incremental = engine.preswitch_features()
+        assert incremental == got
         checked = 0
         for name, value in got.items():
             if name not in df.columns or name.startswith("feat__attn_"):
@@ -317,6 +323,16 @@ class TestArtifactParity:
             ratio=float(row["ratio"]),
             k=2,
         )
+        engine = IncrementalDerived()
+        for raw_row in ref_raw[: int(row["s"]) + 1]:
+            engine.update(raw_row)
+        incremental_row = assemble_alarm_row_from_state(
+            state=engine,
+            block=hyb[:2],
+            ratio=float(row["ratio"]),
+            k=2,
+        )
+        assert incremental_row == live_row
         s = int(row["s"])
         trailing = (
             ref_raw[max(0, s - 8) : s].mean(axis=0)

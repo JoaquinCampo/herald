@@ -19,6 +19,7 @@ current steps over a fixed window, so a streaming predictor reproduces it
 at deploy time from the logit stream alone, with no new forward pass.
 """
 
+from collections import deque
 from collections.abc import Sequence
 
 import numpy as np
@@ -159,6 +160,180 @@ class FeatureCollector(LogitsProcessor):
         if not self._argmax:
             return np.empty((0, 0), dtype=np.int64)
         return np.stack(self._argmax, axis=0)
+
+
+class IncrementalDerived:
+    """Online equivalent of `derive_features(raw[:t + 1])[t]`.
+
+    The object consumes one raw per-token feature row at a time and keeps
+    only fixed-size history for bounded rolling statistics. Windowed
+    stats are recomputed over the bounded slice with the same NumPy calls
+    as `_rolling`; no running sums are used.
+    """
+
+    def __init__(
+        self,
+        *,
+        names: Sequence[str] | None = None,
+        bases: Sequence[str] = DYNAMIC_BASES,
+        short_window: int = 8,
+        long_window: int = 32,
+    ) -> None:
+        self.stored = list(FEATURE_NAMES) if names is None else list(names)
+        self.bases = list(bases)
+        self.short_window = short_window
+        self.long_window = long_window
+        self.windows = (short_window, long_window)
+        self.history_window = max(self.windows)
+        self._idx = {name: i for i, name in enumerate(self.stored)}
+        missing = [base for base in self.bases if base not in self._idx]
+        if missing:
+            raise ValueError(f"missing dynamic base columns: {missing}")
+
+        self._names = self._build_names()
+        self._steps = 0
+        self._latest: np.ndarray | None = None
+        self._raw_history: deque[np.ndarray] = deque(
+            maxlen=self.history_window
+        )
+        self._previous_raw: list[np.ndarray] = []
+        self._prev_value: dict[str, np.float64] = {}
+        self._prev_delta: dict[str, np.float64] = {}
+        self._ewma: dict[tuple[str, int], float] = {}
+        self._rolling: dict[str, deque[float]] = {
+            base: deque(maxlen=self.history_window) for base in self.bases
+        }
+
+    def _build_names(self) -> list[str]:
+        names = list(self.stored)
+        names.append("position")
+        for base in self.bases:
+            names.append(f"{base}_delta")
+            names.append(f"{base}_accel")
+            for w in self.windows:
+                names.append(f"{base}_ewma_{w}")
+                for stat in (
+                    "rmean",
+                    "rstd",
+                    "rmin",
+                    "rmax",
+                    "rmedian",
+                    "riqr",
+                    "slope",
+                ):
+                    names.append(f"{base}_{stat}_{w}")
+        return names
+
+    @property
+    def position(self) -> int:
+        """Index of the latest consumed row."""
+        if self._steps == 0:
+            raise ValueError("no rows have been consumed")
+        return self._steps - 1
+
+    def update(self, raw_row: np.ndarray) -> tuple[np.ndarray, list[str]]:
+        """Consume one raw row and return the latest derived row."""
+        row = np.asarray(raw_row, dtype=np.float32)
+        if row.ndim != 1:
+            raise ValueError(f"raw row must be 1D, got shape {row.shape}")
+        if row.shape[0] != len(self.stored):
+            raise ValueError(
+                f"raw row width {row.shape[0]} does not match "
+                f"{len(self.stored)} column names"
+            )
+
+        self._previous_raw = [r.copy() for r in self._raw_history]
+        values: list[float] = [float(v) for v in row]
+        values.append(float(np.float32(self._steps)))
+
+        for base in self.bases:
+            x = np.float64(row[self._idx[base]])
+            delta = self._delta(base, x)
+            accel = self._accel(base, delta)
+            values.append(float(delta))
+            values.append(float(accel))
+            self._rolling[base].append(float(x))
+            for window in self.windows:
+                values.append(self._update_ewma(base, window, x))
+                values.extend(self._rolling_stats(base, window))
+            self._prev_value[base] = x
+            self._prev_delta[base] = delta
+
+        self._raw_history.append(row.copy())
+        self._steps += 1
+        self._latest = np.asarray(values, dtype=np.float32)
+        return self.latest_row(), self.names()
+
+    def _delta(self, base: str, x: np.float64) -> np.float64:
+        if base not in self._prev_value:
+            return np.float64(np.nan)
+        return x - self._prev_value[base]
+
+    def _accel(self, base: str, delta: np.float64) -> np.float64:
+        if base not in self._prev_delta:
+            return np.float64(np.nan)
+        return delta - self._prev_delta[base]
+
+    def _update_ewma(self, base: str, window: int, x: np.float64) -> float:
+        key = (base, window)
+        if key not in self._ewma:
+            acc = float(x)
+        else:
+            alpha = 2.0 / (window + 1.0)
+            acc = alpha * float(x) + (1.0 - alpha) * self._ewma[key]
+        self._ewma[key] = acc
+        return acc
+
+    def _rolling_stats(self, base: str, window: int) -> list[float]:
+        history = self._rolling[base]
+        chunk = np.asarray(list(history)[-window:], dtype=np.float64)
+        finite = chunk[~np.isnan(chunk)]
+        if finite.size == 0:
+            return [float(np.nan)] * 7
+        q75, q25 = np.percentile(finite, [75, 25])
+        if finite.size >= 2:
+            pos = np.arange(chunk.size, dtype=np.float64)[~np.isnan(chunk)]
+            slope = np.polyfit(pos, finite, 1)[0]
+        else:
+            slope = 0.0
+        return [
+            float(finite.mean()),
+            float(finite.std()),
+            float(finite.min()),
+            float(finite.max()),
+            float(np.median(finite)),
+            float(q75 - q25),
+            float(slope),
+        ]
+
+    def latest_row(self) -> np.ndarray:
+        """Latest derived row as a float32 array."""
+        if self._latest is None:
+            raise ValueError("no rows have been consumed")
+        return self._latest.copy()
+
+    def names(self) -> list[str]:
+        """Derived column names in `derive_features` order."""
+        return list(self._names)
+
+    def preswitch_features(self) -> dict[str, float | None]:
+        """Latest derived row in alarm `feat__*` dictionary form."""
+        row = self.latest_row()
+        return {
+            f"feat__{name}": None if np.isnan(v) else float(v)
+            for name, v in zip(self._names, row, strict=True)
+        }
+
+    def trailing_raw_mean(self, window: int) -> np.ndarray:
+        """Mean of raw rows before the latest row, matching extraction."""
+        if self._steps == 0:
+            raise ValueError("no rows have been consumed")
+        if not self._previous_raw:
+            return np.full(len(self.stored), np.nan, dtype=np.float32)
+        chunk = self._previous_raw[-window:]
+        arr: np.ndarray = np.asarray(chunk, dtype=np.float32)
+        mean: np.ndarray = arr.mean(axis=0)
+        return mean
 
 
 def derive_features(

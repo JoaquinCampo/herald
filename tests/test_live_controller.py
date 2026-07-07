@@ -28,6 +28,7 @@ from herald.generate import (
     generate_reference,
     load_model,
 )
+from herald.grace_window import assemble_alarm_row
 from herald.presses import get_press
 from herald.tasks import PromptRecord
 
@@ -86,6 +87,24 @@ class ScriptedAlarm:
 
     def commits(self, score: float) -> bool:
         return score <= self.theta
+
+
+class RowParityAlarm(ScriptedAlarm):
+    """Alarm stub that pins live rows to batch assembly rows."""
+
+    def __init__(
+        self,
+        decisions: list[bool],
+        expected: list[dict[str, Any]],
+        k: int = 2,
+    ) -> None:
+        super().__init__(decisions, k=k)
+        self._expected = expected
+
+    def score(self, row: dict[str, Any]) -> float:
+        expected = self._expected[len(self.rows)]
+        assert row == expected
+        return super().score(row)
 
 
 def _run(
@@ -181,6 +200,39 @@ def test_alarm_sees_quantized_hybrid_stream(lm: LoadedModel) -> None:
         assert row[f"hyb__{stat}_entropy_k2"] == pytest.approx(
             want, rel=1e-6
         ), stat
+
+
+def test_live_rows_match_original_batch_assembly(lm: LoadedModel) -> None:
+    [ref] = generate_reference(lm, [_rec(LONG, "p0")], M)
+    press0 = get_press("streaming_llm", 0.5)
+    press1 = get_press("streaming_llm", 0.5)
+    hyb0 = generate_hybrids(lm, [(ref, 0)], "streaming_llm", 0.5, press0, M)[
+        0
+    ]
+    hyb1 = generate_hybrids(
+        lm, [(ref, STRIDE)], "streaming_llm", 0.5, press1, M
+    )[0]
+    expected = [
+        assemble_alarm_row(
+            ref_raw=ref.features,
+            s=0,
+            block=hyb0.features[:2],
+            ratio=0.5,
+            k=2,
+        ),
+        assemble_alarm_row(
+            ref_raw=ref.features,
+            s=STRIDE,
+            block=hyb1.features[:2],
+            ratio=0.5,
+            k=2,
+        ),
+    ]
+    alarm = RowParityAlarm([False, True], expected)
+    ep = _run(lm, alarm)
+    assert [a.s for a in ep.attempts] == [0, STRIDE]
+    assert [a.score for a in ep.attempts] == [1.0, 0.0]
+    assert [a.committed for a in ep.attempts] == [False, True]
 
 
 def test_attempt_budget_matches_sweep_cap(lm: LoadedModel) -> None:

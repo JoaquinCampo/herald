@@ -27,7 +27,7 @@ from typing import Any
 
 import numpy as np
 
-from herald.features import FEATURE_NAMES, derive_features
+from herald.features import FEATURE_NAMES, IncrementalDerived, derive_features
 from herald.switch_risk import featurize
 
 TRAIL_WINDOW = 8
@@ -135,6 +135,26 @@ def assemble_alarm_row(
     )
     row: dict[str, Any] = {"task": "ifeval", "ratio": float(ratio)}
     row.update(preswitch_features(ref_raw, s))
+    row.update(hybrid_block_summary(quantized, trailing, k=k))
+    return row
+
+
+def assemble_alarm_row_from_state(
+    *,
+    state: IncrementalDerived,
+    block: np.ndarray,
+    ratio: float,
+    k: int,
+) -> dict[str, Any]:
+    """Build one alarm input row from incremental reference state."""
+    trailing = state.trailing_raw_mean(TRAIL_WINDOW)
+    quantized = (
+        np.asarray(block, dtype=np.float32)
+        .astype(np.float16)
+        .astype(np.float32)
+    )
+    row: dict[str, Any] = {"task": "ifeval", "ratio": float(ratio)}
+    row.update(state.preswitch_features())
     row.update(hybrid_block_summary(quantized, trailing, k=k))
     return row
 
