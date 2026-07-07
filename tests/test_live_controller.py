@@ -89,6 +89,23 @@ class ScriptedAlarm:
         return score <= self.theta
 
 
+class ScriptedGate:
+    """Gate stub: scripted attempt decisions, captures pre-switch rows."""
+
+    def __init__(self, decisions: list[bool]) -> None:
+        self._decisions = decisions
+        self.rows: list[dict[str, Any]] = []
+        self.tau = 0.5
+
+    def score(self, row: dict[str, Any]) -> float:
+        self.rows.append(row)
+        attempt = self._decisions[len(self.rows) - 1]
+        return 1.0 if attempt else 0.0
+
+    def attempts(self, score: float) -> bool:
+        return score >= self.tau
+
+
 class RowParityAlarm(ScriptedAlarm):
     """Alarm stub that pins live rows to batch assembly rows."""
 
@@ -180,6 +197,85 @@ def test_commit_at_later_s_reproduces_hybrid(lm: LoadedModel) -> None:
     assert ep.new_ids == hyb.new_ids
     assert ep.text == hyb.text
     assert [a.s for a in ep.attempts] == [0, STRIDE]
+
+
+def test_gate_skip_s0_then_allow_s16_reproduces_late_commit(
+    lm: LoadedModel,
+) -> None:
+    ungated = _run(lm, ScriptedAlarm([False, True]), pid="p-late")
+    gated = LC.run_episode(
+        lm,
+        _rec(LONG, "p-late"),
+        lambda: get_press("streaming_llm", 0.5),
+        ScriptedAlarm([True]),
+        compressor="streaming_llm",
+        ratio=0.5,
+        max_new_tokens=M,
+        stride=STRIDE,
+        gate=ScriptedGate([False, True]),
+    )
+    assert gated.commit_s == STRIDE
+    assert gated.new_ids == ungated.new_ids
+    assert gated.text == ungated.text
+    assert [skip.s for skip in gated.skips] == [0]
+    assert [a.s for a in gated.attempts] == [STRIDE]
+    assert [a.gate_score for a in gated.attempts] == [1.0]
+
+
+def test_gate_allow_all_reproduces_no_gate_episode(
+    lm: LoadedModel,
+) -> None:
+    no_gate = _run(lm, ScriptedAlarm([False, True]), pid="p-allow")
+    gate = ScriptedGate([True, True])
+    gated = LC.run_episode(
+        lm,
+        _rec(LONG, "p-allow"),
+        lambda: get_press("streaming_llm", 0.5),
+        ScriptedAlarm([False, True]),
+        compressor="streaming_llm",
+        ratio=0.5,
+        max_new_tokens=M,
+        stride=STRIDE,
+        gate=gate,
+    )
+    assert gated.commit_s == no_gate.commit_s
+    assert gated.ref_ids == no_gate.ref_ids
+    assert gated.new_ids == no_gate.new_ids
+    assert gated.text == no_gate.text
+    assert gated.skips == []
+    assert [
+        (a.s, a.score, a.committed, a.n_new_tokens, a.block_len)
+        for a in gated.attempts
+    ] == [
+        (a.s, a.score, a.committed, a.n_new_tokens, a.block_len)
+        for a in no_gate.attempts
+    ]
+
+
+def test_gate_sees_same_preswitch_features_as_alarm(
+    lm: LoadedModel,
+) -> None:
+    alarm = ScriptedAlarm([False, True])
+    gate = ScriptedGate([True, True])
+    ep = LC.run_episode(
+        lm,
+        _rec(LONG, "p-feat"),
+        lambda: get_press("streaming_llm", 0.5),
+        alarm,
+        compressor="streaming_llm",
+        ratio=0.5,
+        max_new_tokens=M,
+        stride=STRIDE,
+        gate=gate,
+    )
+    assert [a.s for a in ep.attempts] == [0, STRIDE]
+    assert len(gate.rows) == len(alarm.rows)
+    for gate_row, alarm_row in zip(gate.rows, alarm.rows, strict=True):
+        assert gate_row["task"] == alarm_row["task"]
+        assert gate_row["ratio"] == alarm_row["ratio"]
+        for name, value in alarm_row.items():
+            if name.startswith("feat__"):
+                assert gate_row[name] == value
 
 
 def test_alarm_sees_quantized_hybrid_stream(lm: LoadedModel) -> None:

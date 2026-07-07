@@ -19,6 +19,7 @@ import pytest
 from herald.features import FEATURE_NAMES, IncrementalDerived, derive_features
 from herald.grace_window import (
     AlarmBundle,
+    GateBundle,
     assemble_alarm_row,
     assemble_alarm_row_from_state,
     hyb_feature_names,
@@ -246,6 +247,58 @@ class TestAlarmBundle:
         bundle = self._tiny_bundle(tmp_path)
         assert bundle.commits(bundle.theta) is True
         assert bundle.commits(bundle.theta + 1e-6) is False
+
+
+class TestGateBundle:
+    def _tiny_bundle(self) -> GateBundle:
+        import xgboost as xgb
+
+        x = RNG.normal(size=(200, 3)).astype(np.float32)
+        y = (x[:, 0] + x[:, 2] > 0).astype(np.float32)
+        boosters = []
+        for seed in (0, 1, 2):
+            boosters.append(
+                xgb.train(
+                    {
+                        "objective": "binary:logistic",
+                        "seed": seed,
+                        "max_depth": 2,
+                    },
+                    xgb.DMatrix(x, label=y),
+                    num_boost_round=5,
+                )
+            )
+        return GateBundle(
+            compressor="expected_attention",
+            g_tau=0.25,
+            feature_cols=[
+                "feat__entropy",
+                "feat__max_prob",
+                "ratio",
+            ],
+            boosters=boosters,
+            meta={"variant": "gate-A alarm-imitation"},
+        )
+
+    def test_roundtrip_preserves_score_bitwise(self, tmp_path: Path) -> None:
+        bundle = self._tiny_bundle()
+        row = {
+            "task": "ifeval",
+            "ratio": 0.5,
+            "feat__entropy": 1.2,
+            "feat__max_prob": 0.9,
+        }
+        expected = bundle.score(row)
+        out = tmp_path / "gate_bundle"
+        bundle.save(out)
+        loaded = GateBundle.load(out)
+        assert loaded.compressor == bundle.compressor
+        assert loaded.g_tau == bundle.g_tau
+        assert loaded.feature_cols == bundle.feature_cols
+        assert loaded.meta == bundle.meta
+        assert loaded.score(row) == expected
+        assert loaded.attempts(loaded.g_tau) is True
+        assert loaded.attempts(loaded.g_tau - 1e-6) is False
 
 
 SWEEP_DIR = Path("results/sweep/llama/ifeval")

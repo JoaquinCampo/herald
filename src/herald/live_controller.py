@@ -35,7 +35,10 @@ from transformers import StoppingCriteria, StoppingCriteriaList
 
 from herald.features import FeatureCollector, IncrementalDerived
 from herald.generate import LoadedModel, build_input_ids
-from herald.grace_window import assemble_alarm_row_from_state
+from herald.grace_window import (
+    assemble_alarm_row_from_state,
+    assemble_gate_row_from_state,
+)
 from herald.tasks import PromptRecord
 
 
@@ -49,6 +52,14 @@ class AlarmLike(Protocol):
     def commits(self, score: float) -> bool: ...
 
 
+class GateLike(Protocol):
+    """What the controller needs from a frozen scorer gate."""
+
+    def score(self, row: dict[str, Any]) -> float: ...
+
+    def attempts(self, score: float) -> bool: ...
+
+
 @dataclass
 class AttemptRecord:
     s: int
@@ -56,6 +67,14 @@ class AttemptRecord:
     committed: bool
     n_new_tokens: int
     block_len: int
+    wall_s: float
+    gate_score: float | None = None
+
+
+@dataclass
+class SkipRecord:
+    s: int
+    gate_score: float
     wall_s: float
 
 
@@ -73,6 +92,7 @@ class LiveEpisode:
     ref_wall_s: float = 0.0
     total_wall_s: float = 0.0
     peak_mem_bytes: int = 0
+    skips: list[SkipRecord] = field(default_factory=list)
 
 
 class AlarmStoppingCriteria(StoppingCriteria):
@@ -214,6 +234,7 @@ def run_episode(
     ratio: float,
     max_new_tokens: int,
     stride: int = 16,
+    gate: GateLike | None = None,
 ) -> LiveEpisode:
     """Run one live grace-window episode for one (prompt, ratio)."""
     device = next(lm.model.parameters()).device.type
@@ -268,6 +289,26 @@ def run_episode(
         if len(ref_ids) < target:
             break  # reference ended before this grid point
 
+        gate_score = None
+        if gate is not None:
+            t_gate = time.perf_counter()
+            gate_row = assemble_gate_row_from_state(
+                state=ref_state,
+                ratio=ratio,
+            )
+            gate_score = gate.score(gate_row)
+            gate_wall = time.perf_counter() - t_gate
+            if not gate.attempts(gate_score):
+                episode.skips.append(
+                    SkipRecord(
+                        s=s,
+                        gate_score=gate_score,
+                        wall_s=gate_wall,
+                    )
+                )
+                s += stride
+                continue
+
         _sync(device)
         t0 = time.perf_counter()
         new_ids, score, committed = _attempt(
@@ -291,6 +332,7 @@ def run_episode(
                 n_new_tokens=len(new_ids),
                 block_len=min(alarm.k, len(new_ids)),
                 wall_s=wall,
+                gate_score=gate_score,
             )
         )
         if committed:

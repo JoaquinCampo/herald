@@ -159,6 +159,85 @@ def assemble_alarm_row_from_state(
     return row
 
 
+def assemble_gate_row_from_state(
+    *,
+    state: IncrementalDerived,
+    ratio: float,
+) -> dict[str, Any]:
+    """Build one pre-switch gate row from incremental reference state."""
+    row: dict[str, Any] = {"task": "ifeval", "ratio": float(ratio)}
+    row.update(state.preswitch_features())
+    return row
+
+
+def _matrix_from_feature_cols(
+    rows: list[dict[str, Any]], feature_cols: list[str]
+) -> np.ndarray:
+    mat = np.full((len(rows), len(feature_cols)), np.nan, dtype=np.float32)
+    for i, row in enumerate(rows):
+        for j, col in enumerate(feature_cols):
+            value = row.get(col)
+            mat[i, j] = np.nan if value is None else float(value)
+    return mat
+
+
+@dataclass
+class GateBundle:
+    """Frozen scorer gate: ensemble, attempt threshold, feature order."""
+
+    compressor: str
+    g_tau: float
+    feature_cols: list[str]
+    boosters: list[Any]
+    meta: dict[str, Any] = field(default_factory=dict)
+
+    def score(self, row: dict[str, Any]) -> float:
+        """Ensemble-mean gate score for one pre-switch row."""
+        import xgboost as xgb
+
+        mat = _matrix_from_feature_cols([row], self.feature_cols)
+        dmat = xgb.DMatrix(mat)
+        preds = [float(b.predict(dmat)[0]) for b in self.boosters]
+        return float(np.mean(preds))
+
+    def attempts(self, score: float) -> bool:
+        """Attempt rule: run compression iff score is above threshold."""
+        return score >= self.g_tau
+
+    def save(self, bundle_dir: Path) -> None:
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+        manifest = {
+            "compressor": self.compressor,
+            "g_tau": self.g_tau,
+            "feature_cols": self.feature_cols,
+            "n_boosters": len(self.boosters),
+            "meta": self.meta,
+        }
+        (bundle_dir / "manifest.json").write_text(
+            json.dumps(manifest, indent=2)
+        )
+        for i, booster in enumerate(self.boosters):
+            booster.save_model(str(bundle_dir / f"booster_{i}.json"))
+
+    @classmethod
+    def load(cls, bundle_dir: Path) -> "GateBundle":
+        import xgboost as xgb
+
+        manifest = json.loads((bundle_dir / "manifest.json").read_text())
+        boosters = []
+        for i in range(int(manifest["n_boosters"])):
+            booster = xgb.Booster()
+            booster.load_model(str(bundle_dir / f"booster_{i}.json"))
+            boosters.append(booster)
+        return cls(
+            compressor=str(manifest["compressor"]),
+            g_tau=float(manifest["g_tau"]),
+            feature_cols=list(manifest["feature_cols"]),
+            boosters=boosters,
+            meta=dict(manifest["meta"]),
+        )
+
+
 @dataclass
 class AlarmBundle:
     """Frozen grace-window alarm: ensemble, threshold, feature order."""

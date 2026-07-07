@@ -32,7 +32,7 @@ sys.path.insert(0, "src")
 
 from herald.config import TASKS  # noqa: E402
 from herald.generate import generate_reference, load_model  # noqa: E402
-from herald.grace_window import AlarmBundle  # noqa: E402
+from herald.grace_window import AlarmBundle, GateBundle  # noqa: E402
 from herald.live_controller import run_episode  # noqa: E402
 from herald.presses import get_press  # noqa: E402
 from herald.scoring import score  # noqa: E402
@@ -44,9 +44,8 @@ DEFAULT_COMPRESSORS = ("expected_attention", "knorm", "streaming_llm")
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
-    p.add_argument(
-        "--bundle-dir", default="results/predictor/alarm_bundle"
-    )
+    p.add_argument("--bundle-dir", default="results/predictor/alarm_bundle")
+    p.add_argument("--gate-dir", default=None)
     p.add_argument("--out-dir", default="results/live_controller")
     p.add_argument(
         "--references-dir",
@@ -96,9 +95,7 @@ def prefix_comparison(
     live_ids: list[int], recorded_ids: list[int]
 ) -> dict[str, Any]:
     n = min(len(live_ids), len(recorded_ids))
-    div = next(
-        (i for i in range(n) if live_ids[i] != recorded_ids[i]), None
-    )
+    div = next((i for i in range(n) if live_ids[i] != recorded_ids[i]), None)
     return {
         "live_len": len(live_ids),
         "recorded_len": len(recorded_ids),
@@ -119,9 +116,13 @@ def main() -> None:
     max_new_tokens = TASKS["ifeval"].max_new_tokens
 
     bundles = {
-        c: AlarmBundle.load(Path(args.bundle_dir) / c)
-        for c in compressors
+        c: AlarmBundle.load(Path(args.bundle_dir) / c) for c in compressors
     }
+    gates = (
+        {c: GateBundle.load(Path(args.gate_dir) / c) for c in compressors}
+        if args.gate_dir is not None
+        else None
+    )
     targets = json.loads(
         (Path(args.bundle_dir) / "fidelity_targets.json").read_text()
     )
@@ -203,6 +204,7 @@ def main() -> None:
                     ratio=ratio,
                     max_new_tokens=max_new_tokens,
                     stride=args.stride,
+                    gate=None if gates is None else gates[compressor],
                 )
                 q_live = score("ifeval", ep.text, record.gold)
                 q_ref_rec = (
@@ -231,8 +233,17 @@ def main() -> None:
                             "committed": a.committed,
                             "n_new_tokens": a.n_new_tokens,
                             "wall_s": a.wall_s,
+                            "gate_score": a.gate_score,
                         }
                         for a in ep.attempts
+                    ],
+                    "skips": [
+                        {
+                            "s": skip.s,
+                            "gate_score": skip.gate_score,
+                            "wall_s": skip.wall_s,
+                        }
+                        for skip in ep.skips
                     ],
                     "ref_len_live": len(ep.ref_ids),
                     "ref_done": ep.ref_done,
@@ -259,7 +270,7 @@ def main() -> None:
                 print(
                     f"EPISODE {key} commit_s={ep.commit_s} "
                     f"attempts={len(ep.attempts)} q={q_live:.3f} "
-                    f"dq={obj['dq_live']} sav={savings} "
+                    f"skips={len(ep.skips)} dq={obj['dq_live']} sav={savings} "
                     f"wall={ep.total_wall_s:.1f}s",
                     flush=True,
                 )

@@ -1,5 +1,6 @@
 """Run scorer-gated attempt scheduling on recorded HERALD data."""
 
+import argparse
 import json
 import random
 import sys
@@ -21,6 +22,7 @@ from herald.grace_replay import (  # noqa: E402
     replay_matrices,
 )
 from herald.grace_window import hyb_feature_names  # noqa: E402
+from herald.grace_window import GateBundle  # noqa: E402
 from herald.switch_baselines import leave_one_compressor_splits  # noqa: E402
 from herald.switch_risk import featurize  # noqa: E402
 
@@ -31,6 +33,7 @@ TARGETS = Path("results/predictor/alarm_bundle/fidelity_targets.json")
 LIVE_EPISODES = Path("results/live_controller_v2/episodes.jsonl")
 LIVE_BASELINE = Path("results/live_controller_v2/baseline.jsonl")
 OUT_DIR = Path("results/predictor/gate_scheduling")
+GATE_BUNDLE_DIR = Path("results/predictor/gate_bundle")
 
 SPLIT_SEED = 0
 N_FOLDS = 5
@@ -49,16 +52,32 @@ BASE = {
     "min_child_weight": 10,
     "nthread": -1,
 }
+GATE_A_THRESHOLDS = {
+    "expected_attention": 0.208199,
+    "knorm": 0.007203,
+    "streaming_llm": 0.033454,
+}
 
 
 def ratio_key(value: float) -> str:
     return f"{float(value):.4f}"
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--export-bundles", action="store_true")
+    return parser.parse_args()
+
+
 def main() -> None:
+    args = parse_args()
     t0 = time.time()
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
     data = load_inputs()
+    if args.export_bundles:
+        export_gate_bundles(data)
+        return
+
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
     targets = json.loads(TARGETS.read_text())
     episodes = load_jsonl(LIVE_EPISODES)
     baselines = {
@@ -336,7 +355,9 @@ def run_compressor(
             np.sum(ungated_test.commit_index != gated_test.commit_index)
         )
         test_row["g_tau"] = g_tau
-        test_row["moved_commit_groups_frozen_vs_ungated"] = moved_commit_groups
+        test_row["moved_commit_groups_frozen_vs_ungated"] = (
+            moved_commit_groups
+        )
         test_row["projected_revert_wall_overhead_primary"] = wall[
             "mean_share_primary"
         ]
@@ -370,6 +391,71 @@ def run_compressor(
         "frontier_rows": frontier_rows,
         "wall_rows": wall_rows,
     }
+
+
+def export_gate_bundles(data: dict[str, Any]) -> None:
+    targets = json.loads(TARGETS.read_text())
+    splits = leave_one_compressor_splits(
+        data["rows"],
+        compressors=COMPRESSORS,
+        seed=SPLIT_SEED,
+        test_group_fraction=0.25,
+    )
+    row_index = {id(row): i for i, row in enumerate(data["rows"])}
+    GATE_BUNDLE_DIR.mkdir(parents=True, exist_ok=True)
+    for split in splits:
+        compressor = split.heldout_compressor
+        theta = float(targets["compressors"][compressor]["theta"])
+        split_data = make_split_data(data, split, row_index)
+        train_sel = split_data["heldout_train_sel"]
+        test_sel = split_data["heldout_test_sel"]
+        train = [data["rows"][i] for i in train_sel]
+        test = [data["rows"][i] for i in test_sel]
+        alarm_train = fit_alarm_final_scores(
+            data=data,
+            train_sel=train_sel,
+            pred_sel=train_sel,
+            rows=data["rows"],
+        )
+        labels = (np.asarray(alarm_train) <= theta).astype(np.float32)
+        x_train = gate_matrix(train, data["feat_cols"])
+        boosters = []
+        for seed in SEEDS:
+            params = {**BASE, "seed": seed}
+            boosters.append(train_xgb(params=params, x=x_train, y=labels))
+        feature_cols = [*data["feat_cols"], "ratio"]
+        bundle = GateBundle(
+            compressor=compressor,
+            g_tau=GATE_A_THRESHOLDS[compressor],
+            feature_cols=feature_cols,
+            boosters=boosters,
+            meta={
+                "variant": "gate-A alarm-imitation",
+                "split_seed": SPLIT_SEED,
+                "seeds": list(SEEDS),
+                "params": BASE,
+                "k": K,
+                "epsilon": EPSILON,
+                "n_train_rows": len(train),
+                "n_test_rows": len(test),
+                "label_theta": theta,
+            },
+        )
+        out_dir = GATE_BUNDLE_DIR / compressor
+        bundle.save(out_dir)
+        loaded = GateBundle.load(out_dir)
+        sample = test[: min(32, len(test))]
+        in_memory = [bundle.score(row) for row in sample]
+        loaded_scores = [loaded.score(row) for row in sample]
+        if loaded_scores != in_memory:
+            raise AssertionError(
+                f"{compressor} saved bundle scores differ from memory"
+            )
+        print(
+            f"EXPORT {compressor} rows={len(train)} "
+            f"g_tau={bundle.g_tau:.6f} verified={len(sample)}",
+            flush=True,
+        )
 
 
 def fit_alarm_final_scores(
