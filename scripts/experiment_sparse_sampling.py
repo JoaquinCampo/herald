@@ -34,7 +34,7 @@ from herald.switch_risk import featurize  # noqa: E402
 
 COMPRESSORS = ("expected_attention", "knorm", "streaming_llm")
 DESIGNS = ("D1_uniform", "D2_stratified")
-N_VALUES = (8, 12, 16)
+N_VALUES = (8, 12, 16, 24, 32)
 SAMPLING_SEEDS = (0, 1, 2)
 MODES = ("sparse", "dense-cal", "mixed25")
 PARQUET = Path("results/predictor/switch_dataset_attn.parquet")
