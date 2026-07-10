@@ -4,6 +4,7 @@ from herald.deployment_contract import (
     DeploymentContract,
     DeploymentMeasurement,
     evaluate_deployment,
+    measurement_from_live_records,
 )
 
 
@@ -129,3 +130,57 @@ def test_minimum_sample_size_is_enforced() -> None:
 def test_invalid_measurement_is_rejected() -> None:
     with pytest.raises(ValueError, match="baseline_wall_s"):
         _measurement("p0", baseline_wall_s=0.0)
+
+
+def test_live_record_adapter_uses_live_baseline_and_isolated_kv() -> None:
+    baseline = {
+        "prompt_id": "p0",
+        "wall_s": 10.0,
+        "ref_len": 100,
+        "q_ref_live": 0.8,
+        "q_ref_recorded": 0.2,
+        "peak_kv_cache_bytes": 1_000,
+    }
+    episode = {
+        "prompt_id": "p0",
+        "commit_s": 20,
+        "n_new_ids": 70,
+        "q_live": 0.75,
+        "total_wall_s": 10.2,
+        "peak_kv_cache_bytes": 500,
+    }
+
+    row = measurement_from_live_records(episode, baseline)
+
+    assert row.quality_reference == 0.8
+    assert row.quality_candidate == 0.75
+    assert row.baseline_tokens == 100
+    assert row.candidate_tokens == 90
+    assert row.baseline_peak_kv_bytes == 1_000
+    assert row.candidate_peak_kv_bytes == 500
+
+
+def test_live_record_adapter_rejects_allocator_peak_as_kv_measurement() -> (
+    None
+):
+    baseline = {
+        "prompt_id": "p0",
+        "wall_s": 10.0,
+        "ref_len": 100,
+        "q_ref_live": 1.0,
+        "peak_mem_bytes": 10_000,
+    }
+    episode = {
+        "prompt_id": "p0",
+        "commit_s": None,
+        "ref_len_live": 100,
+        "n_new_ids": 0,
+        "q_live": 1.0,
+        "total_wall_s": 10.0,
+        "peak_mem_bytes": 9_000,
+    }
+
+    row = measurement_from_live_records(episode, baseline)
+
+    assert row.baseline_peak_kv_bytes is None
+    assert row.candidate_peak_kv_bytes is None

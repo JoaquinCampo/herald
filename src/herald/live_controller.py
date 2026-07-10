@@ -11,17 +11,16 @@ exact semantics the zero-GPU replay assumed (grace_replay):
   pre-switch features are the derived stream at row s), an attempt
   prefills `[prompt + ref[:s]]` inside the press context, the same
   code path that produced the recorded hybrid streams, and decodes.
-- An AlarmStoppingCriteria evaluates the frozen alarm once, at the
-  k-th post-switch token: on alarm the call stops (revert; the k
-  observed tokens are the overhead), otherwise the same call simply
-  keeps decoding to completion (commit costs nothing extra).
-- On revert the run continues from the held uncompressed cache; on
-  commit the episode output is `ref[:s] + attempt tokens` and the
-  held cache is dropped.
+- Every attempt stops after the k-token grace window and evaluates the
+  frozen alarm once. On revert those tokens are discarded and reference
+  decoding resumes from the held uncompressed cache.
+- On commit the held cache is dropped before compressed decoding resumes.
+  The continuation receives the logical cache position explicitly because
+  its compressed physical cache length is shorter than the token position.
 
-Episodes record raw facts (attempted s, alarm scores, tokens,
-timings, peak memory); savings/cost/fidelity are computed downstream
-against the frozen fidelity targets.
+Episodes record raw facts (attempted s, alarm scores, tokens, timings,
+allocator peak, and isolated retained KV-cache bytes); deployment metrics
+are computed downstream against an explicit contract.
 """
 
 import time
@@ -31,7 +30,6 @@ from typing import Any, Protocol
 
 import torch
 from kvpress.presses.base_press import BasePress
-from transformers import StoppingCriteria, StoppingCriteriaList
 
 from herald.features import FeatureCollector, IncrementalDerived
 from herald.generate import LoadedModel, build_input_ids
@@ -39,6 +37,7 @@ from herald.grace_window import (
     assemble_alarm_row_from_state,
     assemble_gate_row_from_state,
 )
+from herald.kv_metrics import kv_cache_nbytes
 from herald.tasks import PromptRecord
 
 
@@ -68,6 +67,7 @@ class AttemptRecord:
     n_new_tokens: int
     block_len: int
     wall_s: float
+    peak_kv_cache_bytes: int
     gate_score: float | None = None
 
 
@@ -92,45 +92,8 @@ class LiveEpisode:
     ref_wall_s: float = 0.0
     total_wall_s: float = 0.0
     peak_mem_bytes: int = 0
+    peak_kv_cache_bytes: int = 0
     skips: list[SkipRecord] = field(default_factory=list)
-
-
-class AlarmStoppingCriteria(StoppingCriteria):
-    """Stop an attempt at the k-th generated token iff the alarm fires.
-
-    `decide` returns True to revert; it is called exactly once, at the
-    step where k tokens exist. If generation ends earlier (EOS), the
-    caller must invoke `decide_now` post-hoc on the partial block, the
-    same rule the replay applied to short recorded streams.
-    """
-
-    def __init__(self, k: int, decide: Callable[[], bool]) -> None:
-        self.k = k
-        self._decide = decide
-        self._steps = 0
-        self.fired = False
-        self.revert = False
-
-    def decide_now(self) -> None:
-        if not self.fired:
-            self.fired = True
-            self.revert = self._decide()
-
-    def __call__(
-        self,
-        input_ids: torch.LongTensor,
-        scores: torch.FloatTensor,
-        **kwargs: Any,
-    ) -> torch.Tensor:
-        self._steps += 1
-        if self._steps >= self.k:
-            self.decide_now()
-        return torch.full(
-            (input_ids.shape[0],),
-            self.fired and self.revert,
-            dtype=torch.bool,
-            device=input_ids.device,
-        )
 
 
 def _sync(device: str) -> None:
@@ -168,7 +131,7 @@ def _extend_reference(
     return [int(t) for t in new_ids], out.past_key_values
 
 
-def _attempt(
+def _attempt_grace(
     lm: LoadedModel,
     prompt_ids: torch.Tensor,
     prefix_ids: list[int],
@@ -180,13 +143,11 @@ def _attempt(
     max_new: int,
     *,
     seed: int = 0,
-) -> tuple[list[int], float, bool]:
-    """One compression attempt at switch position s.
+) -> tuple[list[int], float, bool, Any]:
+    """Prefill a compressed cache and evaluate its grace-window tokens.
 
-    Returns (new_ids, alarm_score, committed). The prefill fires the
-    press once on the full-attention cache of [prompt + ref[:s]],
-    exactly like the recorded hybrids; the alarm is evaluated at the
-    k-th generated token inside the same generate call.
+    The call always stops after at most ``k`` tokens. This lets the caller
+    release the rollback cache before a committed compressed continuation.
     """
     device = next(lm.model.parameters()).device
     seq = torch.cat(
@@ -196,32 +157,71 @@ def _attempt(
         ]
     ).unsqueeze(0)
     collector = FeatureCollector()
-    holder: dict[str, float] = {}
-
-    def decide() -> bool:
-        block = collector.stacked()[: alarm.k, 0, :]
-        row = assemble_alarm_row_from_state(
-            state=ref_state, block=block, ratio=ratio, k=alarm.k
-        )
-        score = alarm.score(row)
-        holder["score"] = score
-        return not alarm.commits(score)
-
-    criteria = AlarmStoppingCriteria(alarm.k, decide)
     torch.manual_seed(seed)
     with torch.no_grad(), press(lm.model):
         out = lm.model.generate(  # type: ignore[operator]
             input_ids=seq,
             attention_mask=torch.ones_like(seq),
             generation_config=lm.gen_config,
-            max_new_tokens=max_new,
+            max_new_tokens=min(alarm.k, max_new),
             logits_processor=[collector],
-            stopping_criteria=StoppingCriteriaList([criteria]),
             return_dict_in_generate=True,
         )
-    criteria.decide_now()
     new_ids = [int(t) for t in out.sequences[0, seq.shape[1] :].tolist()]
-    return new_ids, holder["score"], not criteria.revert
+    block = collector.stacked()[: alarm.k, 0, :]
+    row = assemble_alarm_row_from_state(
+        state=ref_state, block=block, ratio=ratio, k=alarm.k
+    )
+    score = alarm.score(row)
+    cache = getattr(out, "past_key_values", None)
+    if cache is None:
+        raise RuntimeError("compression attempt did not return a KV cache")
+    return new_ids, score, alarm.commits(score), cache
+
+
+def _continue_attempt(
+    lm: LoadedModel,
+    prompt_ids: torch.Tensor,
+    prefix_ids: list[int],
+    new_ids: list[int],
+    cache: Any,
+    max_new: int,
+) -> tuple[list[int], Any]:
+    """Continue a committed compressed cache without re-prefilling it."""
+    if max_new <= 0 or (new_ids and new_ids[-1] in lm.eos_ids):
+        return [], cache
+    device = next(lm.model.parameters()).device
+    seq = torch.cat(
+        [
+            prompt_ids.to(device),
+            torch.tensor(
+                prefix_ids + new_ids, dtype=torch.long, device=device
+            ),
+        ]
+    ).unsqueeze(0)
+    with torch.no_grad():
+        # The physical compressed-cache length is shorter than the logical
+        # sequence position. GenerationMixin otherwise derives the restart
+        # position from that physical length and reprocesses old tokens.
+        cache_position = torch.tensor(
+            [seq.shape[1] - 1], dtype=torch.long, device=device
+        )
+        out = lm.model.generate(  # type: ignore[operator]
+            input_ids=seq,
+            attention_mask=torch.ones_like(seq),
+            generation_config=lm.gen_config,
+            max_new_tokens=max_new,
+            past_key_values=cache,
+            cache_position=cache_position,
+            return_dict_in_generate=True,
+        )
+    continued = [int(t) for t in out.sequences[0, seq.shape[1] :].tolist()]
+    continued_cache = getattr(out, "past_key_values", None)
+    if continued_cache is None:
+        raise RuntimeError(
+            "compressed continuation did not return a KV cache"
+        )
+    return continued, continued_cache
 
 
 def run_episode(
@@ -276,6 +276,10 @@ def run_episode(
             _sync(device)
             episode.ref_wall_s += time.perf_counter() - t0
             ref_ids.extend(new_ref)
+            episode.peak_kv_cache_bytes = max(
+                episode.peak_kv_cache_bytes,
+                kv_cache_nbytes(cache),
+            )
             ref_raw = ref_collector.stacked()[:, 0, :]
             while n_state_rows < ref_raw.shape[0]:
                 ref_state.update(ref_raw[n_state_rows])
@@ -311,7 +315,7 @@ def run_episode(
 
         _sync(device)
         t0 = time.perf_counter()
-        new_ids, score, committed = _attempt(
+        grace_ids, score, committed, attempt_cache = _attempt_grace(
             lm,
             prompt_ids,
             ref_ids[:s],
@@ -322,8 +326,37 @@ def run_episode(
             ratio,
             max_new_tokens - s,
         )
+        held_kv_bytes = kv_cache_nbytes(cache)
+        grace_kv_bytes = kv_cache_nbytes(attempt_cache)
+        attempt_kv_bytes = grace_kv_bytes
+        attempt_system_peak = held_kv_bytes + grace_kv_bytes
+        new_ids = grace_ids
+        if committed:
+            cache = None
+            continued, attempt_cache = _continue_attempt(
+                lm,
+                prompt_ids,
+                ref_ids[:s],
+                grace_ids,
+                attempt_cache,
+                max_new_tokens - s - len(grace_ids),
+            )
+            new_ids = grace_ids + continued
+            continuation_kv_bytes = kv_cache_nbytes(attempt_cache)
+            attempt_kv_bytes = max(
+                attempt_kv_bytes,
+                continuation_kv_bytes,
+            )
+            attempt_system_peak = max(
+                attempt_system_peak,
+                continuation_kv_bytes,
+            )
         _sync(device)
         wall = time.perf_counter() - t0
+        episode.peak_kv_cache_bytes = max(
+            episode.peak_kv_cache_bytes,
+            attempt_system_peak,
+        )
         episode.attempts.append(
             AttemptRecord(
                 s=s,
@@ -332,6 +365,7 @@ def run_episode(
                 n_new_tokens=len(new_ids),
                 block_len=min(alarm.k, len(new_ids)),
                 wall_s=wall,
+                peak_kv_cache_bytes=attempt_kv_bytes,
                 gate_score=gate_score,
             )
         )

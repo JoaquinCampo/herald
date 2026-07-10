@@ -1,7 +1,7 @@
 """Executable deployment contract for Herald's north-star objective."""
 
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from math import isfinite
 from typing import Any
@@ -248,6 +248,58 @@ def evaluate_deployment(
     )
 
 
+def measurement_from_live_records(
+    episode: Mapping[str, Any],
+    baseline: Mapping[str, Any],
+) -> DeploymentMeasurement:
+    """Adapt live JSONL facts without accepting allocator-memory proxies."""
+    prompt_id = str(_required(episode, "prompt_id"))
+    if prompt_id != str(_required(baseline, "prompt_id")):
+        raise ValueError("episode and baseline prompt_id must match")
+
+    commit_s = episode.get("commit_s")
+    if commit_s is None:
+        candidate_tokens = int(
+            episode.get("ref_len_live", _required(baseline, "ref_len"))
+        )
+    else:
+        candidate_tokens = int(commit_s) + int(
+            _required(episode, "n_new_ids")
+        )
+
+    baseline_peak = baseline.get("peak_kv_cache_bytes")
+    candidate_peak = episode.get("peak_kv_cache_bytes")
+    if baseline_peak is None or candidate_peak is None:
+        baseline_peak_bytes = None
+        candidate_peak_bytes = None
+    else:
+        baseline_peak_bytes = int(baseline_peak)
+        candidate_peak_bytes = int(candidate_peak)
+
+    baseline_area = baseline.get("kv_byte_tokens")
+    candidate_area = episode.get("kv_byte_tokens")
+    if baseline_area is None or candidate_area is None:
+        baseline_byte_tokens = None
+        candidate_byte_tokens = None
+    else:
+        baseline_byte_tokens = float(baseline_area)
+        candidate_byte_tokens = float(candidate_area)
+
+    return DeploymentMeasurement(
+        prompt_id=prompt_id,
+        quality_reference=float(_required(baseline, "q_ref_live")),
+        quality_candidate=float(_required(episode, "q_live")),
+        baseline_wall_s=float(_required(baseline, "wall_s")),
+        candidate_wall_s=float(_required(episode, "total_wall_s")),
+        baseline_tokens=int(_required(baseline, "ref_len")),
+        candidate_tokens=candidate_tokens,
+        baseline_peak_kv_bytes=baseline_peak_bytes,
+        candidate_peak_kv_bytes=candidate_peak_bytes,
+        baseline_kv_byte_tokens=baseline_byte_tokens,
+        candidate_kv_byte_tokens=candidate_byte_tokens,
+    )
+
+
 def _estimate(
     values: Sequence[float],
     prompt_ids: Sequence[str],
@@ -283,3 +335,9 @@ def _required_float(value: int | float | None) -> float:
     if value is None:
         raise AssertionError("required measurement was not verified")
     return float(value)
+
+
+def _required(record: Mapping[str, Any], key: str) -> Any:
+    if key not in record:
+        raise ValueError(f"missing required field: {key}")
+    return record[key]

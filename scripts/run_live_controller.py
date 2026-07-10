@@ -31,7 +31,7 @@ from typing import Any
 sys.path.insert(0, "src")
 
 from herald.config import TASKS  # noqa: E402
-from herald.generate import generate_reference, load_model  # noqa: E402
+from herald.generate import generate_baseline, load_model  # noqa: E402
 from herald.grace_window import AlarmBundle, GateBundle  # noqa: E402
 from herald.live_controller import run_episode  # noqa: E402
 from herald.presses import get_press  # noqa: E402
@@ -166,7 +166,7 @@ def main() -> None:
         recorded = load_recorded_reference(ref_dir, pid)
         if pid not in done_baseline:
             t0 = time.perf_counter()
-            [ref] = generate_reference(lm, [record], max_new_tokens)
+            ref = generate_baseline(lm, record, max_new_tokens)
             wall = time.perf_counter() - t0
             q_ref_live = score("ifeval", ref.text, record.gold)
             base: dict[str, Any] = {
@@ -174,6 +174,7 @@ def main() -> None:
                 "wall_s": wall,
                 "ref_len": len(ref.gen_ids),
                 "q_ref_live": q_ref_live,
+                "peak_kv_cache_bytes": ref.peak_kv_cache_bytes,
             }
             if recorded is not None:
                 base["q_ref_recorded"] = recorded.get("q")
@@ -233,6 +234,7 @@ def main() -> None:
                             "committed": a.committed,
                             "n_new_tokens": a.n_new_tokens,
                             "wall_s": a.wall_s,
+                            "peak_kv_cache_bytes": a.peak_kv_cache_bytes,
                             "gate_score": a.gate_score,
                         }
                         for a in ep.attempts
@@ -259,6 +261,7 @@ def main() -> None:
                     "ref_wall_s": ep.ref_wall_s,
                     "total_wall_s": ep.total_wall_s,
                     "peak_mem_bytes": ep.peak_mem_bytes,
+                    "peak_kv_cache_bytes": ep.peak_kv_cache_bytes,
                     "text": ep.text,
                 }
                 if recorded is not None:
@@ -270,7 +273,8 @@ def main() -> None:
                 print(
                     f"EPISODE {key} commit_s={ep.commit_s} "
                     f"attempts={len(ep.attempts)} q={q_live:.3f} "
-                    f"skips={len(ep.skips)} dq={obj['dq_live']} sav={savings} "
+                    f"skips={len(ep.skips)} dq={obj['dq_live']} "
+                    f"sav={savings} "
                     f"wall={ep.total_wall_s:.1f}s",
                     flush=True,
                 )

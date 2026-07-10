@@ -24,6 +24,7 @@ import herald.live_controller as LC
 from herald.features import FEATURE_NAMES
 from herald.generate import (
     LoadedModel,
+    generate_baseline,
     generate_hybrids,
     generate_reference,
     load_model,
@@ -153,6 +154,20 @@ def test_never_commit_reproduces_reference(lm: LoadedModel) -> None:
     assert all(not a.committed for a in ep.attempts)
     # every revert observed exactly k tokens
     assert all(a.n_new_tokens == alarm.k for a in ep.attempts)
+    assert ep.peak_kv_cache_bytes > 0
+    assert all(a.peak_kv_cache_bytes > 0 for a in ep.attempts)
+
+
+def test_plain_baseline_matches_reference_and_reports_kv_bytes(
+    lm: LoadedModel,
+) -> None:
+    record = _rec(LONG, "p-baseline")
+    [ref] = generate_reference(lm, [record], M)
+    baseline = generate_baseline(lm, record, M)
+
+    assert baseline.gen_ids == ref.gen_ids
+    assert baseline.text == ref.text
+    assert baseline.peak_kv_cache_bytes > 0
 
 
 def test_chained_reference_features_match_one_call(

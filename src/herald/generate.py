@@ -35,6 +35,7 @@ from transformers import (
 from herald.attention_features import AttentionTap
 from herald.config import MODELS
 from herald.features import FEATURE_NAMES, FeatureCollector
+from herald.kv_metrics import kv_cache_nbytes
 from herald.tasks import PromptRecord
 
 
@@ -62,6 +63,16 @@ class HybridRun:
     features: np.ndarray
     # Full hybrid output = reference[:s] + new tokens, decoded.
     text: str
+
+
+@dataclass
+class BaselineRun:
+    """Plain uncompressed generation with isolated KV-cache accounting."""
+
+    prompt_id: str
+    gen_ids: list[int]
+    text: str
+    peak_kv_cache_bytes: int
 
 
 @dataclass
@@ -267,6 +278,36 @@ def generate_reference(
             )
         )
     return runs
+
+
+def generate_baseline(
+    lm: LoadedModel,
+    record: PromptRecord,
+    max_new_tokens: int,
+) -> BaselineRun:
+    """Generate without Herald monitoring and report retained KV bytes."""
+    prompt = build_input_ids(lm, record)
+    device = next(lm.model.parameters()).device.type
+    input_ids, attn = _left_pad([prompt], lm.pad_id, device)
+    prompt_len = int(input_ids.shape[1])
+    with torch.no_grad():
+        out = lm.model.generate(  # type: ignore[operator]
+            input_ids=input_ids,
+            attention_mask=attn,
+            generation_config=lm.gen_config,
+            max_new_tokens=max_new_tokens,
+            return_dict_in_generate=True,
+        )
+    cache = getattr(out, "past_key_values", None)
+    if cache is None:
+        raise RuntimeError("baseline generation did not return a KV cache")
+    ids = _trim_at_eos(out.sequences[0, prompt_len:].tolist(), lm.eos_ids)
+    return BaselineRun(
+        prompt_id=record.prompt_id,
+        gen_ids=ids,
+        text=lm.tokenizer.decode(ids, skip_special_tokens=True),
+        peak_kv_cache_bytes=kv_cache_nbytes(cache),
+    )
 
 
 def generate_hybrids(
