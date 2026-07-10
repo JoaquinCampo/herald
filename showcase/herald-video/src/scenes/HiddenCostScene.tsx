@@ -47,7 +47,12 @@ export const HiddenCostScene = () => {
         </div>
 
         <div style={{display: 'flex', justifyContent: 'flex-end', paddingTop: 32}}>
-          <CacheStack compression={compression} heldInReserve={false} alarmed={isUnstable} />
+          <CacheStack
+            compression={compression}
+            heldInReserve={false}
+            alarmed={isUnstable}
+            metricMode="retained"
+          />
         </div>
       </div>
 
