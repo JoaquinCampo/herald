@@ -80,14 +80,15 @@ class SustainedRatioPress(BasePress):  # type: ignore[misc]
             return output
 
         cache = kwargs["past_key_values"]
-        self.peak_kv_cache_bytes = max(
-            self.peak_kv_cache_bytes,
-            kv_cache_nbytes(cache),
-        )
         layer_idx = int(module.layer_idx)
         self._steps[layer_idx] += 1
         if self._steps[layer_idx] < self.interval:
             return output
+        if layer_idx == 0:
+            self.peak_kv_cache_bytes = max(
+                self.peak_kv_cache_bytes,
+                kv_cache_nbytes(cache),
+            )
 
         keys, values = extract_keys_and_values(cache, layer_idx)
         keys, values = self.compress(
