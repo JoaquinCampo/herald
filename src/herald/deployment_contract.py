@@ -1,0 +1,285 @@
+"""Executable deployment contract for Herald's north-star objective."""
+
+from collections import defaultdict
+from collections.abc import Sequence
+from dataclasses import asdict, dataclass
+from math import isfinite
+from typing import Any
+
+import numpy as np
+
+
+@dataclass(frozen=True)
+class DeploymentContract:
+    """Thresholds that make a Herald configuration deployable."""
+
+    quality_noninferiority_margin: float = 0.01
+    max_end_to_end_slowdown: float = 0.05
+    confidence: float = 0.95
+    min_pairs: int = 30
+    bootstrap_resamples: int = 2_000
+    seed: int = 0
+
+    def __post_init__(self) -> None:
+        if self.quality_noninferiority_margin < 0:
+            raise ValueError(
+                "quality_noninferiority_margin must be nonnegative"
+            )
+        if self.max_end_to_end_slowdown < 0:
+            raise ValueError("max_end_to_end_slowdown must be nonnegative")
+        if not 0 < self.confidence < 1:
+            raise ValueError("confidence must be between 0 and 1")
+        if self.min_pairs <= 0:
+            raise ValueError("min_pairs must be positive")
+        if self.bootstrap_resamples <= 0:
+            raise ValueError("bootstrap_resamples must be positive")
+
+
+@dataclass(frozen=True)
+class DeploymentMeasurement:
+    """One paired uncompressed/candidate inference measurement."""
+
+    prompt_id: str
+    quality_reference: float
+    quality_candidate: float
+    baseline_wall_s: float
+    candidate_wall_s: float
+    baseline_tokens: int
+    candidate_tokens: int
+    baseline_peak_kv_bytes: int | None
+    candidate_peak_kv_bytes: int | None
+    baseline_kv_byte_tokens: float | None
+    candidate_kv_byte_tokens: float | None
+
+    def __post_init__(self) -> None:
+        if not self.prompt_id:
+            raise ValueError("prompt_id must not be empty")
+        for name, value in (
+            ("quality_reference", self.quality_reference),
+            ("quality_candidate", self.quality_candidate),
+            ("baseline_wall_s", self.baseline_wall_s),
+            ("candidate_wall_s", self.candidate_wall_s),
+        ):
+            if not isfinite(value):
+                raise ValueError(f"{name} must be finite")
+        if self.baseline_wall_s <= 0:
+            raise ValueError("baseline_wall_s must be positive")
+        if self.candidate_wall_s <= 0:
+            raise ValueError("candidate_wall_s must be positive")
+        if self.baseline_tokens <= 0:
+            raise ValueError("baseline_tokens must be positive")
+        if self.candidate_tokens <= 0:
+            raise ValueError("candidate_tokens must be positive")
+        self._validate_memory_pair(
+            "peak_kv_bytes",
+            self.baseline_peak_kv_bytes,
+            self.candidate_peak_kv_bytes,
+        )
+        self._validate_memory_pair(
+            "kv_byte_tokens",
+            self.baseline_kv_byte_tokens,
+            self.candidate_kv_byte_tokens,
+        )
+
+    @staticmethod
+    def _validate_memory_pair(
+        name: str,
+        baseline: int | float | None,
+        candidate: int | float | None,
+    ) -> None:
+        if (baseline is None) != (candidate is None):
+            raise ValueError(
+                f"{name} baseline and candidate must both be set"
+            )
+        if baseline is None or candidate is None:
+            return
+        if not isfinite(float(baseline)) or baseline <= 0:
+            raise ValueError(f"baseline_{name} must be positive and finite")
+        if not isfinite(float(candidate)) or candidate < 0:
+            raise ValueError(
+                f"candidate_{name} must be nonnegative and finite"
+            )
+
+
+@dataclass(frozen=True)
+class MetricEstimate:
+    mean: float
+    lower: float
+    upper: float
+
+
+@dataclass(frozen=True)
+class DeploymentEvaluation:
+    contract: DeploymentContract
+    n_pairs: int
+    n_prompts: int
+    quality_damage: MetricEstimate
+    end_to_end_slowdown: MetricEstimate
+    per_token_slowdown: MetricEstimate
+    peak_kv_savings: MetricEstimate | None
+    kv_byte_token_savings: MetricEstimate | None
+    quality_pass: bool
+    speed_pass: bool
+    memory_verified: bool
+    memory_pass: bool
+    feasible: bool
+    failures: tuple[str, ...]
+
+    def as_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+def evaluate_deployment(
+    measurements: Sequence[DeploymentMeasurement],
+    *,
+    contract: DeploymentContract | None = None,
+) -> DeploymentEvaluation:
+    """Evaluate paired measurements without substituting proxy metrics."""
+    active = contract or DeploymentContract()
+    if not measurements:
+        raise ValueError("at least one measurement is required")
+
+    prompt_ids = [row.prompt_id for row in measurements]
+    quality_damage = _estimate(
+        [
+            row.quality_reference - row.quality_candidate
+            for row in measurements
+        ],
+        prompt_ids,
+        active,
+        seed_offset=0,
+    )
+    end_to_end_slowdown = _estimate(
+        [
+            row.candidate_wall_s / row.baseline_wall_s - 1.0
+            for row in measurements
+        ],
+        prompt_ids,
+        active,
+        seed_offset=1,
+    )
+    per_token_slowdown = _estimate(
+        [
+            (row.candidate_wall_s / row.candidate_tokens)
+            / (row.baseline_wall_s / row.baseline_tokens)
+            - 1.0
+            for row in measurements
+        ],
+        prompt_ids,
+        active,
+        seed_offset=2,
+    )
+
+    memory_verified = all(
+        row.baseline_peak_kv_bytes is not None
+        and row.candidate_peak_kv_bytes is not None
+        for row in measurements
+    )
+    peak_kv_savings = None
+    kv_byte_token_savings = None
+    if memory_verified:
+        peak_kv_savings = _estimate(
+            [
+                1.0
+                - _required_float(row.candidate_peak_kv_bytes)
+                / _required_float(row.baseline_peak_kv_bytes)
+                for row in measurements
+            ],
+            prompt_ids,
+            active,
+            seed_offset=3,
+        )
+        area_verified = all(
+            row.baseline_kv_byte_tokens is not None
+            and row.candidate_kv_byte_tokens is not None
+            for row in measurements
+        )
+        if area_verified:
+            kv_byte_token_savings = _estimate(
+                [
+                    1.0
+                    - _required_float(row.candidate_kv_byte_tokens)
+                    / _required_float(row.baseline_kv_byte_tokens)
+                    for row in measurements
+                ],
+                prompt_ids,
+                active,
+                seed_offset=4,
+            )
+
+    enough_pairs = len(measurements) >= active.min_pairs
+    quality_pass = (
+        quality_damage.upper <= active.quality_noninferiority_margin
+    )
+    speed_pass = end_to_end_slowdown.upper <= active.max_end_to_end_slowdown
+    memory_pass = (
+        peak_kv_savings is not None
+        and peak_kv_savings.lower > 0
+        and (kv_byte_token_savings is None or kv_byte_token_savings.lower > 0)
+    )
+
+    failures = []
+    if not enough_pairs:
+        failures.append("minimum_pairs")
+    if not quality_pass:
+        failures.append("quality_noninferiority")
+    if not speed_pass:
+        failures.append("end_to_end_slowdown")
+    if not memory_verified:
+        failures.append("isolated_kv_memory")
+    elif not memory_pass:
+        failures.append("positive_kv_savings")
+
+    return DeploymentEvaluation(
+        contract=active,
+        n_pairs=len(measurements),
+        n_prompts=len(set(prompt_ids)),
+        quality_damage=quality_damage,
+        end_to_end_slowdown=end_to_end_slowdown,
+        per_token_slowdown=per_token_slowdown,
+        peak_kv_savings=peak_kv_savings,
+        kv_byte_token_savings=kv_byte_token_savings,
+        quality_pass=quality_pass,
+        speed_pass=speed_pass,
+        memory_verified=memory_verified,
+        memory_pass=memory_pass,
+        feasible=not failures,
+        failures=tuple(failures),
+    )
+
+
+def _estimate(
+    values: Sequence[float],
+    prompt_ids: Sequence[str],
+    contract: DeploymentContract,
+    *,
+    seed_offset: int,
+) -> MetricEstimate:
+    if len(values) != len(prompt_ids):
+        raise ValueError("values and prompt_ids must have equal length")
+    clusters: dict[str, list[float]] = defaultdict(list)
+    for prompt_id, value in zip(prompt_ids, values, strict=True):
+        if not isfinite(value):
+            raise ValueError("metric values must be finite")
+        clusters[prompt_id].append(float(value))
+
+    keys = sorted(clusters)
+    rng = np.random.default_rng(contract.seed + seed_offset)
+    means = np.empty(contract.bootstrap_resamples, dtype=float)
+    for i in range(contract.bootstrap_resamples):
+        sampled = rng.integers(0, len(keys), size=len(keys))
+        draw = [value for index in sampled for value in clusters[keys[index]]]
+        means[i] = float(np.mean(draw))
+
+    tail = (1.0 - contract.confidence) / 2.0
+    return MetricEstimate(
+        mean=float(np.mean(values)),
+        lower=float(np.quantile(means, tail)),
+        upper=float(np.quantile(means, 1.0 - tail)),
+    )
+
+
+def _required_float(value: int | float | None) -> float:
+    if value is None:
+        raise AssertionError("required measurement was not verified")
+    return float(value)
