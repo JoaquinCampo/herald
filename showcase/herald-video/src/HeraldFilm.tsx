@@ -3,6 +3,9 @@ import {HiddenCostScene} from './scenes/HiddenCostScene';
 import {FailureScene} from './scenes/FailureScene';
 import {MechanismScene} from './scenes/MechanismScene';
 import {SignalScene} from './scenes/SignalScene';
+import {ProofScene} from './scenes/ProofScene';
+import {OpenAIFrameScene} from './scenes/OpenAIFrameScene';
+import {EndCardScene} from './scenes/EndCardScene';
 import {COLORS} from './theme';
 
 export const HeraldFilm = () => (
@@ -18,6 +21,15 @@ export const HeraldFilm = () => (
     </Sequence>
     <Sequence from={990} durationInFrames={570} premountFor={30}>
       <MechanismScene />
+    </Sequence>
+    <Sequence from={1560} durationInFrames={600} premountFor={30}>
+      <ProofScene />
+    </Sequence>
+    <Sequence from={2160} durationInFrames={270} premountFor={30}>
+      <OpenAIFrameScene />
+    </Sequence>
+    <Sequence from={2430} durationInFrames={120} premountFor={30}>
+      <EndCardScene />
     </Sequence>
   </AbsoluteFill>
 );
