@@ -88,6 +88,18 @@ def existing_keys(path: Path, key_field: str) -> set[str]:
     return keys
 
 
+def records_by_key(path: Path, key_field: str) -> dict[str, dict[str, Any]]:
+    if not path.exists():
+        return {}
+    records: dict[str, dict[str, Any]] = {}
+    with path.open() as f:
+        for line in f:
+            if line.strip():
+                record = json.loads(line)
+                records[str(record[key_field])] = record
+    return records
+
+
 def append_jsonl(path: Path, obj: dict[str, Any]) -> None:
     with path.open("a") as f:
         f.write(json.dumps(obj) + "\n")
@@ -159,7 +171,8 @@ def main() -> None:
         model_id=args.model_id,
     )
 
-    done_baseline = existing_keys(baseline_path, "prompt_id")
+    baselines = records_by_key(baseline_path, "prompt_id")
+    done_baseline = set(baselines)
     done_episodes = existing_keys(episodes_path, "key")
     n_done = 0
 
@@ -184,6 +197,7 @@ def main() -> None:
                     ref.gen_ids, list(recorded.get("gen_ids", []))
                 )
             append_jsonl(baseline_path, base)
+            baselines[pid] = base
             print(
                 f"BASELINE {pid} len={len(ref.gen_ids)} "
                 f"q={q_ref_live:.3f} wall={wall:.1f}s "
@@ -215,6 +229,7 @@ def main() -> None:
                 q_ref_rec = (
                     recorded.get("q") if recorded is not None else None
                 )
+                q_ref_live = float(baselines[pid]["q_ref_live"])
                 rec_len = (
                     len(recorded.get("gen_ids", []))
                     if recorded is not None
@@ -259,8 +274,9 @@ def main() -> None:
                     "ref_done": ep.ref_done,
                     "n_new_ids": len(ep.new_ids),
                     "q_live": q_live,
+                    "dq_live": q_ref_live - float(q_live),
                     "q_ref_recorded": q_ref_rec,
-                    "dq_live": (
+                    "dq_recorded": (
                         None
                         if q_ref_rec is None
                         else float(q_ref_rec) - float(q_live)
