@@ -9,6 +9,8 @@ export type MetricLaneProps = {
   delay: number;
 };
 
+export const formatCompressedFraction = (value: number) => `${(value * 100).toFixed(1)}%`;
+export const formatQualityCost = (value: number) => `${(value * 100).toFixed(2)} pp`;
 const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`;
 
 export const MetricLane = ({name, fraction, qualityCost, overhead, delay}: MetricLaneProps) => {
@@ -19,7 +21,7 @@ export const MetricLane = ({name, fraction, qualityCost, overhead, delay}: Metri
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '1.4fr 3fr 0.8fr 0.8fr',
+        gridTemplateColumns: '1.25fr 0.7fr 2.2fr 0.75fr 0.75fr',
         alignItems: 'center',
         gap: 28,
         minHeight: 90,
@@ -38,6 +40,9 @@ export const MetricLane = ({name, fraction, qualityCost, overhead, delay}: Metri
       }}
     >
       <span style={{fontSize: 29, fontWeight: 500}}>{name}</span>
+      <span style={{fontFamily: FONT.mono, fontSize: 29, color: COLORS.blue}}>
+        {formatCompressedFraction(fraction)}
+      </span>
       <div style={{height: 12, backgroundColor: `${COLORS.graphite}12`}}>
         <div
           style={{
@@ -54,7 +59,7 @@ export const MetricLane = ({name, fraction, qualityCost, overhead, delay}: Metri
         />
       </div>
       <span style={{fontFamily: FONT.mono, fontSize: 23, color: COLORS.coral}}>
-        {formatPercent(qualityCost)}
+        {formatQualityCost(qualityCost)}
       </span>
       <span style={{fontFamily: FONT.mono, fontSize: 23}}>{formatPercent(overhead)}</span>
     </div>

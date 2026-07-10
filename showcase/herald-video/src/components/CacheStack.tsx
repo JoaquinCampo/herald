@@ -8,6 +8,7 @@ export type CacheStackProps = {
 };
 
 const LAYERS = 8;
+export const CACHE_RESERVE_COPY = 'uncompressed cache held in reserve';
 
 export const CacheStack = ({compression, heldInReserve, alarmed}: CacheStackProps) => {
   const frame = useCurrentFrame();
@@ -47,7 +48,7 @@ export const CacheStack = ({compression, heldInReserve, alarmed}: CacheStackProp
           {Math.round(compression * 100)}%
         </span>
         <span style={{fontFamily: FONT.sans, fontSize: 25, color: accent}}>
-          {heldInReserve ? '2 tokens held in reserve' : alarmed ? 'unsafe shift detected' : 'compression active'}
+          {heldInReserve ? CACHE_RESERVE_COPY : alarmed ? 'unsafe shift detected' : 'compression active'}
         </span>
       </div>
     </div>
