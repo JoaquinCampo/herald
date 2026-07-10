@@ -1,0 +1,58 @@
+[
+  {
+    "id": "hidden-cost",
+    "from": 30,
+    "duration": 165,
+    "file": "audio/narration/hidden-cost.mp3",
+    "rate": "+36%",
+    "text": "Longer context needs a larger cache. Compression makes it cheaper. But damage can arrive silently."
+  },
+  {
+    "id": "failure",
+    "from": 225,
+    "duration": 300,
+    "file": "audio/narration/failure.mp3",
+    "rate": "+32%",
+    "text": "The uncompressed model keeps the problem intact and answers eighteen. Under heavy compression, the reasoning changes. The model invents a box size, then answers three."
+  },
+  {
+    "id": "signal",
+    "from": 570,
+    "duration": 390,
+    "file": "audio/narration/signal.mp3",
+    "rate": "+18%",
+    "text": "HERALD reads the warning in the model's own next-token distribution: entropy, confidence margins, divergence, and rolling dynamics. These signals already exist during decoding. No additional forward pass."
+  },
+  {
+    "id": "mechanism",
+    "from": 1020,
+    "duration": 510,
+    "file": "audio/narration/mechanism.mp3",
+    "rate": "+20%",
+    "text": "When HERALD proposes compression, the full cache waits in reserve. Two compressed tokens are generated privately. If risk rises, those tokens are discarded and generation resumes from the safe cache. If the signal stays healthy, compression commits."
+  },
+  {
+    "id": "proof",
+    "from": 1590,
+    "duration": 540,
+    "file": "audio/narration/proof.mp3",
+    "rate": "+55%",
+    "text": "On Orion, HERALD completed five hundred fifty-two held-out IFEval episodes across three compressors and four ratios. Against each live reference length, the controller stayed compressed for eighty-one percent of generation with ExpectedAttention, thirteen percent with Knorm, and thirty-six percent with StreamingLLM. Reverted-attempt wall overhead ranged from two to eight point four percent."
+  },
+  {
+    "id": "openai-frame",
+    "from": 2190,
+    "duration": 210,
+    "file": "audio/narration/openai-frame.mp3",
+    "rate": "+22%",
+    "text": "For inference systems teams, HERALD turns compression from a fixed gamble into an observable, reversible decision."
+  },
+  {
+    "id": "end-card",
+    "from": 2445,
+    "duration": 75,
+    "file": "audio/narration/end-card.mp3",
+    "rate": "+55%",
+    "text": "HERALD. Compression, with an undo button."
+  }
+]
