@@ -62,6 +62,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--model-id", default=None)
     p.add_argument("--dtype", default="bfloat16")
     p.add_argument("--stride", type=int, default=16)
+    p.add_argument("--sustain-interval", type=int, default=None)
     p.add_argument("--prompts-per-task", type=int, default=200)
     return p.parse_args()
 
@@ -208,6 +209,7 @@ def main() -> None:
                     max_new_tokens=max_new_tokens,
                     stride=args.stride,
                     gate=None if gates is None else gates[compressor],
+                    sustain_interval=args.sustain_interval,
                 )
                 q_live = score("ifeval", ep.text, record.gold)
                 q_ref_rec = (
@@ -228,6 +230,7 @@ def main() -> None:
                     "prompt_id": pid,
                     "compressor": compressor,
                     "ratio": ratio,
+                    "sustain_interval": args.sustain_interval,
                     "commit_s": ep.commit_s,
                     "attempts": [
                         {

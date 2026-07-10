@@ -108,6 +108,14 @@ the validated cache-fork path and `prompt_length + s` for the fallback,
 so deployment evidence can verify that the intended mechanism actually
 ran.
 
+The live runner also exposes an experimental `--sustain-interval N`
+mode for StreamingLLM and Knorm. Every N decoded tokens it prunes cache
+growth back to the configured fraction of the logical sequence length.
+This addresses the fact that one-time prompt compression loses its
+memory advantage as uncompressed generated tokens accumulate. It is a
+candidate, not the default: promotion requires held-out quality and
+wall-time evidence under the deployment contract.
+
 ## Storage
 
 Per run: generated text, task score, and (reference only) the per-token

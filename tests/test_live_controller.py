@@ -274,6 +274,35 @@ def test_direct_cache_attempt_matches_hybrid_without_reprefill(
     assert all(a.recomputed_prefill_tokens == 0 for a in episode.attempts)
 
 
+def test_sustained_ratio_reduces_retained_kv_peak(lm: LoadedModel) -> None:
+    record = _rec(LONG, "p-sustained")
+    plain = LC.run_episode(
+        lm,
+        record,
+        lambda: get_press("streaming_llm", 0.5),
+        ScriptedAlarm([True]),
+        compressor="streaming_llm",
+        ratio=0.5,
+        max_new_tokens=M,
+        stride=STRIDE,
+    )
+    sustained = LC.run_episode(
+        lm,
+        record,
+        lambda: get_press("streaming_llm", 0.5),
+        ScriptedAlarm([True]),
+        compressor="streaming_llm",
+        ratio=0.5,
+        max_new_tokens=M,
+        stride=STRIDE,
+        sustain_interval=4,
+    )
+
+    assert sustained.attempts[0].peak_kv_cache_bytes < (
+        plain.attempts[0].peak_kv_cache_bytes
+    )
+
+
 def test_commit_at_later_s_reproduces_hybrid(lm: LoadedModel) -> None:
     [ref] = generate_reference(lm, [_rec(LONG, "p0")], M)
     assert len(ref.gen_ids) > STRIDE, "run too short for a late switch"

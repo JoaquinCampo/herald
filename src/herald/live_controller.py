@@ -47,6 +47,7 @@ from herald.grace_window import (
     assemble_gate_row_from_state,
 )
 from herald.kv_metrics import kv_cache_nbytes
+from herald.sustained_press import SustainedRatioPress
 from herald.tasks import PromptRecord
 
 
@@ -305,10 +306,11 @@ def _continue_attempt(
     new_ids: list[int],
     cache: Any,
     max_new: int,
-) -> tuple[list[int], Any]:
+    sustained_press: SustainedRatioPress | None = None,
+) -> tuple[list[int], Any, int]:
     """Continue a committed compressed cache without re-prefilling it."""
     if max_new <= 0 or (new_ids and new_ids[-1] in lm.eos_ids):
-        return [], cache
+        return [], cache, 0
     device = next(lm.model.parameters()).device
     seq = torch.cat(
         [
@@ -318,7 +320,12 @@ def _continue_attempt(
             ),
         ]
     ).unsqueeze(0)
-    with torch.no_grad():
+    press_context = (
+        sustained_press(lm.model)
+        if sustained_press is not None
+        else torch.no_grad()
+    )
+    with torch.no_grad(), press_context:
         # The physical compressed-cache length is shorter than the logical
         # sequence position. GenerationMixin otherwise derives the restart
         # position from that physical length and reprocesses old tokens.
@@ -340,7 +347,12 @@ def _continue_attempt(
         raise RuntimeError(
             "compressed continuation did not return a KV cache"
         )
-    return continued, continued_cache
+    sustained_peak = (
+        sustained_press.peak_kv_cache_bytes
+        if sustained_press is not None
+        else 0
+    )
+    return continued, continued_cache, sustained_peak
 
 
 def run_episode(
@@ -354,6 +366,7 @@ def run_episode(
     max_new_tokens: int,
     stride: int = 16,
     gate: GateLike | None = None,
+    sustain_interval: int | None = None,
 ) -> LiveEpisode:
     """Run one live grace-window episode for one (prompt, ratio)."""
     device = next(lm.model.parameters()).device.type
@@ -473,19 +486,31 @@ def run_episode(
         new_ids = grace_ids
         if committed:
             cache = None
-            continued, attempt_cache = _continue_attempt(
+            sustained_press = (
+                SustainedRatioPress(
+                    base_press=press,
+                    compression_ratio=ratio,
+                    interval=sustain_interval,
+                )
+                if sustain_interval is not None
+                and isinstance(press, (StreamingLLMPress, KnormPress))
+                else None
+            )
+            continued, attempt_cache, sustained_peak = _continue_attempt(
                 lm,
                 prompt_ids,
                 ref_ids[:s],
                 grace_ids,
                 attempt_cache,
                 max_new_tokens - s - len(grace_ids),
+                sustained_press,
             )
             new_ids = grace_ids + continued
             continuation_kv_bytes = kv_cache_nbytes(attempt_cache)
             attempt_kv_bytes = max(
                 attempt_kv_bytes,
                 continuation_kv_bytes,
+                sustained_peak,
             )
             attempt_system_peak = max(
                 attempt_system_peak,
