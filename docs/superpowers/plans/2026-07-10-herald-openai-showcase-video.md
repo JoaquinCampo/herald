@@ -42,8 +42,9 @@
 - `showcase/herald-video/scripts/generate_score.py`: creates an original 85-second stereo WAV score.
 - `showcase/herald-video/scripts/check_render.py`: validates final media metadata and audio presence.
 - `showcase/herald-video/scripts/make_contact_sheet.sh`: renders representative frames and assembles a contact sheet.
-- `showcase/herald-video/public/audio/narration.txt`: final narration script.
-- `showcase/herald-video/public/audio/narration.mp3`: generated narration, not committed.
+- `showcase/herald-video/public/audio/narration/`: seven scene-level narration scripts and generated clips.
+- `showcase/herald-video/src/data/narration-cues.json`: frame-accurate narration cue contract.
+- `showcase/herald-video/scripts/generate_narration.py`: generates and duration-validates every narration clip.
 - `showcase/herald-video/public/audio/score.wav`: generated score, not committed.
 - `showcase/herald-video/out/herald-openai-showcase.mp4`: final deliverable, not committed.
 - `showcase/herald-video/out/contact-sheet.jpg`: representative-frame review artifact, not committed.
@@ -223,7 +224,7 @@ Use `.gitignore`:
 ```gitignore
 node_modules/
 out/
-public/audio/*.mp3
+public/audio/**/*.mp3
 public/audio/*.wav
 public/audio/*.aiff
 ```
@@ -297,6 +298,8 @@ def test_gsm8k_example_is_the_real_s128_failure() -> None:
     assert example["reference_answer"] == "18"
     assert example["compressed_answer"] == "3"
     assert example["compressed_quality"] == 0.0
+    assert example["reference_excerpt"] == "9 eggs × $2 = $18"
+    assert example["compressed_excerpt"] == "9 eggs ÷ 3 eggs per box = 3 boxes"
 ```
 
 - [ ] **Step 2: Run the Python tests and observe the expected failure**
@@ -315,6 +318,7 @@ Implement `build_evidence.py` with these exact public functions and formulas:
 
 ```python
 import json
+import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -364,6 +368,13 @@ def compressor_metrics(
         )
         recorded_len = episode["ref_vs_recorded"]["recorded_len"]
         token_overhead.append(2.0 * len(reverted) / recorded_len)
+    boxed = re.search(r"\\boxed\{([^}]+)\}", hybrid["text"])
+    if boxed is None:
+        raise ValueError("missing boxed answer in selected compressed artifact")
+    compressed_source = "Number of boxes = Eggs left / Eggs per box = 9 / 3 = 3 boxes"
+    if compressed_source not in hybrid["text"]:
+        raise ValueError("selected compressed excerpt is absent from the artifact")
+
     return {
         "episodes": len(episodes),
         "compressed_generation_fraction": mean(savings),
@@ -413,11 +424,11 @@ def build_evidence(repo_root: Path) -> dict[str, Any]:
             "ratio": 0.75,
             "switch_position": 128,
             "reference_answer": reference["text"].rsplit("####", 1)[-1].strip(),
-            "compressed_answer": hybrid["text"].rsplit("$", 1)[-1].split()[0],
+            "compressed_answer": boxed.group(1),
             "reference_quality": reference["q"],
             "compressed_quality": hybrid["q"],
             "reference_excerpt": "9 eggs × $2 = $18",
-            "compressed_excerpt": "6 eggs × $0.50 = $3",
+            "compressed_excerpt": "9 eggs ÷ 3 eggs per box = 3 boxes",
         },
     }
 
@@ -692,7 +703,7 @@ Use local frames 0 to 209. Reveal the first three statements one at a time, then
 
 - [ ] **Step 4: Implement the 7 to 18 second failure scene**
 
-Use local frames 0 to 329. Display two large answer cards from the evidence JSON. The left card resolves to `9 eggs × $2 = $18`. The right card begins from the same problem, crosses the switch marker at token 128, then resolves to `6 eggs × $0.50 = $3`. Label the right card `STREAMINGLLM · RATIO 0.75 · SWITCH 128` and the left card `UNCOMPRESSED REFERENCE`.
+Use local frames 0 to 329. Display two large answer cards from the evidence JSON. The left card resolves to `9 eggs × $2 = $18`. The right card begins from the same problem, crosses the switch marker at token 128, invents a three-egg box, then resolves to `9 eggs ÷ 3 eggs per box = 3 boxes`. Label the right card `STREAMINGLLM · RATIO 0.75 · SWITCH 128` and the left card `UNCOMPRESSED REFERENCE`.
 
 Do not render long generated paragraphs. Use the artifact-backed excerpts and a small source label.
 
@@ -801,33 +812,39 @@ git commit -m "show HERALD two-token safety window"
 
 **Interfaces:**
 - Consumes: `MetricLane`, `EvidenceLabel`, `evidence.campaign`.
-- Produces: the final three scenes and `formatPercent(value: number, digits: number) -> string`.
+- Produces: the final three scenes, `formatPercent(value: number, digits: number) -> string`, and `formatQualityPoints(value: number) -> string`.
 
 - [ ] **Step 1: Write failing metric-format and claim tests**
 
 ```ts
 import {expect, it} from 'vitest';
-import {formatPercent, proofCopy} from '../scenes/ProofScene';
+import {formatPercent, formatQualityPoints, proofCopy} from '../scenes/ProofScene';
 
 it('formats live metrics without renaming them as memory savings', () => {
   expect(formatPercent(0.7937, 1)).toBe('79.4%');
-  expect(formatPercent(0.0027, 2)).toBe('0.27%');
+  expect(formatQualityPoints(0.0027)).toBe('0.27 pp');
   expect(proofCopy.toLowerCase()).toContain('compressed-generation fraction');
+  expect(proofCopy.toLowerCase()).toContain('live-internal quality cost');
+  expect(proofCopy.toLowerCase()).toContain('reverted-attempt wall overhead');
   expect(proofCopy.toLowerCase()).not.toContain('memory savings');
 });
 ```
 
 - [ ] **Step 2: Implement the 52 to 72 second proof scene**
 
-Use local frames 0 to 599. Start with `552 LIVE HELD-OUT EPISODES`, then reveal three horizontal compressor lanes. Each lane shows compressed-generation fraction as the dominant bar, with quality cost and probe plus rollback overhead as smaller values. Use one decimal for the fraction and overhead, two decimals for quality cost percent.
+Use local frames 0 to 599. Start with `552 LIVE HELD-OUT EPISODES`, then reveal three horizontal compressor lanes. Each lane shows compressed-generation fraction as the dominant bar, with live-internal quality cost and reverted-attempt wall overhead as smaller values. Use one decimal for the fraction and overhead. Express quality cost as percentage points on the 0 to 1 IFEval score scale.
 
 Display:
 
 ```ts
-export const proofCopy = 'Compressed-generation fraction · live Llama IFEval campaign';
+export const proofCopy =
+  'Compressed-generation fraction · live-internal quality cost · reverted-attempt wall overhead';
 
 export const formatPercent = (value: number, digits: number) =>
   `${(value * 100).toFixed(digits)}%`;
+
+export const formatQualityPoints = (value: number) =>
+  `${(value * 100).toFixed(2)} pp`;
 ```
 
 The accompanying line is `HERALD adapts its caution to the compressor.`
@@ -868,52 +885,184 @@ git commit -m "add HERALD live proof and pitch close"
 ### Task 7: Produce narration and original sound design
 
 **Files:**
-- Create: `showcase/herald-video/public/audio/narration.txt`
+- Create: `showcase/herald-video/src/data/narration-cues.json`
+- Create: `showcase/herald-video/scripts/generate_narration.py`
+- Create: `showcase/herald-video/scripts/test_generate_narration.py`
 - Create: `showcase/herald-video/scripts/generate_score.py`
 - Create: `showcase/herald-video/scripts/test_generate_score.py`
 - Modify: `showcase/herald-video/src/HeraldFilm.tsx`
 
 **Interfaces:**
 - Consumes: approved story timings and scene sequence.
-- Produces: `public/audio/narration.mp3`, `public/audio/score.wav`, and mixed audio in the composition.
+- Produces: seven duration-validated clips under `public/audio/narration/`, `public/audio/score.wav`, and frame-cued mixed audio in the composition.
 
-- [ ] **Step 1: Write the final narration script**
+- [ ] **Step 1: Define the final scene-level narration contract**
 
-Use this script exactly as the first timing pass:
+Create `src/data/narration-cues.json`:
 
-```text
-More context means a larger KV cache. Compression makes that cache cheaper, but the damage can arrive silently.
-
-Here, the uncompressed model keeps the problem intact and answers eighteen. Under heavy compression, the reasoning changes. The model invents new facts and answers three.
-
-HERALD looks for the warning inside the model's own next-token distribution: entropy, confidence margins, divergence, and rolling dynamics. Signals already produced during decoding. No additional forward pass.
-
-When HERALD proposes compression, the full cache waits in reserve. Two compressed tokens are generated privately. If risk rises, those tokens are discarded and generation resumes from the safe cache. If the signal stays healthy, compression commits.
-
-On Orion, the live controller completed five hundred fifty-two held-out IFEval episodes across three compressors and four ratios. It stayed compressed for seventy-nine percent of generation with ExpectedAttention, twelve percent with Knorm, and thirty-six percent with StreamingLLM, adapting its caution to each compressor. Probe and rollback overhead stayed between two and eight point four percent.
-
-For inference systems teams, HERALD turns compression from a fixed gamble into an observable, reversible decision.
-
-HERALD. Compression, with an undo button.
+```json
+[
+  {
+    "id": "hidden-cost",
+    "from": 30,
+    "duration": 165,
+    "file": "audio/narration/hidden-cost.mp3",
+    "text": "Longer context needs a larger cache. Compression makes it cheaper. But damage can arrive silently."
+  },
+  {
+    "id": "failure",
+    "from": 225,
+    "duration": 300,
+    "file": "audio/narration/failure.mp3",
+    "text": "The uncompressed model keeps the problem intact and answers eighteen. Under heavy compression, the reasoning changes. The model invents a box size, then answers three."
+  },
+  {
+    "id": "signal",
+    "from": 570,
+    "duration": 390,
+    "file": "audio/narration/signal.mp3",
+    "text": "HERALD reads the warning in the model's own next-token distribution: entropy, confidence margins, divergence, and rolling dynamics. These signals already exist during decoding. No additional forward pass."
+  },
+  {
+    "id": "mechanism",
+    "from": 1020,
+    "duration": 510,
+    "file": "audio/narration/mechanism.mp3",
+    "text": "When HERALD proposes compression, the full cache waits in reserve. Two compressed tokens are generated privately. If risk rises, those tokens are discarded and generation resumes from the safe cache. If the signal stays healthy, compression commits."
+  },
+  {
+    "id": "proof",
+    "from": 1590,
+    "duration": 540,
+    "file": "audio/narration/proof.mp3",
+    "text": "On Orion, HERALD completed five hundred fifty-two held-out IFEval episodes across three compressors and four ratios. The live controller stayed compressed for seventy-nine percent of generation with ExpectedAttention, twelve percent with Knorm, and thirty-six percent with StreamingLLM. Reverted-attempt wall overhead ranged from two to eight point four percent."
+  },
+  {
+    "id": "openai-frame",
+    "from": 2190,
+    "duration": 210,
+    "file": "audio/narration/openai-frame.mp3",
+    "text": "For inference systems teams, HERALD turns compression from a fixed gamble into an observable, reversible decision."
+  },
+  {
+    "id": "end-card",
+    "from": 2445,
+    "duration": 75,
+    "file": "audio/narration/end-card.mp3",
+    "text": "HERALD. Compression, with an undo button."
+  }
+]
 ```
 
-- [ ] **Step 2: Generate narration without repository credentials**
+- [ ] **Step 2: Write failing narration-cue tests**
+
+```python
+import pytest
+
+from generate_narration import validate_cues
+
+
+def test_scene_clips_fit_their_frame_windows() -> None:
+    cues = [
+        {"id": "a", "from": 0, "duration": 180, "file": "a.mp3"},
+        {"id": "b", "from": 210, "duration": 300, "file": "b.mp3"},
+    ]
+    validate_cues(cues, {"a": 5.5, "b": 9.0})
+
+
+def test_rejects_clip_that_overruns_its_scene_window() -> None:
+    cues = [{"id": "a", "from": 0, "duration": 180, "file": "a.mp3"}]
+    with pytest.raises(ValueError, match="a exceeds its narration window"):
+        validate_cues(cues, {"a": 5.9})
+```
+
+- [ ] **Step 3: Implement generation and duration validation**
+
+Create `generate_narration.py`:
+
+```python
+import json
+import subprocess
+from pathlib import Path
+from typing import Any
+
+
+FPS = 30
+ROOT = Path(__file__).resolve().parents[1]
+CUES_PATH = ROOT / "src/data/narration-cues.json"
+
+
+def probe_duration(path: Path) -> float:
+    completed = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "json",
+            str(path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return float(json.loads(completed.stdout)["format"]["duration"])
+
+
+def validate_cues(
+    cues: list[dict[str, Any]], durations: dict[str, float]
+) -> None:
+    for cue in cues:
+        available = cue["duration"] / FPS - 0.25
+        if durations[cue["id"]] > available:
+            raise ValueError(f"{cue['id']} exceeds its narration window")
+
+
+def generate_all() -> None:
+    cues = json.loads(CUES_PATH.read_text())
+    durations: dict[str, float] = {}
+    for cue in cues:
+        output = ROOT / "public" / cue["file"]
+        output.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(
+            [
+                "uvx",
+                "--from",
+                "edge-tts",
+                "edge-tts",
+                "--voice",
+                "en-US-AndrewMultilingualNeural",
+                "--rate=-5%",
+                "--text",
+                cue["text"],
+                "--write-media",
+                str(output),
+            ],
+            check=True,
+        )
+        durations[cue["id"]] = probe_duration(output)
+    validate_cues(cues, durations)
+    print(json.dumps(durations, indent=2))
+
+
+if __name__ == "__main__":
+    generate_all()
+```
+
+- [ ] **Step 4: Generate narration without repository credentials**
 
 Run:
 
 ```bash
-mkdir -p showcase/herald-video/public/audio
-uvx --from edge-tts edge-tts \
-  --voice en-US-AndrewMultilingualNeural \
-  --rate=-5% \
-  --file showcase/herald-video/public/audio/narration.txt \
-  --write-media showcase/herald-video/public/audio/narration.mp3
-ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 showcase/herald-video/public/audio/narration.mp3
+uv run pytest showcase/herald-video/scripts/test_generate_narration.py -v
+uv run python showcase/herald-video/scripts/generate_narration.py
 ```
 
-Expected: narration duration is between 74 and 82 seconds. If it falls outside that range, adjust only the `--rate` value and regenerate. Do not change research copy to solve timing.
+Expected: the test PASSes, all seven clips are generated, and the script exits only when every clip fits its declared frame window. If a clip is too long, increase the rate for that cue through a new optional `rate` field in the JSON, regenerate, and keep the approved words unchanged.
 
-- [ ] **Step 3: Write a failing score test**
+- [ ] **Step 5: Write a failing score test**
 
 ```python
 import wave
@@ -933,7 +1082,7 @@ def test_score_is_85_second_stereo_without_clipping(tmp_path: Path) -> None:
     assert OUTPUT.name == "score.wav"
 ```
 
-- [ ] **Step 4: Implement the deterministic score**
+- [ ] **Step 6: Implement the deterministic score**
 
 Implement `generate_score.py` using NumPy from the repository environment. Generate stereo float samples at 48 kHz with these layers:
 
@@ -1028,7 +1177,7 @@ if __name__ == "__main__":
 
 The implementation must use `numpy.sin`, deterministic envelopes, and `wave.open`; it must not use downloaded music or copyrighted samples.
 
-- [ ] **Step 5: Generate and inspect audio**
+- [ ] **Step 7: Generate and inspect the score**
 
 Run:
 
@@ -1040,29 +1189,37 @@ ffmpeg -i showcase/herald-video/public/audio/score.wav -filter:a volumedetect -f
 
 Expected: the test PASSes, duration is exactly 85.0 seconds, and `max_volume` is below 0 dB.
 
-- [ ] **Step 6: Add audio to the film**
+- [ ] **Step 8: Add frame-cued audio to the film**
 
 In `HeraldFilm.tsx`, render both tracks using `@remotion/media`:
 
 ```tsx
 import {Audio} from '@remotion/media';
 import {AbsoluteFill, Sequence, staticFile} from 'remotion';
+import narrationCues from './data/narration-cues.json';
 
 export const HeraldFilm = () => (
   <AbsoluteFill>
     {/* Scene sequences from Task 8 */}
     <Audio src={staticFile('audio/score.wav')} volume={0.16} />
-    <Sequence from={45}>
-      <Audio src={staticFile('audio/narration.mp3')} volume={0.92} />
-    </Sequence>
+    {narrationCues.map((cue) => (
+      <Sequence
+        key={cue.id}
+        from={cue.from}
+        durationInFrames={cue.duration}
+        premountFor={30}
+      >
+        <Audio src={staticFile(cue.file)} volume={0.92} />
+      </Sequence>
+    ))}
   </AbsoluteFill>
 );
 ```
 
-- [ ] **Step 7: Commit script and narration source**
+- [ ] **Step 9: Commit scripts and narration source**
 
 ```bash
-git add showcase/herald-video/public/audio/narration.txt showcase/herald-video/scripts/generate_score.py showcase/herald-video/scripts/test_generate_score.py showcase/herald-video/src/HeraldFilm.tsx
+git add showcase/herald-video/src/data/narration-cues.json showcase/herald-video/scripts/generate_narration.py showcase/herald-video/scripts/test_generate_narration.py showcase/herald-video/scripts/generate_score.py showcase/herald-video/scripts/test_generate_score.py showcase/herald-video/src/HeraldFilm.tsx
 git commit -m "add HERALD narration and original score"
 ```
 
@@ -1076,7 +1233,7 @@ git commit -m "add HERALD narration and original score"
 - Test: `showcase/herald-video/src/__tests__/timeline.test.ts`
 
 **Interfaces:**
-- Consumes: all seven scene components and two audio files.
+- Consumes: all seven scene components, seven narration clips, and the original score.
 - Produces: final frame-accurate sequence with no gaps or overlaps.
 
 - [ ] **Step 1: Write the failing timeline test**
