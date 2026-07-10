@@ -23,10 +23,10 @@ const SCENE_COMPONENTS = {
 
 export const HeraldFilm = () => (
   <AbsoluteFill style={{background: COLORS.alabaster}}>
-    <Audio src={staticFile('audio/score.wav')} volume={0.12} trimAfter={2548} />
+    <Audio src={staticFile('audio/score.wav')} volume={0.08} trimAfter={2548} />
     {narrationCues.map((cue) => (
       <Sequence key={cue.id} from={cue.from} durationInFrames={cue.duration} premountFor={30}>
-        <Audio src={staticFile(cue.file)} volume={1.3} />
+        <Audio src={staticFile(cue.file)} volume={1.1} />
       </Sequence>
     ))}
     {SCENES.map((scene) => {

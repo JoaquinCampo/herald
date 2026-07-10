@@ -7,7 +7,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "still": "remotion still src/index.ts HeraldOpenAIShowcase",
-    "render": "remotion render src/index.ts HeraldOpenAIShowcase out/herald-openai-showcase.mp4 --codec=h264 --crf=16 --audio-codec=aac --audio-bitrate=320k"
+    "render": "remotion render src/index.ts HeraldOpenAIShowcase out/herald-openai-showcase.untrimmed.mp4 --codec=h264 --crf=16 --audio-codec=aac --audio-bitrate=320k && ffmpeg -y -i out/herald-openai-showcase.untrimmed.mp4 -t 85 -c copy out/herald-openai-showcase.mp4"
   },
   "dependencies": {
     "@fontsource/dm-serif-display": "5.2.8",
