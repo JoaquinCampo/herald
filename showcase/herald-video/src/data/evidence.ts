@@ -2,14 +2,14 @@ import {z} from 'zod';
 import raw from './evidence.generated.json';
 
 const MetricRow = z.object({
-  episodes: z.number().int().positive(),
+  episodes: z.literal(184),
   compressed_generation_fraction: z.number().min(0).max(1),
   quality_cost: z.number(),
   revert_wall_overhead: z.number().nonnegative(),
   token_overhead: z.number().nonnegative(),
 });
 
-const EvidenceSchema = z.object({
+export const EvidenceSchema = z.object({
   campaign: z.object({
     episode_count: z.literal(552),
     prompt_count: z.literal(46),
