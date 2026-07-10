@@ -1,0 +1,42 @@
+{
+  "campaign": {
+    "episode_count": 552,
+    "prompt_count": 46,
+    "ratio_count": 4,
+    "compressor_count": 3,
+    "compressors": {
+      "expected_attention": {
+        "episodes": 184,
+        "compressed_generation_fraction": 0.8091687450704456,
+        "quality_cost": 0.0027173913043478277,
+        "revert_wall_overhead": 0.020280107804712903,
+        "token_overhead": 0.011293533449168726
+      },
+      "knorm": {
+        "episodes": 184,
+        "compressed_generation_fraction": 0.12706421218710534,
+        "quality_cost": 0.011775362318840582,
+        "revert_wall_overhead": 0.08409460295150518,
+        "token_overhead": 0.044626775614457756
+      },
+      "streaming_llm": {
+        "episodes": 184,
+        "compressed_generation_fraction": 0.3648232476063199,
+        "quality_cost": 0.020833333333333336,
+        "revert_wall_overhead": 0.05097608272073683,
+        "token_overhead": 0.029788308736968746
+      }
+    }
+  },
+  "gsm8k_example": {
+    "prompt_id": "gsm8k-0",
+    "ratio": 0.75,
+    "switch_position": 128,
+    "reference_answer": "18",
+    "compressed_answer": "3",
+    "reference_quality": 1.0,
+    "compressed_quality": 0.0,
+    "reference_excerpt": "Money made = 9 (eggs left) * 2 (price per egg) = $18",
+    "compressed_excerpt": "Number of boxes = Eggs left / Eggs per box = 9 / 3 = 3 boxes"
+  }
+}
