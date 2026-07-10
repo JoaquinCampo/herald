@@ -6,7 +6,7 @@
 
 **Architecture:** A dedicated Remotion project renders seven modular scenes from a small generated evidence file. A Python extractor derives every displayed metric and the GSM8K example from current HERALD artifacts, while a second deterministic script creates the original score. Scene primitives remain independent from evidence extraction so claims can be revalidated without changing motion code.
 
-**Tech Stack:** Remotion 4.0.487, React 19.2.7, TypeScript 7.0.2, Vitest 4.1.10, Python 3 through the repository's `uv` environment, Edge TTS through `uvx`, FFmpeg 8, H.264/AAC output.
+**Tech Stack:** Remotion 4.0.487, React 19.2.7, TypeScript 5.9.3, Vitest 4.1.10, Python 3 through the repository's `uv` environment, Edge TTS through `uvx`, FFmpeg 8, H.264/AAC output.
 
 ## Global Constraints
 
@@ -102,12 +102,12 @@ Use this complete `package.json`:
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "remotion": "4.0.487",
-    "zod": "4.4.3"
+    "zod": "4.3.6"
   },
   "devDependencies": {
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
-    "typescript": "7.0.2",
+    "typescript": "5.9.3",
     "vitest": "4.1.10"
   }
 }
@@ -236,9 +236,10 @@ Run:
 ```bash
 npm test
 npm run typecheck
+npx remotion compositions src/index.ts
 ```
 
-Expected: both commands PASS.
+Expected: both test commands PASS, and composition discovery lists `HeraldOpenAIShowcase` at 1920 by 1080, 30 fps, and 2550 frames.
 
 Commit only this task's files:
 
