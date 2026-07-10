@@ -62,7 +62,7 @@ Present the Orion campaign as a restrained evidence board:
 
 - 552 live held-out IFEval episodes
 - 46 prompts, four ratios, three compressors
-- Compressed-generation fraction: ExpectedAttention 79.37%, Knorm 12.08%, StreamingLLM 36.20%
+- Live-internal compressed-generation fraction: ExpectedAttention 80.92%, Knorm 12.71%, StreamingLLM 36.48%
 - Live-internal quality cost on the 0 to 1 IFEval score: 0.0027, 0.0118, 0.0208
 - Reverted-attempt wall overhead: 2.0%, 8.4%, 5.1%
 

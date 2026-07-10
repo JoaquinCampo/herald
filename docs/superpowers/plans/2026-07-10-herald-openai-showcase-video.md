@@ -280,9 +280,9 @@ def test_live_campaign_metrics_match_current_artifacts() -> None:
     assert evidence["campaign"]["prompt_count"] == 46
     assert evidence["campaign"]["ratio_count"] == 4
     expected = {
-        "expected_attention": (0.7937, 0.0027, 0.020),
-        "knorm": (0.1208, 0.0118, 0.084),
-        "streaming_llm": (0.3620, 0.0208, 0.051),
+        "expected_attention": (0.8092, 0.0027, 0.020),
+        "knorm": (0.1271, 0.0118, 0.084),
+        "streaming_llm": (0.3648, 0.0208, 0.051),
     }
     for compressor, values in expected.items():
         row = evidence["campaign"]["compressors"][compressor]
@@ -299,8 +299,12 @@ def test_gsm8k_example_is_the_real_s128_failure() -> None:
     assert example["reference_answer"] == "18"
     assert example["compressed_answer"] == "3"
     assert example["compressed_quality"] == 0.0
-    assert example["reference_excerpt"] == "9 eggs × $2 = $18"
-    assert example["compressed_excerpt"] == "9 eggs ÷ 3 eggs per box = 3 boxes"
+    assert example["reference_excerpt"] == (
+        "Money made = 9 (eggs left) * 2 (price per egg) = $18"
+    )
+    assert example["compressed_excerpt"] == (
+        "Number of boxes = Eggs left / Eggs per box = 9 / 3 = 3 boxes"
+    )
 ```
 
 - [ ] **Step 2: Run the Python tests and observe the expected failure**
@@ -372,6 +376,9 @@ def compressor_metrics(
     boxed = re.search(r"\\boxed\{([^}]+)\}", hybrid["text"])
     if boxed is None:
         raise ValueError("missing boxed answer in selected compressed artifact")
+    reference_source = "Money made = 9 (eggs left) * 2 (price per egg) = $18"
+    if reference_source not in reference["text"]:
+        raise ValueError("selected reference excerpt is absent from the artifact")
     compressed_source = "Number of boxes = Eggs left / Eggs per box = 9 / 3 = 3 boxes"
     if compressed_source not in hybrid["text"]:
         raise ValueError("selected compressed excerpt is absent from the artifact")
@@ -428,8 +435,8 @@ def build_evidence(repo_root: Path) -> dict[str, Any]:
             "compressed_answer": boxed.group(1),
             "reference_quality": reference["q"],
             "compressed_quality": hybrid["q"],
-            "reference_excerpt": "9 eggs × $2 = $18",
-            "compressed_excerpt": "9 eggs ÷ 3 eggs per box = 3 boxes",
+            "reference_excerpt": reference_source,
+            "compressed_excerpt": compressed_source,
         },
     }
 
@@ -704,7 +711,7 @@ Use local frames 0 to 209. Reveal the first three statements one at a time, then
 
 - [ ] **Step 4: Implement the 7 to 18 second failure scene**
 
-Use local frames 0 to 329. Display two large answer cards from the evidence JSON. The left card resolves to `9 eggs × $2 = $18`. The right card begins from the same problem, crosses the switch marker at token 128, invents a three-egg box, then resolves to `9 eggs ÷ 3 eggs per box = 3 boxes`. Label the right card `STREAMINGLLM · RATIO 0.75 · SWITCH 128` and the left card `UNCOMPRESSED REFERENCE`.
+Use local frames 0 to 329. Display two large answer cards from the evidence JSON. The left card resolves to the verbatim line `Money made = 9 (eggs left) * 2 (price per egg) = $18`. The right card begins from the same problem, crosses the switch marker at token 128, invents a three-egg box, then resolves to the verbatim line `Number of boxes = Eggs left / Eggs per box = 9 / 3 = 3 boxes`. Label the right card `STREAMINGLLM · RATIO 0.75 · SWITCH 128` and the left card `UNCOMPRESSED REFERENCE`.
 
 Do not render long generated paragraphs. Use the artifact-backed excerpts and a small source label.
 
@@ -822,7 +829,7 @@ import {expect, it} from 'vitest';
 import {formatPercent, formatQualityPoints, proofCopy} from '../scenes/ProofScene';
 
 it('formats live metrics without renaming them as memory savings', () => {
-  expect(formatPercent(0.7937, 1)).toBe('79.4%');
+  expect(formatPercent(0.8092, 1)).toBe('80.9%');
   expect(formatQualityPoints(0.0027)).toBe('0.27 pp');
   expect(proofCopy.toLowerCase()).toContain('compressed-generation fraction');
   expect(proofCopy.toLowerCase()).toContain('live-internal quality cost');
@@ -839,7 +846,7 @@ Display:
 
 ```ts
 export const proofCopy =
-  'Compressed-generation fraction · live-internal quality cost · reverted-attempt wall overhead';
+  'Live-internal compressed-generation fraction · live-internal quality cost · reverted-attempt wall overhead';
 
 export const formatPercent = (value: number, digits: number) =>
   `${(value * 100).toFixed(digits)}%`;
@@ -936,7 +943,7 @@ Create `src/data/narration-cues.json`:
     "from": 1590,
     "duration": 540,
     "file": "audio/narration/proof.mp3",
-    "text": "On Orion, HERALD completed five hundred fifty-two held-out IFEval episodes across three compressors and four ratios. The live controller stayed compressed for seventy-nine percent of generation with ExpectedAttention, twelve percent with Knorm, and thirty-six percent with StreamingLLM. Reverted-attempt wall overhead ranged from two to eight point four percent."
+    "text": "On Orion, HERALD completed five hundred fifty-two held-out IFEval episodes across three compressors and four ratios. Against each live reference length, the controller stayed compressed for eighty-one percent of generation with ExpectedAttention, thirteen percent with Knorm, and thirty-six percent with StreamingLLM. Reverted-attempt wall overhead ranged from two to eight point four percent."
   },
   {
     "id": "openai-frame",
