@@ -86,19 +86,27 @@ low, which is what allows larger batches.
 - Hybrids batch across prompts at a fixed (compressor, ratio, $s$).
   Left-pad; all presses support batch size >= 1.
 
-## Gated optimization for long prompts (LongBench)
+## Live-controller cache-fork optimization
 
-The uniform path re-prefills `[prompt + s]` for every hybrid. This is
-cheap when the prompt is short (GSM8K, HumanEval, IFEval) and expensive
-when the prompt is long (LongBench), where prompt prefill dominates.
+The offline dataset sweep keeps the uniform mechanism above. The live
+controller has a separately validated fast path for StreamingLLM and
+Knorm, whose scores depend only on positions or cached keys. At an
+attempt it shallow-forks the held reference cache, gathers the exact KV
+pairs that kvpress would retain, and decodes from that fork. It does not
+recompute `[prompt + s]`.
 
-The optimization is to compress at $s$ from a snapshot of the reference
-cache instead of re-prefilling, applied uniformly across all five
-presses (the score-based presses recompute only the small
-observation-window queries they need). It is promoted to headline use
-only after it is validated to agree with the uniform path and to be
-consistent across presses. Correct-and-consistent first; optimize where
-proven identical.
+kvpress compresses after the prefill attention forward, so the first
+post-switch token is still the uncompressed reference token. The fast
+path reuses that token and its logit features, then continues from the
+compressed fork. Tests on a real tiny Llama require exact retained
+keys, values, output tokens, text, and alarm feature rows against the
+uniform kvpress path for both supported presses. Unsupported presses,
+including ExpectedAttention, retain the uniform re-prefill fallback.
+
+Each live attempt records `recomputed_prefill_tokens`. It is zero for
+the validated cache-fork path and `prompt_length + s` for the fallback,
+so deployment evidence can verify that the intended mechanism actually
+ran.
 
 ## Storage
 

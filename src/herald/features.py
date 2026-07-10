@@ -155,6 +155,13 @@ class FeatureCollector(LogitsProcessor):
             return np.empty((0, 0, len(FEATURE_NAMES)), dtype=np.float32)
         return np.stack(self._steps, axis=0)
 
+    def fork_continuation(self) -> "FeatureCollector":
+        """Start a new trace while preserving the previous-logit KL state."""
+        forked = FeatureCollector()
+        if self._prev_logp is not None:
+            forked._prev_logp = self._prev_logp.detach().clone()
+        return forked
+
     def argmax_tokens(self) -> np.ndarray:
         """`(steps, batch)` int greedy tokens the collector computed."""
         if not self._argmax:

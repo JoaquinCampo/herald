@@ -9,8 +9,9 @@ exact semantics the zero-GPU replay assumed (grace_replay):
   `generate` call (kl_prev and all rolling dynamics stay continuous).
 - At each grid point s (after reference token s exists, because the
   pre-switch features are the derived stream at row s), an attempt
-  prefills `[prompt + ref[:s]]` inside the press context, the same
-  code path that produced the recorded hybrid streams, and decodes.
+  either forks the held cache for validated KV-only presses or prefills
+  `[prompt + ref[:s]]` inside the press context. Both paths are required
+  to reproduce the recorded hybrid stream exactly.
 - Every attempt stops after the k-token grace window and evaluates the
   frozen alarm once. On revert those tokens are discarded and reference
   decoding resumes from the held uncompressed cache.
@@ -25,13 +26,21 @@ are computed downstream against an explicit contract.
 
 import time
 from collections.abc import Callable
+from copy import copy
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+import numpy as np
 import torch
 from kvpress.presses.base_press import BasePress
+from kvpress.presses.knorm_press import KnormPress
+from kvpress.presses.streaming_llm_press import StreamingLLMPress
 
-from herald.features import FeatureCollector, IncrementalDerived
+from herald.features import (
+    FEATURE_NAMES,
+    FeatureCollector,
+    IncrementalDerived,
+)
 from herald.generate import LoadedModel, build_input_ids
 from herald.grace_window import (
     assemble_alarm_row_from_state,
@@ -68,6 +77,7 @@ class AttemptRecord:
     block_len: int
     wall_s: float
     peak_kv_cache_bytes: int
+    recomputed_prefill_tokens: int
     gate_score: float | None = None
 
 
@@ -99,6 +109,44 @@ class LiveEpisode:
 def _sync(device: str) -> None:
     if device == "cuda":
         torch.cuda.synchronize()
+
+
+def _fork_score_cache(model: Any, cache: Any, press: BasePress) -> Any:
+    """Fork and compress a cache for presses determined only by cached KV."""
+    if not isinstance(press, (StreamingLLMPress, KnormPress)):
+        kind = type(press).__name__
+        raise TypeError(f"direct cache fork does not support {kind}")
+    if not hasattr(cache, "layers"):
+        raise TypeError("direct cache fork requires a Transformers Cache")
+
+    language_model = (
+        model.model.language_model
+        if hasattr(model.model, "language_model")
+        else model.model
+    )
+    if len(cache.layers) != len(language_model.layers):
+        raise ValueError("cache and model layer counts differ")
+
+    forked = copy(cache)
+    forked.layers = [copy(layer) for layer in cache.layers]
+    press.post_init_from_model(model)
+    for model_layer, source_layer, target_layer in zip(
+        language_model.layers,
+        cache.layers,
+        forked.layers,
+        strict=True,
+    ):
+        keys, values = press.compress(
+            model_layer.self_attn,
+            torch.empty(0, device=source_layer.keys.device),
+            source_layer.keys,
+            source_layer.values,
+            torch.empty(0, device=source_layer.keys.device),
+            {},
+        )
+        target_layer.keys = keys
+        target_layer.values = values
+    return forked
 
 
 def _extend_reference(
@@ -176,6 +224,77 @@ def _attempt_grace(
     cache = getattr(out, "past_key_values", None)
     if cache is None:
         raise RuntimeError("compression attempt did not return a KV cache")
+    return new_ids, score, alarm.commits(score), cache
+
+
+def _attempt_grace_from_cache(
+    lm: LoadedModel,
+    prompt_ids: torch.Tensor,
+    prefix_ids: list[int],
+    first_id: int,
+    reference_cache: Any,
+    reference_collector: FeatureCollector,
+    press: BasePress,
+    alarm: AlarmLike,
+    ref_state: IncrementalDerived,
+    s: int,
+    ratio: float,
+    max_new: int,
+) -> tuple[list[int], float, bool, Any]:
+    """Fork the reference cache and evaluate grace without re-prefilling."""
+    if max_new <= 0:
+        raise ValueError("a direct cache attempt needs at least one token")
+    device = next(lm.model.parameters()).device
+    cache = _fork_score_cache(lm.model, reference_cache, press)
+    collector = reference_collector.fork_continuation()
+    new_ids = [first_id]
+    grace_budget = min(alarm.k, max_new)
+
+    if grace_budget > 1 and first_id not in lm.eos_ids:
+        seq = torch.cat(
+            [
+                prompt_ids.to(device),
+                torch.tensor(
+                    prefix_ids + [first_id],
+                    dtype=torch.long,
+                    device=device,
+                ),
+            ]
+        ).unsqueeze(0)
+        cache_position = torch.tensor(
+            [seq.shape[1] - 1], dtype=torch.long, device=device
+        )
+        with torch.no_grad():
+            out = lm.model.generate(  # type: ignore[operator]
+                input_ids=seq,
+                attention_mask=torch.ones_like(seq),
+                generation_config=lm.gen_config,
+                max_new_tokens=grace_budget - 1,
+                logits_processor=[collector],
+                past_key_values=cache,
+                cache_position=cache_position,
+                return_dict_in_generate=True,
+            )
+        new_ids.extend(
+            int(t) for t in out.sequences[0, seq.shape[1] :].tolist()
+        )
+        cache = getattr(out, "past_key_values", None)
+        if cache is None:
+            raise RuntimeError(
+                "direct cache attempt did not return a KV cache"
+            )
+
+    first_row = reference_collector.stacked()[s, 0, :].copy()
+    first_row[FEATURE_NAMES.index("kl_prev")] = np.nan
+    rows = [first_row]
+    continuation_rows = collector.stacked()
+    if continuation_rows.size:
+        rows.extend(continuation_rows[:, 0, :])
+    block = np.stack(rows, axis=0)[: alarm.k]
+    row = assemble_alarm_row_from_state(
+        state=ref_state, block=block, ratio=ratio, k=alarm.k
+    )
+    score = alarm.score(row)
     return new_ids, score, alarm.commits(score), cache
 
 
@@ -315,17 +434,38 @@ def run_episode(
 
         _sync(device)
         t0 = time.perf_counter()
-        grace_ids, score, committed, attempt_cache = _attempt_grace(
-            lm,
-            prompt_ids,
-            ref_ids[:s],
-            press_factory(),
-            alarm,
-            ref_state,
-            s,
-            ratio,
-            max_new_tokens - s,
-        )
+        press = press_factory()
+        if isinstance(press, (StreamingLLMPress, KnormPress)):
+            grace_ids, score, committed, attempt_cache = (
+                _attempt_grace_from_cache(
+                    lm,
+                    prompt_ids,
+                    ref_ids[:s],
+                    ref_ids[s],
+                    cache,
+                    ref_collector,
+                    press,
+                    alarm,
+                    ref_state,
+                    s,
+                    ratio,
+                    max_new_tokens - s,
+                )
+            )
+            recomputed_prefill_tokens = 0
+        else:
+            grace_ids, score, committed, attempt_cache = _attempt_grace(
+                lm,
+                prompt_ids,
+                ref_ids[:s],
+                press,
+                alarm,
+                ref_state,
+                s,
+                ratio,
+                max_new_tokens - s,
+            )
+            recomputed_prefill_tokens = int(prompt_ids.numel()) + s
         held_kv_bytes = kv_cache_nbytes(cache)
         grace_kv_bytes = kv_cache_nbytes(attempt_cache)
         attempt_kv_bytes = grace_kv_bytes
@@ -366,6 +506,7 @@ def run_episode(
                 block_len=min(alarm.k, len(new_ids)),
                 wall_s=wall,
                 peak_kv_cache_bytes=attempt_kv_bytes,
+                recomputed_prefill_tokens=recomputed_prefill_tokens,
                 gate_score=gate_score,
             )
         )

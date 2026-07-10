@@ -170,6 +170,49 @@ def test_plain_baseline_matches_reference_and_reports_kv_bytes(
     assert baseline.peak_kv_cache_bytes > 0
 
 
+@pytest.mark.parametrize("compressor", ["streaming_llm", "knorm"])
+def test_score_cache_fork_matches_kvpress_prefill(
+    lm: LoadedModel,
+    compressor: str,
+) -> None:
+    record = _rec(LONG, f"p-fork-{compressor}")
+    prompt_ids = G.build_input_ids(lm, record).unsqueeze(0)
+    attention_mask = torch.ones_like(prompt_ids)
+
+    with torch.no_grad():
+        plain = lm.model.generate(
+            input_ids=prompt_ids,
+            attention_mask=attention_mask,
+            generation_config=lm.gen_config,
+            max_new_tokens=1,
+            return_dict_in_generate=True,
+        )
+    press = get_press(compressor, 0.5)
+    with torch.no_grad(), press(lm.model):
+        compressed = lm.model.generate(
+            input_ids=prompt_ids,
+            attention_mask=attention_mask,
+            generation_config=lm.gen_config,
+            max_new_tokens=1,
+            return_dict_in_generate=True,
+        )
+
+    forked = LC._fork_score_cache(lm.model, plain.past_key_values, press)
+
+    for original_layer, forked_layer, compressed_layer in zip(
+        plain.past_key_values.layers,
+        forked.layers,
+        compressed.past_key_values.layers,
+        strict=True,
+    ):
+        assert torch.equal(forked_layer.keys, compressed_layer.keys)
+        assert torch.equal(forked_layer.values, compressed_layer.values)
+        assert forked_layer.keys.data_ptr() != original_layer.keys.data_ptr()
+        assert (
+            forked_layer.values.data_ptr() != original_layer.values.data_ptr()
+        )
+
+
 def test_chained_reference_features_match_one_call(
     lm: LoadedModel,
 ) -> None:
@@ -197,6 +240,38 @@ def test_commit_at_s0_reproduces_hybrid(lm: LoadedModel) -> None:
     assert ep.attempts[0].committed
     assert ep.new_ids == hyb.new_ids
     assert ep.text == hyb.text
+
+
+@pytest.mark.parametrize("compressor", ["streaming_llm", "knorm"])
+def test_direct_cache_attempt_matches_hybrid_without_reprefill(
+    lm: LoadedModel,
+    compressor: str,
+) -> None:
+    record = _rec(LONG, f"p-direct-{compressor}")
+    [ref] = generate_reference(lm, [record], M)
+    hybrid = generate_hybrids(
+        lm,
+        [(ref, STRIDE)],
+        compressor,
+        0.5,
+        get_press(compressor, 0.5),
+        M,
+    )[0]
+    episode = LC.run_episode(
+        lm,
+        record,
+        lambda: get_press(compressor, 0.5),
+        ScriptedAlarm([False, True]),
+        compressor=compressor,
+        ratio=0.5,
+        max_new_tokens=M,
+        stride=STRIDE,
+    )
+
+    assert episode.commit_s == STRIDE
+    assert episode.new_ids == hybrid.new_ids
+    assert episode.text == hybrid.text
+    assert all(a.recomputed_prefill_tokens == 0 for a in episode.attempts)
 
 
 def test_commit_at_later_s_reproduces_hybrid(lm: LoadedModel) -> None:

@@ -25,6 +25,7 @@ import argparse
 import json
 import sys
 import time
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -196,10 +197,11 @@ def main() -> None:
                 key = f"{compressor}|{ratio:.4f}|{pid}"
                 if key in done_episodes:
                     continue
+                press_factory = partial(get_press, compressor, ratio)
                 ep = run_episode(
                     lm,
                     record,
-                    lambda c=compressor, r=ratio: get_press(c, r),
+                    press_factory,
                     bundles[compressor],
                     compressor=compressor,
                     ratio=ratio,
@@ -235,6 +237,9 @@ def main() -> None:
                             "n_new_tokens": a.n_new_tokens,
                             "wall_s": a.wall_s,
                             "peak_kv_cache_bytes": a.peak_kv_cache_bytes,
+                            "recomputed_prefill_tokens": (
+                                a.recomputed_prefill_tokens
+                            ),
                             "gate_score": a.gate_score,
                         }
                         for a in ep.attempts

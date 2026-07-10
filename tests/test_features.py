@@ -51,6 +51,24 @@ def test_kl_prev_first_step_nan_then_nonneg() -> None:
     assert (kl[1:] >= -1e-6).all()
 
 
+def test_continuation_collector_preserves_kl_state_without_old_rows() -> None:
+    first = [1.0, 0.0, -1.0]
+    second = [-1.0, 0.5, 1.0]
+    uninterrupted = FeatureCollector()
+    uninterrupted(torch.empty(0), torch.tensor([first]))
+
+    continuation = uninterrupted.fork_continuation()
+    uninterrupted(torch.empty(0), torch.tensor([second]))
+    continuation(torch.empty(0), torch.tensor([second]))
+
+    assert continuation.stacked().shape[0] == 1
+    assert np.allclose(
+        continuation.stacked()[0],
+        uninterrupted.stacked()[1],
+        equal_nan=True,
+    )
+
+
 def test_known_distributions() -> None:
     # Near-uniform over 100 -> high entropy, tiny max_prob.
     uni = _collect([[0.0] * 100])
