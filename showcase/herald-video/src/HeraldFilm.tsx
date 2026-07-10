@@ -7,37 +7,40 @@ import {SignalScene} from './scenes/SignalScene';
 import {ProofScene} from './scenes/ProofScene';
 import {OpenAIFrameScene} from './scenes/OpenAIFrameScene';
 import {EndCardScene} from './scenes/EndCardScene';
+import {SCENES} from './scenes/timeline';
 import {COLORS} from './theme';
 import narrationCues from './data/narration-cues.json';
 
+const SCENE_COMPONENTS = {
+  'hidden-cost': HiddenCostScene,
+  failure: FailureScene,
+  signal: SignalScene,
+  mechanism: MechanismScene,
+  proof: ProofScene,
+  'openai-frame': OpenAIFrameScene,
+  'end-card': EndCardScene,
+} as const;
+
 export const HeraldFilm = () => (
   <AbsoluteFill style={{background: COLORS.alabaster}}>
-    <Audio src={staticFile('audio/score.wav')} volume={0.12} />
+    <Audio src={staticFile('audio/score.wav')} volume={0.12} trimAfter={2548} />
     {narrationCues.map((cue) => (
       <Sequence key={cue.id} from={cue.from} durationInFrames={cue.duration} premountFor={30}>
-        <Audio src={staticFile(cue.file)} volume={1.5} />
+        <Audio src={staticFile(cue.file)} volume={1.3} />
       </Sequence>
     ))}
-    <Sequence from={0} durationInFrames={210} premountFor={30}>
-      <HiddenCostScene />
-    </Sequence>
-    <Sequence from={210} durationInFrames={330} premountFor={30}>
-      <FailureScene />
-    </Sequence>
-    <Sequence from={540} durationInFrames={450} premountFor={30}>
-      <SignalScene />
-    </Sequence>
-    <Sequence from={990} durationInFrames={570} premountFor={30}>
-      <MechanismScene />
-    </Sequence>
-    <Sequence from={1560} durationInFrames={600} premountFor={30}>
-      <ProofScene />
-    </Sequence>
-    <Sequence from={2160} durationInFrames={270} premountFor={30}>
-      <OpenAIFrameScene />
-    </Sequence>
-    <Sequence from={2430} durationInFrames={120} premountFor={30}>
-      <EndCardScene />
-    </Sequence>
+    {SCENES.map((scene) => {
+      const Scene = SCENE_COMPONENTS[scene.id];
+      return (
+        <Sequence
+          key={scene.id}
+          from={scene.from}
+          durationInFrames={scene.duration}
+          premountFor={scene.from === 0 ? 0 : 30}
+        >
+          <Scene />
+        </Sequence>
+      );
+    })}
   </AbsoluteFill>
 );
