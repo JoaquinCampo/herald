@@ -82,6 +82,7 @@ def main() -> None:
         print(
             f"{name}: feasible={evaluation.feasible} "
             f"quality_upper={evaluation.quality_damage.upper:.3%} "
+            f"major_damage_upper={evaluation.major_damage_rate.upper:.1%} "
             f"slowdown_upper={evaluation.end_to_end_slowdown.upper:.1%} "
             f"peak_kv_savings={memory} "
             f"failures={','.join(evaluation.failures) or 'none'}"
@@ -94,6 +95,8 @@ def main() -> None:
             "quality_noninferiority_margin": (
                 contract.quality_noninferiority_margin
             ),
+            "major_damage_threshold": contract.major_damage_threshold,
+            "max_major_damage_rate": contract.max_major_damage_rate,
             "max_end_to_end_slowdown": contract.max_end_to_end_slowdown,
             "confidence": contract.confidence,
             "min_pairs": contract.min_pairs,

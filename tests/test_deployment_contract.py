@@ -52,6 +52,7 @@ def test_feasible_configuration_passes_all_constraints() -> None:
 
     assert report.feasible
     assert report.quality_pass
+    assert report.tail_quality_pass
     assert report.speed_pass
     assert report.memory_verified
     assert report.peak_kv_savings is not None
@@ -69,6 +70,19 @@ def test_quality_noninferiority_uses_confidence_bound() -> None:
     assert not report.quality_pass
     assert not report.feasible
     assert "quality_noninferiority" in report.failures
+
+
+def test_major_quality_failures_are_a_separate_tail_constraint() -> None:
+    rows = [_measurement("p0", quality_candidate=0.0)] + [
+        _measurement(f"p{i}") for i in range(1, 3)
+    ]
+
+    report = evaluate_deployment(rows, contract=_contract())
+
+    assert not report.tail_quality_pass
+    assert not report.quality_pass
+    assert not report.feasible
+    assert "major_damage_rate" in report.failures
 
 
 def test_speed_constraint_uses_total_end_to_end_wall_time() -> None:

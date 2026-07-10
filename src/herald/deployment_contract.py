@@ -14,6 +14,8 @@ class DeploymentContract:
     """Thresholds that make a Herald configuration deployable."""
 
     quality_noninferiority_margin: float = 0.01
+    major_damage_threshold: float = 0.5
+    max_major_damage_rate: float = 0.01
     max_end_to_end_slowdown: float = 0.05
     confidence: float = 0.95
     min_pairs: int = 30
@@ -27,6 +29,10 @@ class DeploymentContract:
             )
         if self.max_end_to_end_slowdown < 0:
             raise ValueError("max_end_to_end_slowdown must be nonnegative")
+        if self.major_damage_threshold <= 0:
+            raise ValueError("major_damage_threshold must be positive")
+        if not 0 <= self.max_major_damage_rate <= 1:
+            raise ValueError("max_major_damage_rate must be between 0 and 1")
         if not 0 < self.confidence < 1:
             raise ValueError("confidence must be between 0 and 1")
         if self.min_pairs <= 0:
@@ -114,11 +120,13 @@ class DeploymentEvaluation:
     n_pairs: int
     n_prompts: int
     quality_damage: MetricEstimate
+    major_damage_rate: MetricEstimate
     end_to_end_slowdown: MetricEstimate
     per_token_slowdown: MetricEstimate
     peak_kv_savings: MetricEstimate | None
     kv_byte_token_savings: MetricEstimate | None
     quality_pass: bool
+    tail_quality_pass: bool
     speed_pass: bool
     memory_verified: bool
     memory_pass: bool
@@ -148,6 +156,18 @@ def evaluate_deployment(
         prompt_ids,
         active,
         seed_offset=0,
+    )
+    major_damage_rate = _estimate(
+        [
+            float(
+                row.quality_reference - row.quality_candidate
+                >= active.major_damage_threshold
+            )
+            for row in measurements
+        ],
+        prompt_ids,
+        active,
+        seed_offset=5,
     )
     end_to_end_slowdown = _estimate(
         [
@@ -208,9 +228,13 @@ def evaluate_deployment(
             )
 
     enough_pairs = len(measurements) >= active.min_pairs
-    quality_pass = (
+    mean_quality_pass = (
         quality_damage.upper <= active.quality_noninferiority_margin
     )
+    tail_quality_pass = (
+        major_damage_rate.upper <= active.max_major_damage_rate
+    )
+    quality_pass = mean_quality_pass and tail_quality_pass
     speed_pass = end_to_end_slowdown.upper <= active.max_end_to_end_slowdown
     memory_pass = (
         peak_kv_savings is not None
@@ -221,8 +245,10 @@ def evaluate_deployment(
     failures = []
     if not enough_pairs:
         failures.append("minimum_pairs")
-    if not quality_pass:
+    if not mean_quality_pass:
         failures.append("quality_noninferiority")
+    if not tail_quality_pass:
+        failures.append("major_damage_rate")
     if not speed_pass:
         failures.append("end_to_end_slowdown")
     if not memory_verified:
@@ -235,11 +261,13 @@ def evaluate_deployment(
         n_pairs=len(measurements),
         n_prompts=len(set(prompt_ids)),
         quality_damage=quality_damage,
+        major_damage_rate=major_damage_rate,
         end_to_end_slowdown=end_to_end_slowdown,
         per_token_slowdown=per_token_slowdown,
         peak_kv_savings=peak_kv_savings,
         kv_byte_token_savings=kv_byte_token_savings,
         quality_pass=quality_pass,
+        tail_quality_pass=tail_quality_pass,
         speed_pass=speed_pass,
         memory_verified=memory_verified,
         memory_pass=memory_pass,
