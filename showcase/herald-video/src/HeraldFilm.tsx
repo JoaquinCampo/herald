@@ -1,6 +1,8 @@
 import {AbsoluteFill, Sequence} from 'remotion';
 import {HiddenCostScene} from './scenes/HiddenCostScene';
 import {FailureScene} from './scenes/FailureScene';
+import {MechanismScene} from './scenes/MechanismScene';
+import {SignalScene} from './scenes/SignalScene';
 import {COLORS} from './theme';
 
 export const HeraldFilm = () => (
@@ -10,6 +12,12 @@ export const HeraldFilm = () => (
     </Sequence>
     <Sequence from={210} durationInFrames={330} premountFor={30}>
       <FailureScene />
+    </Sequence>
+    <Sequence from={540} durationInFrames={450} premountFor={30}>
+      <SignalScene />
+    </Sequence>
+    <Sequence from={990} durationInFrames={570} premountFor={30}>
+      <MechanismScene />
     </Sequence>
   </AbsoluteFill>
 );
