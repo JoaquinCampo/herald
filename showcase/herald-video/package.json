@@ -1,0 +1,29 @@
+{
+  "name": "herald-openai-showcase",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "still": "remotion still src/index.ts HeraldOpenAIShowcase",
+    "render": "remotion render src/index.ts HeraldOpenAIShowcase out/herald-openai-showcase.mp4 --codec=h264 --crf=16 --audio-codec=aac --audio-bitrate=320k"
+  },
+  "dependencies": {
+    "@fontsource/dm-serif-display": "5.2.8",
+    "@fontsource/ibm-plex-mono": "5.2.7",
+    "@fontsource/inter": "5.2.8",
+    "@remotion/cli": "4.0.487",
+    "@remotion/media": "4.0.487",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "remotion": "4.0.487",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "typescript": "7.0.2",
+    "vitest": "4.1.10"
+  }
+}
