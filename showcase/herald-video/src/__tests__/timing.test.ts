@@ -18,5 +18,55 @@ it('never exposes rejected probe tokens in the user-visible lane', () => {
     'answer',
     'is',
     '18',
+    '.',
   ]);
+});
+
+it('resumes uncompressed after rejection before attempting compression again', () => {
+  expect(getMechanismState(0)).toMatchObject({
+    phase: 'reserve',
+    compressionActive: false,
+    reserveMode: 'active',
+  });
+  expect(getMechanismState(72)).toMatchObject({
+    phase: 'attempt',
+    compressionActive: true,
+    reserveMode: 'held',
+  });
+  expect(getMechanismState(MECHANISM_TIMING.revert + 26)).toMatchObject({
+    phase: 'resume',
+    compressionActive: false,
+    reserveMode: 'active',
+    privateTokens: [],
+  });
+  expect(getMechanismState(300)).toMatchObject({
+    phase: 'second-attempt',
+    compressionActive: true,
+    reserveMode: 'held',
+  });
+});
+
+it('visibly reverses rejected tokens only inside the private lane', () => {
+  const reversal = getMechanismState(MECHANISM_TIMING.revert + 12);
+  expect(reversal).toMatchObject({
+    phase: 'revert',
+    privateTokens: ['9', 'boxes'],
+    visibleTokens: ['The', 'answer', 'is'],
+    reverseProgress: 12 / 26,
+  });
+});
+
+it('commits both accepted private tokens and releases the reserve', () => {
+  expect(getMechanismState(355)).toMatchObject({
+    phase: 'safe-probe',
+    privateTokens: ['18', '.'],
+    visibleTokens: ['The', 'answer', 'is'],
+  });
+  expect(getMechanismState(MECHANISM_TIMING.commit)).toMatchObject({
+    phase: 'committed',
+    privateTokens: [],
+    visibleTokens: ['The', 'answer', 'is', '18', '.'],
+    compressionActive: true,
+    reserveMode: 'released',
+  });
 });

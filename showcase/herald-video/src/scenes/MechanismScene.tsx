@@ -16,19 +16,31 @@ const BASE_TOKENS = ['The', 'answer', 'is'] as const;
 export type MechanismState = {
   visibleTokens: string[];
   privateTokens: string[];
-  phase: 'reserve' | 'attempt' | 'unsafe-probe' | 'revert' | 'safe-probe' | 'committed';
+  phase:
+    | 'reserve'
+    | 'attempt'
+    | 'unsafe-probe'
+    | 'revert'
+    | 'resume'
+    | 'second-attempt'
+    | 'safe-probe'
+    | 'committed';
   alarmed: boolean;
-  heldInReserve: boolean;
+  compressionActive: boolean;
+  reserveMode: 'active' | 'held' | 'released';
+  reverseProgress: number;
 };
 
 export const getMechanismState = (frame: number): MechanismState => {
   if (frame >= MECHANISM_TIMING.commit) {
     return {
-      visibleTokens: [...BASE_TOKENS, '18'],
+      visibleTokens: [...BASE_TOKENS, '18', '.'],
       privateTokens: [],
       phase: 'committed',
       alarmed: false,
-      heldInReserve: false,
+      compressionActive: true,
+      reserveMode: 'released',
+      reverseProgress: 1,
     };
   }
   if (frame >= MECHANISM_TIMING.secondProbe[0]) {
@@ -37,16 +49,42 @@ export const getMechanismState = (frame: number): MechanismState => {
       privateTokens: frame >= 345 ? ['18', '.'] : ['18'],
       phase: 'safe-probe',
       alarmed: false,
-      heldInReserve: true,
+      compressionActive: true,
+      reserveMode: 'held',
+      reverseProgress: 1,
+    };
+  }
+  if (frame >= 300) {
+    return {
+      visibleTokens: [...BASE_TOKENS],
+      privateTokens: [],
+      phase: 'second-attempt',
+      alarmed: false,
+      compressionActive: true,
+      reserveMode: 'held',
+      reverseProgress: 1,
+    };
+  }
+  if (frame >= MECHANISM_TIMING.revert + 26) {
+    return {
+      visibleTokens: [...BASE_TOKENS],
+      privateTokens: [],
+      phase: 'resume',
+      alarmed: false,
+      compressionActive: false,
+      reserveMode: 'active',
+      reverseProgress: 1,
     };
   }
   if (frame >= MECHANISM_TIMING.revert) {
     return {
       visibleTokens: [...BASE_TOKENS],
-      privateTokens: [],
+      privateTokens: ['9', 'boxes'],
       phase: 'revert',
       alarmed: true,
-      heldInReserve: true,
+      compressionActive: false,
+      reserveMode: 'active',
+      reverseProgress: (frame - MECHANISM_TIMING.revert) / 26,
     };
   }
   if (frame >= MECHANISM_TIMING.firstProbe[0]) {
@@ -55,7 +93,9 @@ export const getMechanismState = (frame: number): MechanismState => {
       privateTokens: frame >= 195 ? ['9', 'boxes'] : ['9'],
       phase: 'unsafe-probe',
       alarmed: true,
-      heldInReserve: true,
+      compressionActive: true,
+      reserveMode: 'held',
+      reverseProgress: 0,
     };
   }
   if (frame >= 72) {
@@ -64,7 +104,9 @@ export const getMechanismState = (frame: number): MechanismState => {
       privateTokens: [],
       phase: 'attempt',
       alarmed: false,
-      heldInReserve: true,
+      compressionActive: true,
+      reserveMode: 'held',
+      reverseProgress: 0,
     };
   }
   return {
@@ -72,7 +114,9 @@ export const getMechanismState = (frame: number): MechanismState => {
     privateTokens: [],
     phase: 'reserve',
     alarmed: false,
-    heldInReserve: true,
+    compressionActive: false,
+    reserveMode: 'active',
+    reverseProgress: 0,
   };
 };
 
@@ -81,6 +125,8 @@ const phaseCopy: Record<MechanismState['phase'], {index: string; title: string; 
   attempt: {index: '02', title: 'Attempt', detail: 'Apply compression without releasing the reserve.'},
   'unsafe-probe': {index: '03', title: 'Probe privately', detail: 'Two tokens reveal rising causal risk.'},
   revert: {index: '04', title: 'Reject + resume', detail: 'Discard the probe. Continue from the held cache.'},
+  resume: {index: '04', title: 'Resumed', detail: 'Generation is uncompressed again. Rejected tokens never left the private window.'},
+  'second-attempt': {index: '02', title: 'Attempt again', detail: 'Try compression again while the uncompressed cache stays held.'},
   'safe-probe': {index: '03', title: 'Probe again', detail: 'This private window remains inside the safety layer.'},
   committed: {index: '05', title: 'Commit', detail: 'Release the reserve only after a safe decision.'},
 };
@@ -108,7 +154,7 @@ const LaneLabel = ({children, accent}: {children: string; accent: string}) => (
   </div>
 );
 
-const HeldCacheReserve = ({opacity}: {opacity: number}) => (
+const HeldCacheReserve = ({label, opacity}: {label: string; opacity: number}) => (
   <div
     style={{
       position: 'absolute',
@@ -122,7 +168,7 @@ const HeldCacheReserve = ({opacity}: {opacity: number}) => (
     }}
   >
     <span style={{marginBottom: 3, fontFamily: FONT.mono, fontSize: 16, letterSpacing: '0.09em'}}>
-      HELD UNCOMPRESSED CACHE
+      {label}
     </span>
     {Array.from({length: 8}, (_, index) => (
       <div
@@ -148,10 +194,25 @@ export const MechanismScene = () => {
     ? interpolate(frame, [MECHANISM_TIMING.firstProbe[0], MECHANISM_TIMING.revert], [0.42, 0.94], clamp)
     : isSafe
       ? interpolate(frame, [MECHANISM_TIMING.secondProbe[0], MECHANISM_TIMING.commit], [0.29, 0.12], clamp)
-      : 0.24;
+      : state.phase === 'resume' ? 0.12 : 0.24;
   const heldOpacity = interpolate(frame, [MECHANISM_TIMING.commit, MECHANISM_TIMING.commit + 28], [1, 0], clamp);
-  const revertSweep = interpolate(frame, [MECHANISM_TIMING.revert, MECHANISM_TIMING.revert + 28], [0, 1], clamp);
-  const privateOpacity = state.privateTokens.length > 0 ? 1 : 0;
+  const compressionOpacity = frame < 72
+    ? 0
+    : frame < MECHANISM_TIMING.revert
+      ? interpolate(frame, [72, 90], [0, 1], clamp)
+      : frame < MECHANISM_TIMING.revert + 26
+        ? interpolate(frame, [MECHANISM_TIMING.revert, MECHANISM_TIMING.revert + 26], [1, 0], clamp)
+        : frame < 300
+          ? 0
+          : interpolate(frame, [300, 318], [0, 1], clamp);
+  const reserveLabel = state.reserveMode === 'held'
+    ? 'HELD UNCOMPRESSED CACHE'
+    : state.reserveMode === 'released'
+      ? 'RESERVE RELEASED'
+      : state.phase === 'resume' || state.phase === 'revert'
+        ? 'UNCOMPRESSED CACHE RESUMED'
+        : 'UNCOMPRESSED CACHE READY';
+  const privateOpacity = state.privateTokens.length > 0 ? 1 - state.reverseProgress : 0;
 
   return (
     <Stage style={{flexDirection: 'column', gap: 34}}>
@@ -191,8 +252,8 @@ export const MechanismScene = () => {
       <div style={{display: 'grid', minHeight: 620, flex: 1, gridTemplateColumns: '0.88fr 1.12fr', gap: 92}}>
         <div style={{display: 'flex', flexDirection: 'column', justifyContent: 'space-between'}}>
           <div style={{position: 'relative', height: 390, paddingTop: 18}}>
-            <HeldCacheReserve opacity={heldOpacity} />
-            <div style={{position: 'absolute', left: 58, top: 62}}>
+            <HeldCacheReserve label={reserveLabel} opacity={heldOpacity} />
+            <div style={{position: 'absolute', left: 58, top: 62, opacity: compressionOpacity}}>
               <CacheStack
                 compression={0.72}
                 heldInReserve={false}
@@ -241,14 +302,18 @@ export const MechanismScene = () => {
                 <div
                   style={{
                     opacity: privateOpacity,
-                    translate: `${isUnsafe ? interpolate(revertSweep, [0, 1], [0, -180]) : 0}px 0`,
+                    translate: `${state.phase === 'revert' ? -180 * state.reverseProgress : 0}px 0`,
                   }}
                 >
                   <TokenStream tokens={state.privateTokens} state={isUnsafe ? 'unstable' : 'probe'} />
                 </div>
               ) : (
                 <span style={{color: `${COLORS.graphite}66`, fontFamily: FONT.mono, fontSize: 25}}>
-                  {state.phase === 'revert' ? 'PROBE DISCARDED' : state.phase === 'committed' ? 'WINDOW CLEARED' : 'AWAITING PROBE'}
+                  {state.phase === 'resume'
+                    ? 'OUTPUT RESUMED UNCOMPRESSED'
+                    : state.phase === 'committed'
+                      ? 'WINDOW CLEARED'
+                      : 'AWAITING PRIVATE PROBE'}
                 </span>
               )}
             </div>
