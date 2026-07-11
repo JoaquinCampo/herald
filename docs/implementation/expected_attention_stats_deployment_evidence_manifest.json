@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "status": "exhausted_expected_attention_stats_cache_fork_ratio_0_25_branch",
+  "created_at": "2026-07-11",
+  "rollback_tag": "codex/herald-goal-start-0949baa",
+  "source_revision_before_manifest": "7194347",
+  "scope": {
+    "compressor": "expected_attention_stats",
+    "controller": "direct cache fork with exact grace rollback",
+    "model": "Llama-3.1-8B-Instruct",
+    "task": "IFEval",
+    "prompts": "five frozen held-out evaluation-only triage prompts",
+    "ratios": [
+      0.25
+    ],
+    "sustain_intervals": [
+      null,
+      32,
+      1
+    ],
+    "sweep_config_sha256": "5b9a0938c1669d8b99ff0aef25573496029fddafc35286d3b084c663b1efcfa6",
+    "expected_statistics_sha256": "ca7450b7c388fb8612a32ed954ae72fbd7df810bcba7f7e353d6a13c10a21eaf",
+    "contract": "quality upper <= 1%, major-damage upper <= 1%, slowdown upper <= 5%, positive isolated peak-KV lower bound"
+  },
+  "reproduction": [
+    "HF_HUB_OFFLINE=1 uv run --no-sync python run_live_controller.py --bundle-dir results/expected_stats_alarm_bundle_full_s0_v2 --out-dir results/expected_stats_live_triage_one_shot_s0_v2 --references-dir results/expected_stats_sweep_full_s0_v2/llama/ifeval/references --compressors expected_attention_stats --ratios 0.25 --expected-attention-stats results/calibration/expected_attention_stats_ifeval_s0_v2 --limit-prompts 5 --device cuda --dtype bfloat16 --stride 16",
+    "HF_HUB_OFFLINE=1 uv run --no-sync python run_live_controller.py --bundle-dir results/expected_stats_alarm_bundle_full_s0_v2 --out-dir results/expected_stats_live_triage_sustained32_s0_v2 --references-dir results/expected_stats_sweep_full_s0_v2/llama/ifeval/references --compressors expected_attention_stats --ratios 0.25 --expected-attention-stats results/calibration/expected_attention_stats_ifeval_s0_v2 --limit-prompts 5 --device cuda --dtype bfloat16 --stride 16 --sustain-interval 32",
+    "HF_HUB_OFFLINE=1 uv run --no-sync python run_live_controller.py --bundle-dir results/expected_stats_alarm_bundle_full_s0_v2 --out-dir results/expected_stats_live_triage_sustained1_s0_v2 --references-dir results/expected_stats_sweep_full_s0_v2/llama/ifeval/references --compressors expected_attention_stats --ratios 0.25 --expected-attention-stats results/calibration/expected_attention_stats_ifeval_s0_v2 --limit-prompts 5 --device cuda --dtype bfloat16 --stride 16 --sustain-interval 1",
+    "uv run --no-sync python evaluate_live_fidelity.py --live-dir $LIVE --targets results/expected_stats_alarm_bundle_full_s0_v2/fidelity_targets.json --skip-static",
+    "uv run --no-sync python evaluate_deployment.py --live-dir results/expected_stats_live_triage_one_shot_s0_v2 --target-compressor expected_attention_stats --target-ratio 0.25 --min-pairs 5 --bootstrap-resamples 2000 --report-only",
+    "uv run --no-sync python evaluate_deployment.py --live-dir results/expected_stats_live_triage_sustained32_s0_v2 --target-compressor expected_attention_stats --target-ratio 0.25 --target-sustain-interval 32 --min-pairs 5 --bootstrap-resamples 2000 --report-only",
+    "uv run --no-sync python evaluate_deployment.py --live-dir results/expected_stats_live_triage_sustained1_s0_v2 --target-compressor expected_attention_stats --target-ratio 0.25 --target-sustain-interval 1 --min-pairs 5 --bootstrap-resamples 2000 --report-only",
+    "uv run python scripts/verify_deployment_evidence.py --manifest docs/implementation/expected_attention_stats_deployment_evidence_manifest.json"
+  ],
+  "artifacts": [
+    {
+      "path": "results/calibration/expected_attention_stats_ifeval_s0_v2/metadata.json",
+      "sha256": "935b5620419da8a5667a8f21882aa4855137adcd1dac14a057f8698593960783"
+    },
+    {
+      "path": "results/expected_stats_sweep_full_s0_v2/config.json",
+      "sha256": "5b9a0938c1669d8b99ff0aef25573496029fddafc35286d3b084c663b1efcfa6"
+    },
+    {
+      "path": "results/expected_stats_alarm_bundle_full_s0_v2/expected_attention_stats/booster_0.json",
+      "sha256": "4c23fbf2f369124cf9ac4c2ce1d2c2351822dbe0dd445c3222cbd385fce0f0dd"
+    },
+    {
+      "path": "results/expected_stats_alarm_bundle_full_s0_v2/expected_attention_stats/booster_1.json",
+      "sha256": "426b52d81f57e57e3df5ae389410efc99fe8ac3c079d33a639f3354b2a494cab"
+    },
+    {
+      "path": "results/expected_stats_alarm_bundle_full_s0_v2/expected_attention_stats/booster_2.json",
+      "sha256": "7c7cd484ee2434a335d42c45ae9a588f7f2312e18ef817ba1e0c6c8fccb94346"
+    },
+    {
+      "path": "results/expected_stats_alarm_bundle_full_s0_v2/expected_attention_stats/manifest.json",
+      "sha256": "8eb34df6b89234225b0093f489c8786b40487f26c56eed14fa52bf98ff405e1f"
+    },
+    {
+      "path": "results/expected_stats_alarm_bundle_full_s0_v2/fidelity_targets.json",
+      "sha256": "6bfd6cfd8d9fc69e9200cfe3193820c308e8a5074b5d707d87668f1be2aa8591"
+    },
+    {
+      "path": "results/expected_stats_live_triage_one_shot_s0_v2/baseline.jsonl",
+      "sha256": "b1be1be54ab1120c34f2f78f4705ad057deff8a762de0a13e2a736c92c767945"
+    },
+    {
+      "path": "results/expected_stats_live_triage_one_shot_s0_v2/deployment_report.json",
+      "sha256": "ec8866917ac99031480681d9863be4bbfcbb9e550b68351a582148963cd047eb"
+    },
+    {
+      "path": "results/expected_stats_live_triage_one_shot_s0_v2/episodes.jsonl",
+      "sha256": "f301bb19b848a0cb7bf864b56d97d85a2c45f89e79ed8209cd0b9ef18e2c5384"
+    },
+    {
+      "path": "results/expected_stats_live_triage_one_shot_s0_v2/run_manifest.json",
+      "sha256": "56b376d3238e6b32e53f2645302b8f07e2549a2cd3fc83ccc75ff38511bcd164"
+    },
+    {
+      "path": "results/expected_stats_live_triage_sustained32_s0_v2/baseline.jsonl",
+      "sha256": "fb2ad6523e686daa20f750bea4ba4bad8e7ef9fd37cea0142865ada917cfd353"
+    },
+    {
+      "path": "results/expected_stats_live_triage_sustained32_s0_v2/deployment_report.json",
+      "sha256": "26853e43cf477aba55c24d2551cc4985ab3baa775045d41aeeb6e68ee0ff3906"
+    },
+    {
+      "path": "results/expected_stats_live_triage_sustained32_s0_v2/episodes.jsonl",
+      "sha256": "d0f1133ae167ff98a09883ef46003ca6bf69b1a64d05e87500df0790249a2e1e"
+    },
+    {
+      "path": "results/expected_stats_live_triage_sustained32_s0_v2/run_manifest.json",
+      "sha256": "d690e4d0a76257724a55c4189be9696566c9204e88ae5935a6aef8d24c6ea46e"
+    },
+    {
+      "path": "results/expected_stats_live_triage_sustained1_s0_v2/baseline.jsonl",
+      "sha256": "4af16490be3586da5ef2454fa44b99f7de1d942d2a65cae96a0bf1422ab1370a"
+    },
+    {
+      "path": "results/expected_stats_live_triage_sustained1_s0_v2/deployment_report.json",
+      "sha256": "57619acc0be62956f86ce657f5cf830b465ee4797a8347aa0d839188dd268e04"
+    },
+    {
+      "path": "results/expected_stats_live_triage_sustained1_s0_v2/episodes.jsonl",
+      "sha256": "8944e14a17e26f224b473db7232121ae7aeb63d0da767dba2c4c3e35fcb7a1c8"
+    },
+    {
+      "path": "results/expected_stats_live_triage_sustained1_s0_v2/run_manifest.json",
+      "sha256": "52fc08841a44c37ab7d11845af76d071dbc41cbd63a1af86c361e56c2063c5e1"
+    },
+    {
+      "path": "src/herald/expected_attention_stats.py",
+      "sha256": "6c2609c2c96fd553e7622957339cdff90d291401d05b8241a7455a64a884bc26"
+    },
+    {
+      "path": "src/herald/live_controller.py",
+      "sha256": "6ab229cd03ba880565a37bd5573dcf3dfeca0c842dc997e3601d2a22a7e22d2d"
+    },
+    {
+      "path": "src/herald/sustained_press.py",
+      "sha256": "28563207b682205e1ef9547bba5cbdeffcb890d04a266c3d3f939e5b50f1af5a"
+    },
+    {
+      "path": "src/herald/deployment_contract.py",
+      "sha256": "9d60a5f575c06f6039037062c686b6f510cba70bfbf83cf9e6dce4b3661be96f"
+    },
+    {
+      "path": "scripts/run_live_controller.py",
+      "sha256": "b5bf6b2ead7af72198c8454be12e4bb695e51ac9e17d61935a2e783be1d07f0d"
+    },
+    {
+      "path": "scripts/evaluate_live_fidelity.py",
+      "sha256": "906d80b61ff57332cde485a9f3bac030be20b2ec9ed3d3190cec624df93d1ae1"
+    },
+    {
+      "path": "scripts/evaluate_deployment.py",
+      "sha256": "404c9547759975e3e37b85549004140c610505b237011112199e4e091351b7d2"
+    },
+    {
+      "path": "docs/implementation/deployment_contract.md",
+      "sha256": "d059a932c3cc216e93d0d2c5f3e6a59e1c273b1879a43aef10da4ad814a00e6e"
+    },
+    {
+      "path": "docs/implementation/expected_attention_stats_live_protocol.md",
+      "sha256": "3026223f4de7cd8816aa8c02e6fae94249c30a14383da56f576fe61647d4cf32"
+    },
+    {
+      "path": "docs/implementation/deployment_experiment_log.md",
+      "sha256": "69dcdf70bfc148492671376b78dfbf0174cedd5d634c3e4fba64f6b7f2352f30"
+    },
+    {
+      "path": "docs/implementation/expected_attention_stats_deployment_exhaustion_report.md",
+      "sha256": "27f8437138ec4d73c0f48742edaae54400ad523eb6327003dc5d318f1d0428f9"
+    }
+  ]
+}

@@ -227,26 +227,29 @@ A complete 200-prompt Llama-3.1-8B-Instruct/IFEval ratio-0.25 sweep produced
 configuration SHA-256
 `5b9a0938c1669d8b99ff0aef25573496029fddafc35286d3b084c663b1efcfa6`.
 The frozen ExpectedAttentionStats calibration artifact digest was
-`ca7450b7c388fb8612a32ed954ae72fbd7df810bcba7b7e353d6a13c10a21eaf`.
+`ca7450b7c388fb8612a32ed954ae72fbd7df810bcba7f7e353d6a13c10a21eaf`.
 The exported bundle validates against its 46-prompt target split and records
 source hashes for the switch parquet and stream archive.
 
-Two fresh controller candidates used the same five frozen held-out prompts
+Three fresh controller candidates used the same five frozen held-out prompts
 (`ifeval-1069`, `ifeval-1075`, `ifeval-1087`, `ifeval-1107`, and
 `ifeval-1128`), frozen bundle, compressor ratio, and cache-fork measurement.
 The triage evaluator retained every active threshold, used five prompt
 clusters and 2,000 bootstrap resamples, and wrote report-only results. It did
-not select, retune, or promote either candidate.
+not select, retune, or promote any candidate. Interval 1 was the bounding
+regrowth check after interval 32 missed both speed and KV gates.
 
 | Candidate | Quality upper 95% | Major-damage upper 95% | Slowdown upper 95% | Peak-KV lower 95% | Failed gates |
 | --- | ---: | ---: | ---: | ---: | --- |
 | One-shot | 20.0% | 0.0% | 22.0% | -45.3% | quality, slowdown, KV savings |
 | Sustained every 32 tokens | 0.0% | 0.0% | 27.1% | -41.0% | slowdown, KV savings |
+| Sustained every token | 0.0% | 0.0% | 49.4% | -42.6% | slowdown, KV savings |
 
-The one-shot artifact is
-`results/expected_stats_live_triage_one_shot_s0_v2/`; the sustained artifact
-is `results/expected_stats_live_triage_sustained32_s0_v2/`. Both have five
-paired baselines and episodes, complete live manifests, and fidelity reports.
-Neither candidate may advance to N>=30, broader model/task validation, or a
-deployment claim. This rejects the evaluated ratio-0.25 controller modes, not
-ExpectedAttentionStats as a general method.
+The artifacts are in `results/expected_stats_live_triage_one_shot_s0_v2/`,
+`results/expected_stats_live_triage_sustained32_s0_v2/`, and
+`results/expected_stats_live_triage_sustained1_s0_v2/`. Each has five paired
+baselines and episodes, a complete immutable live manifest, and a
+target-specific deployment report. No candidate may advance to N>=30,
+broader model/task validation, or a deployment claim. This rejects the
+evaluated ratio-0.25 controller modes, not ExpectedAttentionStats as a general
+method.
