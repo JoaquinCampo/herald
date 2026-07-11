@@ -120,6 +120,11 @@ def test_rejects_incomplete_hybrid_sweep_before_dataset_build(
     )
     validate_sweep_completeness(tmp_path, config)
 
+    with pytest.raises(ValueError, match="models not in sweep config"):
+        validate_sweep_completeness(tmp_path, config, models=["qwen3"])
+    with pytest.raises(ValueError, match="tasks not in sweep config"):
+        validate_sweep_completeness(tmp_path, config, tasks=["gsm8k"])
+
 
 def test_validates_parquet_against_bound_sweep_config(tmp_path: Path) -> None:
     config = tmp_path / "config.json"

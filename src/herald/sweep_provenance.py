@@ -48,6 +48,16 @@ def validate_sweep_completeness(
     """Reject missing references or expected hybrid cells before training."""
     selected_models = list(models) if models is not None else config.models
     selected_tasks = list(tasks) if tasks is not None else config.tasks
+    unknown_models = set(selected_models) - set(config.models)
+    if unknown_models:
+        raise ValueError(
+            "models not in sweep config: " + ", ".join(sorted(unknown_models))
+        )
+    unknown_tasks = set(selected_tasks) - set(config.tasks)
+    if unknown_tasks:
+        raise ValueError(
+            "tasks not in sweep config: " + ", ".join(sorted(unknown_tasks))
+        )
     errors: list[str] = []
     for model in selected_models:
         for task in selected_tasks:
