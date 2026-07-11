@@ -125,6 +125,44 @@ def test_rejects_incomplete_hybrid_sweep_before_dataset_build(
     with pytest.raises(ValueError, match="tasks not in sweep config"):
         validate_sweep_completeness(tmp_path, config, tasks=["gsm8k"])
 
+    append_hybrid(
+        tmp_path,
+        "llama",
+        "ifeval",
+        "random",
+        0.25,
+        prompt_id="p0",
+        s=0,
+        new_ids=[2, 3, 4],
+        text="hybrid",
+        q=1.0,
+        dq=0.0,
+        features=features,
+    )
+    with pytest.raises(ValueError, match="duplicate hybrid cells"):
+        validate_sweep_completeness(tmp_path, config)
+
+    hybrid_shard = next(
+        (tmp_path / "llama" / "ifeval" / "hybrids").glob("*.jsonl")
+    )
+    hybrid_shard.write_text(hybrid_shard.read_text().splitlines()[0] + "\n")
+    append_hybrid(
+        tmp_path,
+        "llama",
+        "ifeval",
+        "random",
+        0.25,
+        prompt_id="p0",
+        s=99,
+        new_ids=[4],
+        text="hybrid",
+        q=1.0,
+        dq=0.0,
+        features=features,
+    )
+    with pytest.raises(ValueError, match="unexpected hybrid cells"):
+        validate_sweep_completeness(tmp_path, config)
+
     (tmp_path / "llama" / "ifeval" / "references" / "p0.npy").unlink()
     with pytest.raises(ValueError, match="missing reference features"):
         validate_sweep_completeness(tmp_path, config)

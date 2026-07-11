@@ -9,7 +9,7 @@ from typing import Any
 
 from herald.config import Config
 from herald.storage import (
-    hybrid_done,
+    hybrid_record_keys,
     load_reference,
     reference_done,
     safe_id,
@@ -110,7 +110,7 @@ def validate_sweep_completeness(
                 )
             for compressor in config.compressors:
                 for ratio in config.ratios:
-                    actual = hybrid_done(
+                    keys = hybrid_record_keys(
                         results_dir,
                         model,
                         task,
@@ -118,6 +118,7 @@ def validate_sweep_completeness(
                         ratio,
                         require_features=True,
                     )
+                    actual = set(keys)
                     expected = {
                         (prompt_id, switch_s)
                         for prompt_id, switch_positions in (
@@ -125,6 +126,18 @@ def validate_sweep_completeness(
                         )
                         for switch_s in switch_positions
                     }
+                    duplicate_count = len(keys) - len(actual)
+                    if duplicate_count:
+                        errors.append(
+                            f"{model}/{task}/{compressor}/{ratio}: "
+                            f"duplicate hybrid cells ({duplicate_count})"
+                        )
+                    unexpected = actual - expected
+                    if unexpected:
+                        errors.append(
+                            f"{model}/{task}/{compressor}/{ratio}: "
+                            f"unexpected hybrid cells ({len(unexpected)})"
+                        )
                     missing = expected - actual
                     if missing:
                         errors.append(

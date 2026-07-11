@@ -197,20 +197,40 @@ def hybrid_done(
     *,
     require_features: bool = False,
 ) -> set[tuple[str, int]]:
-    """Return (prompt_id, s) pairs already recorded in the shard JSONL.
+    """Return distinct valid (prompt_id, s) pairs in one hybrid shard."""
+    return set(
+        hybrid_record_keys(
+            results_dir,
+            model,
+            task,
+            compressor,
+            ratio,
+            require_features=require_features,
+        )
+    )
 
-    Tolerates a torn/invalid final line by skipping any line that fails
-    json.loads. Returns an empty set when the shard does not exist.
-    When `require_features` is true, a row is done only if its
-    compressed-stream feature file also exists. This lets upgraded
-    sweeps backfill featureless legacy label rows.
+
+def hybrid_record_keys(
+    results_dir: Path,
+    model: str,
+    task: str,
+    compressor: str,
+    ratio: float,
+    *,
+    require_features: bool = False,
+) -> list[tuple[str, int]]:
+    """Return every valid hybrid key, preserving duplicate records.
+
+    Tolerates a torn or invalid final line by skipping it. When
+    ``require_features`` is true, only keys with their canonical feature
+    artifact are returned.
     """
     shard = _hybrid_dir(results_dir, model, task) / _shard_name(
         compressor, ratio
     )
     if not shard.exists():
-        return set()
-    done: set[tuple[str, int]] = set()
+        return []
+    records: list[tuple[str, int]] = []
     with shard.open() as f:
         for line in f:
             line = line.strip()
@@ -238,14 +258,12 @@ def hybrid_done(
                         if stored.is_absolute()
                         else (results_dir / stored)
                     )
-                    if stored_path != fpath:
+                    if stored_path != fpath or not fpath.exists():
                         continue
-                    if not fpath.exists():
-                        continue
-                done.add((prompt_id, s))
+                records.append((prompt_id, s))
             except (json.JSONDecodeError, KeyError, ValueError):
                 pass
-    return done
+    return records
 
 
 def save_hybrid_features(
