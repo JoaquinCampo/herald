@@ -415,3 +415,20 @@ ExpectedAttentionStats scoring, selection, and cache replacement is itself too
 slow in the installed runtime. The non-sample-size speed failure forbids N>=30
 expansion. This closes only the exact always-on ratio-0.25 sustained-32 path;
 it does not retune the frozen ratio or interval.
+
+## 2026-07-11: always-on Knorm ratio-0.25 one-shot triage
+
+The weight-free Knorm press scored key vectors once at prefill and used no
+controller, rollback, sustained decode compression, learned artifact, or
+attention-score calculation. One of five prompts incurred 0.5 quality damage;
+all four deployment gates failed.
+
+| Quality mean, upper 95% | Major-damage mean, upper 95% | Slowdown mean, upper 95% | Peak-KV mean, lower 95% |
+| ---: | ---: | ---: | ---: |
+| 10.0%, 30.0% | 20.0%, 60.0% | 46.9%, 113.4% | -4.0%, -26.7% |
+
+Per-token slowdown was 13.8%. One-shot prefill eviction was overwhelmed by
+decode regrowth on this population, while full prefill scoring and cache
+replacement still imposed material runtime cost. These are non-sample-size
+failures, so no N>=30 expansion or ratio change is allowed. This closes only
+the exact always-on Knorm ratio-0.25 one-shot path.

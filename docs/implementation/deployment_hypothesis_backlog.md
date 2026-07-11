@@ -59,14 +59,19 @@ quality and achieved a 13.6% retained-KV lower bound, but failed speed with a
 compressor scoring and cache replacement—not controller or rollback—are now
 the localized cost.
 
-Rerank a **one-shot always-on Knorm ratio-0.25** branch first. It tests a
-weight-free, cheap geometric compressor family not covered by the closed live
-branches, incurs no sustained decode work, and uses a canonical preregistered
-grid ratio rather than selecting from frozen outcomes. Rank one-shot cache
-merging/reconstruction second, adaptive physical layer/head budgets third,
-and fused paged/FP8 kernels fourth. A Knorm failure will distinguish whether
-cheap one-time selection can satisfy speed before investing in a novel merge
-operator.
+One-shot Knorm ratio 0.25 then failed every gate: quality upper 30%,
+major-damage upper 60%, slowdown upper 113.4%, and retained-KV lower -26.7%.
+Its 13.8% mean per-token slowdown shows that even a nominally cheap one-time
+scorer is not free, while decode regrowth erased prefill-only physical savings.
+
+This is the third consecutive direct compression/runtime stall after the
+segmented preflight and always-on ExpectedAttentionStats, so return to
+Understand again. Rank one-shot cache merging/reconstruction first because it
+can preserve information that eviction discards without repeated decode work;
+rank adaptive physical layer/head budgets second; and fused paged/FP8 kernels
+third behind dependency or kernel scope. Before implementation, inspect the
+installed reconstruction mechanisms and cache API to reject any candidate
+that needs multiple full model passes, fake keys, or non-saving dense storage.
 
 ## Retreat triggers
 
