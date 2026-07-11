@@ -44,6 +44,25 @@ def test_int8_quantization_tracks_scales_and_error() -> None:
     )
 
 
+def test_int8_quantization_supports_bfloat16_scale_arithmetic() -> None:
+    tensor = torch.linspace(
+        -2.0,
+        2.0,
+        256,
+        dtype=torch.bfloat16,
+    ).reshape(1, 2, 1, 128)
+
+    quantized = quantize_int8(tensor, scale_dtype=torch.bfloat16)
+    restored = quantized.dequantize(torch.bfloat16)
+
+    assert quantized.values.dtype == torch.int8
+    assert quantized.scales.dtype == torch.bfloat16
+    assert restored.dtype == torch.bfloat16
+    assert (
+        torch.max(torch.abs(restored - tensor)) <= 2 * quantized.scales.max()
+    )
+
+
 def test_real_generation_uses_int8_storage_and_measures_it(
     lm: LoadedModel, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -65,7 +84,13 @@ def test_real_generation_uses_int8_storage_and_measures_it(
         )
 
     monkeypatch.setattr(G, "build_input_ids", direct_input_ids)
-    run, cache = generate_int8_cache(lm, record, 8, residual_length=4)
+    run, cache = generate_int8_cache(
+        lm,
+        record,
+        8,
+        residual_length=4,
+        scale_dtype=torch.bfloat16,
+    )
 
     assert run.gen_ids
     assert run.peak_kv_cache_bytes > 0
@@ -79,6 +104,10 @@ def test_real_generation_uses_int8_storage_and_measures_it(
     )
     assert all(
         layer.quantized_values.values.dtype == torch.int8 for layer in layers
+    )
+    assert all(
+        layer.quantized_keys.scales.dtype == torch.bfloat16
+        for layer in layers
     )
     assert cache.retained_peak_nbytes() >= run.peak_kv_cache_bytes
     assert isinstance(cache, Int8QuantizedCache)

@@ -322,6 +322,7 @@ def generate_int8_cache(
     max_new_tokens: int,
     *,
     residual_length: int = 128,
+    scale_dtype: torch.dtype = torch.float32,
 ) -> tuple[BaselineRun, Int8QuantizedCache]:
     """Generate through the dependency-free int8 cache runtime."""
     prompt = build_input_ids(lm, record)
@@ -331,6 +332,7 @@ def generate_int8_cache(
     cache = Int8QuantizedCache(
         lm.model.config,
         residual_length=residual_length,
+        scale_dtype=scale_dtype,
     )
     with torch.no_grad():
         out = lm.model.generate(  # type: ignore[operator]

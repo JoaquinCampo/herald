@@ -9,6 +9,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+import torch
+
 sys.path.insert(0, "src")
 
 from herald.config import MODELS, TASKS  # noqa: E402
@@ -49,6 +51,7 @@ def parse_args() -> argparse.Namespace:
         "--mechanism",
         choices=(
             "int8",
+            "int8_bf16",
             "streaming_low_ratio",
             "snapkv",
             "knorm",
@@ -96,8 +99,12 @@ def records_by_key(path: Path, key: str) -> dict[str, dict[str, Any]]:
 
 def main() -> None:
     args = parse_args()
-    if args.mechanism == "int8":
-        compressor = COMPRESSOR
+    if args.mechanism in {"int8", "int8_bf16"}:
+        compressor = (
+            "int8_cache_bfloat16_scale"
+            if args.mechanism == "int8_bf16"
+            else COMPRESSOR
+        )
         ratio = RATIO
         sustain_interval = None
     elif args.mechanism == "streaming_low_ratio":
@@ -142,9 +149,14 @@ def main() -> None:
             "ratio": ratio,
             "sustain_interval": sustain_interval,
             "mechanism": args.mechanism,
-            "nbits": 8 if args.mechanism == "int8" else None,
+            "nbits": (8 if args.mechanism in {"int8", "int8_bf16"} else None),
             "residual_length": (
-                RESIDUAL_LENGTH if args.mechanism == "int8" else None
+                RESIDUAL_LENGTH
+                if args.mechanism in {"int8", "int8_bf16"}
+                else None
+            ),
+            "scale_dtype": (
+                "bfloat16" if args.mechanism == "int8_bf16" else None
             ),
             "targets": str(args.targets),
             "expected_attention_stats": (
@@ -223,12 +235,17 @@ def main() -> None:
         if key in episodes:
             continue
         started = time.perf_counter()
-        if args.mechanism == "int8":
+        if args.mechanism in {"int8", "int8_bf16"}:
             candidate, cache = generate_int8_cache(
                 model,
                 record,
                 max_new_tokens,
                 residual_length=RESIDUAL_LENGTH,
+                scale_dtype=(
+                    torch.bfloat16
+                    if args.mechanism == "int8_bf16"
+                    else torch.float32
+                ),
             )
             final_kv_cache_bytes = cache.retained_peak_nbytes()
         elif args.mechanism == "streaming_low_ratio":

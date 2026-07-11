@@ -19,16 +19,25 @@ class Int8Tensor:
         return _unique_storage_nbytes((self.values, self.scales))
 
     def dequantize(self, dtype: torch.dtype) -> torch.Tensor:
-        return (self.values.to(torch.float32) * self.scales).to(dtype)
+        return (self.values.to(self.scales.dtype) * self.scales).to(dtype)
 
 
-def quantize_int8(tensor: torch.Tensor) -> Int8Tensor:
+def quantize_int8(
+    tensor: torch.Tensor,
+    *,
+    scale_dtype: torch.dtype = torch.float32,
+) -> Int8Tensor:
     """Quantize independently over each final-dimension KV vector."""
     if not tensor.is_floating_point():
         raise TypeError("int8 KV quantization requires a floating tensor")
-    maxima = tensor.abs().amax(dim=-1, keepdim=True).to(torch.float32)
-    scales = torch.clamp(maxima / 127.0, min=torch.finfo(torch.float32).tiny)
-    values = torch.round(tensor.to(torch.float32) / scales).clamp(-127, 127)
+    if not scale_dtype.is_floating_point:
+        raise TypeError("int8 KV scales require a floating dtype")
+    maxima = tensor.abs().amax(dim=-1, keepdim=True).to(scale_dtype)
+    scales = torch.clamp(
+        maxima / 127.0,
+        min=torch.finfo(scale_dtype).tiny,
+    )
+    values = torch.round(tensor.to(scale_dtype) / scales).clamp(-127, 127)
     return Int8Tensor(values.to(torch.int8), scales)
 
 
@@ -47,9 +56,16 @@ def _unique_storage_nbytes(tensors: tuple[torch.Tensor, ...]) -> int:
 class Int8QuantizedLayer(QuantizedLayer):
     """QuantizedLayer backend using only native PyTorch int8 tensors."""
 
-    def __init__(self, residual_length: int = 128) -> None:
+    def __init__(
+        self,
+        residual_length: int = 128,
+        *,
+        scale_dtype: torch.dtype = torch.float32,
+    ) -> None:
         if residual_length <= 0:
             raise ValueError("residual length must be positive")
+        if not scale_dtype.is_floating_point:
+            raise TypeError("scale dtype must be floating point")
         super().__init__(
             nbits=8,
             axis_key=-1,
@@ -58,6 +74,7 @@ class Int8QuantizedLayer(QuantizedLayer):
             residual_length=residual_length,
         )
         self._peak_retained_nbytes = 0
+        self.scale_dtype = scale_dtype
 
     @property
     def quantized_keys(self) -> Int8Tensor:
@@ -88,7 +105,7 @@ class Int8QuantizedLayer(QuantizedLayer):
 
     def _quantize(self, tensor: torch.Tensor, axis: int) -> Int8Tensor:
         del axis
-        quantized = quantize_int8(tensor)
+        quantized = quantize_int8(tensor, scale_dtype=self.scale_dtype)
         existing = self.retained_nbytes()
         self._peak_retained_nbytes = max(
             self._peak_retained_nbytes,
@@ -116,10 +133,19 @@ class Int8QuantizedLayer(QuantizedLayer):
 class Int8QuantizedCache(Cache):
     """Per-layer dependency-free int8 cache for decoder-only models."""
 
-    def __init__(self, config: Any, *, residual_length: int = 128) -> None:
+    def __init__(
+        self,
+        config: Any,
+        *,
+        residual_length: int = 128,
+        scale_dtype: torch.dtype = torch.float32,
+    ) -> None:
         text_config = config.get_text_config(decoder=True)
         layers: list[CacheLayerMixin] = [
-            Int8QuantizedLayer(residual_length=residual_length)
+            Int8QuantizedLayer(
+                residual_length=residual_length,
+                scale_dtype=scale_dtype,
+            )
             for _ in range(text_config.num_hidden_layers)
         ]
         super().__init__(layers=layers)
