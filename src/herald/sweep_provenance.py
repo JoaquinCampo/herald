@@ -93,6 +93,21 @@ def validate_sweep_completeness(
                     f"references, found {len(prompt_ids)}"
                 )
                 continue
+            reference_dir = results_dir / model / task / "references"
+            expected_reference_names = {
+                f"{safe_id(prompt_id)}.json" for prompt_id in prompt_ids
+            }
+            actual_reference_names = {
+                path.name for path in reference_dir.glob("*.json")
+            }
+            unexpected_references = (
+                actual_reference_names - expected_reference_names
+            )
+            if unexpected_references:
+                errors.append(
+                    f"{model}/{task}: unexpected reference artifacts "
+                    f"({len(unexpected_references)})"
+                )
             expected_by_prompt: dict[str, set[int]] = {}
             for prompt_id in prompt_ids:
                 feature_path = (

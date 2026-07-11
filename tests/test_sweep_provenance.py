@@ -174,6 +174,13 @@ def test_rejects_incomplete_hybrid_sweep_before_dataset_build(
     with pytest.raises(ValueError, match="unexpected hybrid shards"):
         validate_sweep_completeness(tmp_path, config)
 
+    stale_reference = (
+        tmp_path / "llama" / "ifeval" / "references" / "stale.json"
+    )
+    stale_reference.write_text("{}\n")
+    with pytest.raises(ValueError, match="unexpected reference artifacts"):
+        validate_sweep_completeness(tmp_path, config)
+
     (tmp_path / "llama" / "ifeval" / "references" / "p0.npy").unlink()
     with pytest.raises(ValueError, match="missing reference features"):
         validate_sweep_completeness(tmp_path, config)
