@@ -203,3 +203,19 @@ prompt groups, with the alarm, threshold, attempt grid, and deployment
 contract unchanged. It would still need to clear the five-prompt triage
 before any N>=30 paired evaluation. This branch is otherwise exhausted as
 a standalone policy lever.
+
+## 2026-07-10: StreamingLLM cache-fork branch exhaustion
+
+The direct cache-fork StreamingLLM branch is closed in
+`deployment_exhaustion_report.md`. A code-level preflight rejected
+storage-reusing fork implementations: exact rollback requires the full
+reference cache throughout the grace decision, while the standard cache API
+requires StreamingLLM's discontiguous retained tokens to be materialized as
+a contiguous candidate tensor. In-place mutation instead needs an
+order-equivalent rollback shadow buffer. Neither changes the exact
+reference-plus-candidate peak-KV accounting.
+
+A segmented-cache Llama attention implementation would be a distinct,
+preregistered model-runtime project, not a legal configuration variant. The
+report states the resulting scope limit explicitly and links the
+hash-verified raw artifacts through `deployment_evidence_manifest.json`.
