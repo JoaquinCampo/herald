@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-07-11",
+  "status": "rejected_streaming_llm_always_on_ratio_0_05_sustained_32",
+  "rollback_tag": "codex/herald-goal-start-0949baa",
+  "scope": {
+    "model": "Llama-3.1-8B-Instruct",
+    "task": "IFEval",
+    "prompts": "five frozen held-out evaluation-only triage prompts",
+    "compressor": "streaming_llm_always_on",
+    "ratio": 0.05,
+    "sustain_interval": 32,
+    "controller": "none; direct prefill and sustained decode pruning",
+    "contract": "quality upper <= 1%, major-damage upper <= 1%, slowdown upper <= 5%, positive isolated peak-KV lower bound"
+  },
+  "verdict": {
+    "n_pairs": 5,
+    "quality_upper": 0.0,
+    "major_damage_upper": 0.0,
+    "slowdown_upper": 0.9866880484273295,
+    "peak_kv_savings_lower": -0.15631205673758872,
+    "failed_gates": ["end_to_end_slowdown", "positive_kv_savings"],
+    "claim_limit": "closes only always-on ratio-0.05 sustained-32; no N>=30 expansion"
+  },
+  "commands": [
+    "PYTHONPATH=. HF_HUB_OFFLINE=1 uv run --no-sync python scripts/run_int8_cache.py --mechanism streaming_low_ratio --out-dir results/streaming_always_on_r005_s32_v1 --limit-prompts 5 --device cuda --dtype bfloat16",
+    "PYTHONPATH=. uv run --no-sync python scripts/evaluate_deployment.py --live-dir results/streaming_always_on_r005_s32_v1 --target-compressor streaming_llm_always_on --target-ratio 0.05 --target-sustain-interval 32 --min-pairs 5 --bootstrap-resamples 2000 --report-only",
+    "uv run python scripts/verify_deployment_evidence.py --manifest docs/implementation/low_ratio_sustained_deployment_evidence_manifest.json"
+  ],
+  "artifacts": [
+    {"path": "results/streaming_always_on_r005_s32_v1/baseline.jsonl", "sha256": "781b158b91f58c244a5f9f47039bf5bc304a11bc1694ab626113cba8899adf02"},
+    {"path": "results/streaming_always_on_r005_s32_v1/episodes.jsonl", "sha256": "72177f1c5d036892a223e1194fd24bfe541c9d00d5a7d05f1b1138b14dfaef4c"},
+    {"path": "results/streaming_always_on_r005_s32_v1/run_manifest.json", "sha256": "6260b0bc50d81adc17a28110f9b50272c5ff17c36ce23b0b8d098803d0577b95"},
+    {"path": "results/streaming_always_on_r005_s32_v1/deployment_report.json", "sha256": "16891666959c7981f1af8eb647832b588f135614a762029bf1a129aed3fa3a8b"},
+    {"path": "results/streaming_always_on_r005_s32_v1/run.log", "sha256": "86fa93883b8671bbb5bf7c5bf076efaaf9d4972aa9056f81622461fbe2c1ab9c"}
+  ],
+  "repository_revision": "5da593900d224ef8c0c8cbed74d92af4f9ae9980",
+  "repository_artifacts": [
+    {"path": "src/herald/generate.py", "sha256": "e9808e0c2b51e1efcfbd3d6c8cc71cd2f53cef6360919b837657fef2b8c3198f"},
+    {"path": "src/herald/sustained_press.py", "sha256": "f5a99f60e8a05742c7845593109d1fffe4aa464232843bd46e51625af5b0a85e"},
+    {"path": "src/herald/kv_metrics.py", "sha256": "c2b6d8852a07c5ad1d3b7e366903da329e7a0c8715d9244a8d4484a6c1cbca74"},
+    {"path": "scripts/run_int8_cache.py", "sha256": "dede051d55ae41ab77c679d89f062b7d9644ed986250a6ee110395ab253dff6d"},
+    {"path": "tests/test_always_on_cache.py", "sha256": "c64043cce8c3a48efb279b850595e734d88e8824202bab51cf5e470e69b8ac1a"},
+    {"path": "docs/implementation/low_ratio_sustained_preregistration.md", "sha256": "ccd6f7caec39ab5cd01ef30f937ba956a17d1a2b29bca5ffda617316f62f06cf"},
+    {"path": "docs/implementation/deployment_experiment_log.md", "sha256": "6fdf526a532e23148cf6019d2129ce177d7d41a38429c87fd633d8d0c7e41c58"},
+    {"path": "docs/implementation/deployment_hypothesis_backlog.md", "sha256": "630643e26b29473d55affd8a827ac5ae87b957f8ec5875103b960fdcc3bad4e2"}
+  ]
+}
