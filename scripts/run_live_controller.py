@@ -69,6 +69,7 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument("--bundle-dir", default="results/predictor/alarm_bundle")
     p.add_argument("--gate-dir", default=None)
+    p.add_argument("--precommit-selector-dir", type=Path, default=None)
     p.add_argument("--out-dir", default="results/live_controller")
     p.add_argument(
         "--references-dir",
@@ -230,6 +231,8 @@ def main() -> None:
     max_new_tokens = TASKS["ifeval"].max_new_tokens
     bundle_dir = Path(args.bundle_dir)
     gate_dir = Path(args.gate_dir) if args.gate_dir is not None else None
+    if gate_dir is not None and args.precommit_selector_dir is not None:
+        raise ValueError("--gate-dir and --precommit-selector-dir conflict")
 
     bundles = {c: AlarmBundle.load(bundle_dir / c) for c in compressors}
     gates = (
@@ -237,6 +240,17 @@ def main() -> None:
         if gate_dir is not None
         else None
     )
+    precommit_selector = (
+        GateBundle.load(args.precommit_selector_dir)
+        if args.precommit_selector_dir is not None
+        else None
+    )
+    if precommit_selector is not None and compressors != [
+        precommit_selector.compressor
+    ]:
+        raise ValueError(
+            "precommit selector requires its single bound compressor"
+        )
     targets = _read_json_object(bundle_dir / "fidelity_targets.json")
     validate_bundle_target_binding(
         {compressor: bundle.meta for compressor, bundle in bundles.items()},
@@ -284,6 +298,16 @@ def main() -> None:
             "gate_dir": None if gate_dir is None else str(gate_dir),
             "gate_sha256": (
                 None if gate_dir is None else directory_sha256(gate_dir)
+            ),
+            "precommit_selector_dir": (
+                None
+                if args.precommit_selector_dir is None
+                else str(args.precommit_selector_dir)
+            ),
+            "precommit_selector_sha256": (
+                None
+                if args.precommit_selector_dir is None
+                else directory_sha256(args.precommit_selector_dir)
             ),
             "references_dir": str(ref_dir),
             "model_name_or_path": args.model_id or MODELS["llama"],
@@ -400,6 +424,7 @@ def main() -> None:
                     gate=None if gates is None else gates[compressor],
                     sustain_interval=args.sustain_interval,
                     rollback_mode=args.rollback_mode,
+                    precommit_selector=precommit_selector,
                 )
                 q_live = score("ifeval", ep.text, record.gold)
                 q_ref_rec = (
@@ -431,6 +456,7 @@ def main() -> None:
                     "ratio": ratio,
                     "sustain_interval": args.sustain_interval,
                     "rollback_mode": args.rollback_mode,
+                    "precommit_selector": precommit_selector is not None,
                     "candidate_id": current_candidate_id,
                     "run_id": run_id,
                     "kv_measurement_scope": END_TO_END_RETAINED_KV_CACHE,

@@ -760,3 +760,43 @@ def test_host_rollback_commit_matches_device_fork_with_lower_kv_peak(
     assert host_rollback.text == device_fork.text
     assert host_rollback.peak_kv_cache_bytes < device_fork.peak_kv_cache_bytes
     assert host_rollback.peak_host_rollback_bytes > 0
+
+
+def test_precommit_selector_compresses_once_without_rollback(
+    lm: LoadedModel,
+) -> None:
+    record = _rec(LONG, "p-precommit")
+    expected = LC.run_episode(
+        lm,
+        record,
+        lambda: get_press("streaming_llm", 0.5),
+        ScriptedAlarm([True]),
+        compressor="streaming_llm",
+        ratio=0.5,
+        max_new_tokens=M,
+        stride=STRIDE,
+        sustain_interval=4,
+    )
+    selector = ScriptedGate([True])
+    selected = LC.run_episode(
+        lm,
+        record,
+        lambda: get_press("streaming_llm", 0.5),
+        ScriptedAlarm([]),
+        compressor="streaming_llm",
+        ratio=0.5,
+        max_new_tokens=M,
+        stride=STRIDE,
+        sustain_interval=4,
+        precommit_selector=selector,
+    )
+
+    assert selected.commit_s == expected.commit_s == 0
+    assert selected.new_ids == expected.new_ids
+    assert selected.text == expected.text
+    assert len(selected.attempts) == 1
+    assert selected.attempts[0].block_len == 0
+    assert selected.attempts[0].host_rollback_bytes == 0
+    assert selected.peak_host_rollback_bytes == 0
+    assert selected.peak_kv_cache_bytes < expected.peak_kv_cache_bytes
+    assert len(selector.rows) == 1

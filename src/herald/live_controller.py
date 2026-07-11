@@ -499,6 +499,7 @@ def run_episode(
     gate: GateLike | None = None,
     sustain_interval: int | None = None,
     rollback_mode: str = "device_fork",
+    precommit_selector: GateLike | None = None,
 ) -> LiveEpisode:
     """Run one live grace-window episode for one (prompt, ratio).
 
@@ -507,6 +508,8 @@ def run_episode(
     cache during an attempt, or the committed continuation cache. It excludes
     allocator accounting and is therefore the paired deployment memory metric.
     """
+    if gate is not None and precommit_selector is not None:
+        raise ValueError("gate and precommit selector are mutually exclusive")
     device = next(lm.model.parameters()).device.type
     if device == "cuda":
         torch.cuda.reset_peak_memory_stats()
@@ -582,6 +585,87 @@ def run_episode(
                 )
                 s += stride
                 continue
+
+        if precommit_selector is not None:
+            t_selector = time.perf_counter()
+            selector_row = assemble_gate_row_from_state(
+                state=ref_state,
+                ratio=ratio,
+            )
+            selector_score = precommit_selector.score(selector_row)
+            selector_wall = time.perf_counter() - t_selector
+            if not precommit_selector.attempts(selector_score):
+                episode.skips.append(
+                    SkipRecord(
+                        s=s,
+                        gate_score=selector_score,
+                        wall_s=selector_wall,
+                    )
+                )
+                s += stride
+                continue
+
+            _sync(device)
+            t0 = time.perf_counter()
+            press = press_factory()
+            if not isinstance(
+                press,
+                StreamingLLMPress | KnormPress | ExpectedAttentionStatsPress,
+            ):
+                kind = type(press).__name__
+                raise TypeError(f"precommit does not support {kind}")
+            held_kv_bytes = kv_cache_nbytes(cache)
+            compression_peak = _compress_score_cache_into(
+                lm.model, cache, cache, press
+            )
+            first_ids = [ref_ids[s]]
+            sustained_press = (
+                SustainedRatioPress(
+                    base_press=press,
+                    compression_ratio=ratio,
+                    interval=sustain_interval,
+                )
+                if sustain_interval is not None
+                else None
+            )
+            continued, cache, sustained_peak = _continue_attempt(
+                lm,
+                prompt_ids,
+                ref_ids[:s],
+                first_ids,
+                cache,
+                max_new_tokens - s - 1,
+                sustained_press,
+            )
+            new_ids = first_ids + continued
+            retained_peak = max(
+                held_kv_bytes,
+                compression_peak,
+                kv_cache_nbytes(cache),
+                sustained_peak,
+            )
+            _sync(device)
+            wall = time.perf_counter() - t0 + selector_wall
+            episode.peak_kv_cache_bytes = max(
+                episode.peak_kv_cache_bytes,
+                retained_peak,
+            )
+            episode.attempts.append(
+                AttemptRecord(
+                    s=s,
+                    score=selector_score,
+                    committed=True,
+                    n_new_tokens=len(new_ids),
+                    block_len=0,
+                    wall_s=wall,
+                    peak_kv_cache_bytes=retained_peak,
+                    recomputed_prefill_tokens=0,
+                    gate_score=selector_score,
+                )
+            )
+            episode.commit_s = s
+            episode.new_ids = new_ids
+            break
 
         _sync(device)
         t0 = time.perf_counter()
