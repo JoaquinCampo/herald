@@ -52,6 +52,48 @@ class PeakTrackingStreamingLLMPress(StreamingLLMPress):  # type: ignore[misc]
 
 
 @dataclass
+class PrefillCachePeakObserver:
+    """Track retained prefill cache before a later-registered press."""
+
+    peak_kv_cache_bytes: int = field(init=False, default=0)
+
+    def forward_hook(
+        self,
+        module: Any,
+        input: list[Any],
+        kwargs: dict[str, Any],
+        output: list[Any],
+    ) -> None:
+        del module, input, output
+        hidden_states = kwargs["hidden_states"]
+        if kwargs["cache_position"][-1] <= hidden_states.shape[1]:
+            self.peak_kv_cache_bytes = max(
+                self.peak_kv_cache_bytes,
+                kv_cache_nbytes(kwargs["past_key_values"]),
+            )
+
+    @contextmanager
+    def __call__(self, model: Any) -> Generator[None]:
+        language_model = (
+            model.model.language_model
+            if hasattr(model.model, "language_model")
+            else model.model
+        )
+        hooks = [
+            layer.self_attn.register_forward_hook(
+                self.forward_hook,
+                with_kwargs=True,
+            )
+            for layer in language_model.layers
+        ]
+        try:
+            yield
+        finally:
+            for hook in hooks:
+                hook.remove()
+
+
+@dataclass
 class SustainedRatioPress(BasePress):  # type: ignore[misc]
     """Periodically prune decode growth to a fraction of logical length."""
 

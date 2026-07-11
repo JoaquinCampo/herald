@@ -19,11 +19,13 @@ from herald.deployment_evidence import (  # noqa: E402
     verify_live_run,
 )
 from herald.generate import (  # noqa: E402
+    generate_always_on_press,
     generate_always_on_streaming,
     generate_baseline,
     generate_int8_cache,
     load_model,
 )
+from herald.presses import get_press  # noqa: E402
 from herald.scoring import score  # noqa: E402
 from herald.tasks import PromptRecord, load_prompts  # noqa: E402
 
@@ -43,7 +45,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--mechanism",
-        choices=("int8", "streaming_low_ratio"),
+        choices=("int8", "streaming_low_ratio", "snapkv"),
         default="int8",
     )
     parser.add_argument("--out-dir", type=Path, required=True)
@@ -83,10 +85,14 @@ def main() -> None:
         compressor = COMPRESSOR
         ratio = RATIO
         sustain_interval = None
-    else:
+    elif args.mechanism == "streaming_low_ratio":
         compressor = "streaming_llm_always_on"
         ratio = 0.05
         sustain_interval = 32
+    else:
+        compressor = "snapkv_always_on"
+        ratio = 0.25
+        sustain_interval = None
     targets = json.loads(args.targets.read_text())
     prompt_ids = sorted(
         targets["compressors"]["expected_attention_stats"]["test_prompt_ids"]
@@ -189,13 +195,21 @@ def main() -> None:
                 residual_length=RESIDUAL_LENGTH,
             )
             final_kv_cache_bytes = cache.retained_peak_nbytes()
-        else:
+        elif args.mechanism == "streaming_low_ratio":
             candidate = generate_always_on_streaming(
                 model,
                 record,
                 max_new_tokens,
                 ratio=ratio,
                 sustain_interval=32,
+            )
+            final_kv_cache_bytes = candidate.peak_kv_cache_bytes
+        else:
+            candidate = generate_always_on_press(
+                model,
+                record,
+                max_new_tokens,
+                press=get_press("snapkv", ratio),
             )
             final_kv_cache_bytes = candidate.peak_kv_cache_bytes
         total_wall = time.perf_counter() - started

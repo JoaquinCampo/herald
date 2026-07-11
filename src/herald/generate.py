@@ -39,6 +39,7 @@ from herald.int8_cache import Int8QuantizedCache
 from herald.kv_metrics import kv_cache_nbytes
 from herald.sustained_press import (
     PeakTrackingStreamingLLMPress,
+    PrefillCachePeakObserver,
     SustainedRatioPress,
 )
 from herald.tasks import PromptRecord
@@ -351,6 +352,42 @@ def generate_int8_cache(
         peak_kv_cache_bytes=cache.retained_peak_nbytes(),
     )
     return run, cache
+
+
+def generate_always_on_press(
+    lm: LoadedModel,
+    record: PromptRecord,
+    max_new_tokens: int,
+    *,
+    press: BasePress,
+) -> BaselineRun:
+    """Generate through one prefill-only press with retained-peak tracking."""
+    prompt = build_input_ids(lm, record)
+    device = next(lm.model.parameters()).device.type
+    input_ids, attn = _left_pad([prompt], lm.pad_id, device)
+    prompt_len = int(input_ids.shape[1])
+    observer = PrefillCachePeakObserver()
+    with torch.no_grad(), observer(lm.model), press(lm.model):
+        out = lm.model.generate(  # type: ignore[operator]
+            input_ids=input_ids,
+            attention_mask=attn,
+            generation_config=lm.gen_config,
+            max_new_tokens=max_new_tokens,
+            return_dict_in_generate=True,
+        )
+    cache = getattr(out, "past_key_values", None)
+    if cache is None:
+        raise RuntimeError("always-on press did not return a KV cache")
+    ids = _trim_at_eos(out.sequences[0, prompt_len:].tolist(), lm.eos_ids)
+    return BaselineRun(
+        prompt_id=record.prompt_id,
+        gen_ids=ids,
+        text=lm.tokenizer.decode(ids, skip_special_tokens=True),
+        peak_kv_cache_bytes=max(
+            observer.peak_kv_cache_bytes,
+            kv_cache_nbytes(cache),
+        ),
+    )
 
 
 def generate_always_on_streaming(
