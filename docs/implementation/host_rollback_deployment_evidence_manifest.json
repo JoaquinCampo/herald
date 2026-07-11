@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-07-11",
+  "status": "rejected_expected_attention_stats_host_rollback_ratio_0_25_sustained_32",
+  "rollback_tag": "codex/herald-goal-start-0949baa",
+  "scope": {
+    "model": "Llama-3.1-8B-Instruct",
+    "task": "IFEval",
+    "prompts": "five frozen held-out evaluation-only triage prompts",
+    "compressor": "expected_attention_stats",
+    "ratios": [0.25],
+    "sustain_intervals": [32],
+    "controller": "in-place GPU compression with exact synchronous host rollback",
+    "contract": "quality upper <= 1%, major-damage upper <= 1%, slowdown upper <= 5%, positive isolated peak-KV lower bound"
+  },
+  "verdict": {
+    "n_pairs": 5,
+    "quality_upper": 0.0,
+    "major_damage_upper": 0.0,
+    "slowdown_upper": 0.2934495166766975,
+    "peak_kv_savings_lower": 0.11489973536733869,
+    "failed_gates": ["end_to_end_slowdown"],
+    "claim_limit": "closes only the synchronous exact host-rollback implementation; no N>=30 expansion"
+  },
+  "commands": [
+    "PYTHONPATH=. HF_HUB_OFFLINE=1 uv run --no-sync python scripts/run_live_controller.py --bundle-dir results/expected_stats_alarm_bundle_full_s0_v2 --out-dir results/expected_stats_host_rollback_sustained32_s0_v1 --references-dir results/expected_stats_sweep_full_s0_v2/llama/ifeval/references --compressors expected_attention_stats --ratios 0.25 --expected-attention-stats results/calibration/expected_attention_stats_ifeval_s0_v2 --limit-prompts 5 --device cuda --dtype bfloat16 --stride 16 --sustain-interval 32 --rollback-mode host",
+    "PYTHONPATH=. uv run --no-sync python scripts/evaluate_deployment.py --live-dir results/expected_stats_host_rollback_sustained32_s0_v1 --target-compressor expected_attention_stats --target-ratio 0.25 --target-sustain-interval 32 --min-pairs 5 --bootstrap-resamples 2000 --report-only",
+    "uv run python scripts/verify_deployment_evidence.py --manifest docs/implementation/host_rollback_deployment_evidence_manifest.json"
+  ],
+  "artifacts": [
+    {"path": "results/expected_stats_host_rollback_sustained32_s0_v1/baseline.jsonl", "sha256": "67cfacc43f0130e3c762ccef8a2bec712fe02dac2d65d9ed524d294f1a3c000f"},
+    {"path": "results/expected_stats_host_rollback_sustained32_s0_v1/episodes.jsonl", "sha256": "8ac8a8ec8055a69df28cb99e1d13ed1b6732d6e1b86b9805ff71696a870e1885"},
+    {"path": "results/expected_stats_host_rollback_sustained32_s0_v1/run_manifest.json", "sha256": "f6bf8d32d86c2f39e5a39976b8484d80b7e3564afe14a2a863929f7b748fc88b"},
+    {"path": "results/expected_stats_host_rollback_sustained32_s0_v1/deployment_report.json", "sha256": "507df9b41c12c402fec4f9c92b36c425d75a0b09603ec1b98821e90ef9a30766"},
+    {"path": "results/expected_stats_host_rollback_sustained32_s0_v1/run.log", "sha256": "12eb197d0849e729815dc719223b85aa491e0150329dcf3624df85c6e1ccae45"}
+  ],
+  "repository_revision": "5a1d40478a203e9461740758586389fb82d92635",
+  "repository_artifacts": [
+    {"path": "src/herald/live_controller.py", "sha256": "dcea2e1ac079b6fa30faccf867accb59db4434c6be24b07cf45a04ead48b83a9"},
+    {"path": "scripts/run_live_controller.py", "sha256": "d4433c2f1873a30b771fb7d9a5cb81d6d430a6f73e90ef35e6cebc4c0368fd8c"},
+    {"path": "tests/test_live_controller.py", "sha256": "a48f4fa260248871188d349b7cc1c2e9112f87ec20892805c22a02c23feffb7e"},
+    {"path": "docs/implementation/host_rollback_preregistration.md", "sha256": "33d953660903ecc9926d1cfbaa53e6aa93a138ebd074a43b25970233917ba91c"},
+    {"path": "docs/implementation/deployment_experiment_log.md", "sha256": "c6058d58a96eab81519621bdf4e3914d6a6292b4c9b8ce8df20009c3a167b268"},
+    {"path": "docs/implementation/deployment_hypothesis_backlog.md", "sha256": "db991106f25baa19b411502576a8670b7ee782acfa332e8a9244648e7cc29631"}
+  ]
+}
