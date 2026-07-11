@@ -694,3 +694,69 @@ def test_attempt_budget_matches_sweep_cap(lm: LoadedModel) -> None:
     ep = _run(lm, alarm)
     assert ep.commit_s == STRIDE
     assert len(ep.new_ids) <= M - STRIDE
+
+
+def test_host_rollback_restores_rejected_cache_on_real_episode(
+    lm: LoadedModel,
+) -> None:
+    record = _rec(LONG, "p-host-rollback-reject")
+    [reference] = generate_reference(lm, [record], M)
+    n_grid = len(range(0, len(reference.gen_ids), STRIDE))
+
+    episode = LC.run_episode(
+        lm,
+        record,
+        lambda: get_press("streaming_llm", 0.5),
+        ScriptedAlarm([False] * n_grid),
+        compressor="streaming_llm",
+        ratio=0.5,
+        max_new_tokens=M,
+        stride=STRIDE,
+        rollback_mode="host",
+    )
+
+    assert episode.commit_s is None
+    assert episode.ref_ids == reference.gen_ids
+    assert episode.text == reference.text
+    assert episode.peak_host_rollback_bytes > 0
+    assert all(
+        attempt.host_rollback_bytes > 0 for attempt in episode.attempts
+    )
+    assert all(
+        attempt.recomputed_prefill_tokens == 0 for attempt in episode.attempts
+    )
+
+
+def test_host_rollback_commit_matches_device_fork_with_lower_kv_peak(
+    lm: LoadedModel,
+) -> None:
+    record = _rec(LONG, "p-host-rollback-commit")
+    device_fork = LC.run_episode(
+        lm,
+        record,
+        lambda: get_press("streaming_llm", 0.5),
+        ScriptedAlarm([True]),
+        compressor="streaming_llm",
+        ratio=0.5,
+        max_new_tokens=M,
+        stride=STRIDE,
+        sustain_interval=4,
+    )
+    host_rollback = LC.run_episode(
+        lm,
+        record,
+        lambda: get_press("streaming_llm", 0.5),
+        ScriptedAlarm([True]),
+        compressor="streaming_llm",
+        ratio=0.5,
+        max_new_tokens=M,
+        stride=STRIDE,
+        sustain_interval=4,
+        rollback_mode="host",
+    )
+
+    assert host_rollback.commit_s == device_fork.commit_s == 0
+    assert host_rollback.new_ids == device_fork.new_ids
+    assert host_rollback.text == device_fork.text
+    assert host_rollback.peak_kv_cache_bytes < device_fork.peak_kv_cache_bytes
+    assert host_rollback.peak_host_rollback_bytes > 0

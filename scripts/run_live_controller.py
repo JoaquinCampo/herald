@@ -91,6 +91,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--dtype", default="bfloat16")
     p.add_argument("--stride", type=int, default=16)
     p.add_argument("--sustain-interval", type=int, default=None)
+    p.add_argument(
+        "--rollback-mode",
+        choices=("device_fork", "host"),
+        default="device_fork",
+    )
     p.add_argument("--prompts-per-task", type=int, default=200)
     p.add_argument("--resume", action="store_true")
     return p.parse_args()
@@ -286,6 +291,7 @@ def main() -> None:
             "device": args.device,
             "stride": args.stride,
             "sustain_interval": args.sustain_interval,
+            "rollback_mode": args.rollback_mode,
             "expected_attention_stats_sha256": statistics_digest,
         },
         resume=args.resume,
@@ -393,6 +399,7 @@ def main() -> None:
                     stride=args.stride,
                     gate=None if gates is None else gates[compressor],
                     sustain_interval=args.sustain_interval,
+                    rollback_mode=args.rollback_mode,
                 )
                 q_live = score("ifeval", ep.text, record.gold)
                 q_ref_rec = (
@@ -423,6 +430,7 @@ def main() -> None:
                     "compressor": compressor,
                     "ratio": ratio,
                     "sustain_interval": args.sustain_interval,
+                    "rollback_mode": args.rollback_mode,
                     "candidate_id": current_candidate_id,
                     "run_id": run_id,
                     "kv_measurement_scope": END_TO_END_RETAINED_KV_CACHE,
@@ -444,6 +452,7 @@ def main() -> None:
                                 a.recomputed_prefill_tokens
                             ),
                             "gate_score": a.gate_score,
+                            "host_rollback_bytes": a.host_rollback_bytes,
                         }
                         for a in ep.attempts
                     ],
@@ -475,6 +484,7 @@ def main() -> None:
                     "total_wall_s": ep.total_wall_s,
                     "peak_mem_bytes": ep.peak_mem_bytes,
                     "peak_kv_cache_bytes": ep.peak_kv_cache_bytes,
+                    "peak_host_rollback_bytes": ep.peak_host_rollback_bytes,
                     "text": ep.text,
                 }
                 if recorded is not None:

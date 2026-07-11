@@ -85,6 +85,7 @@ class AttemptRecord:
     peak_kv_cache_bytes: int
     recomputed_prefill_tokens: int
     gate_score: float | None = None
+    host_rollback_bytes: int = 0
 
 
 @dataclass
@@ -109,6 +110,7 @@ class LiveEpisode:
     total_wall_s: float = 0.0
     peak_mem_bytes: int = 0
     peak_kv_cache_bytes: int = 0
+    peak_host_rollback_bytes: int = 0
     skips: list[SkipRecord] = field(default_factory=list)
 
 
@@ -127,46 +129,55 @@ def _token_ids(values: list[Any], *, source: str) -> list[int]:
         ) from error
 
 
-def _fork_score_cache(model: Any, cache: Any, press: BasePress) -> Any:
-    """Fork and compress a cache for presses with cached-KV score inputs."""
+def _compress_score_cache_into(
+    model: Any,
+    source_cache: Any,
+    target_cache: Any,
+    press: BasePress,
+) -> int:
+    """Compress source layers into target layers.
+
+    Return the transient retained-KV peak during layer-by-layer replacement.
+    """
     if not isinstance(
         press,
         StreamingLLMPress | KnormPress | ExpectedAttentionStatsPress,
     ):
         kind = type(press).__name__
-        raise TypeError(f"direct cache fork does not support {kind}")
-    if not hasattr(cache, "layers"):
-        raise TypeError("direct cache fork requires a Transformers Cache")
+        raise TypeError(f"direct cache compression does not support {kind}")
+    if not hasattr(source_cache, "layers") or not hasattr(
+        target_cache, "layers"
+    ):
+        raise TypeError(
+            "direct cache compression requires Transformers Cache"
+        )
 
     language_model = (
         model.model.language_model
         if hasattr(model.model, "language_model")
         else model.model
     )
-    if len(cache.layers) != len(language_model.layers):
+    if len(source_cache.layers) != len(language_model.layers) or len(
+        target_cache.layers
+    ) != len(language_model.layers):
         raise ValueError("cache and model layer counts differ")
 
-    forked = copy(cache)
-    forked.layers = [copy(layer) for layer in cache.layers]
     press.post_init_from_model(model)
+    transient_peak = kv_cache_nbytes(target_cache)
     for model_layer, source_layer, target_layer in zip(
         language_model.layers,
-        cache.layers,
-        forked.layers,
+        source_cache.layers,
+        target_cache.layers,
         strict=True,
     ):
         attention = model_layer.self_attn
         if isinstance(press, ExpectedAttentionStatsPress):
-            # KVPress wires this parent-owned RoPE module while registering
-            # hooks. A direct cache fork calls compress without that context.
             rotary_emb = getattr(language_model, "rotary_emb", None)
             if rotary_emb is None:
                 raise RuntimeError(
                     "expected-attention stats needs model rotary embeddings"
                 )
             attention.rotary_emb = rotary_emb
-        # ExpectedAttentionStatsPress only reads q_len from this shape.
-        # KV-only presses do not inspect hidden states at all.
         empty_hidden_states = torch.empty(
             (
                 source_layer.keys.shape[0],
@@ -183,9 +194,51 @@ def _fork_score_cache(model: Any, cache: Any, press: BasePress) -> Any:
             torch.empty(0, device=source_layer.keys.device),
             {},
         )
+        transient_peak = max(
+            transient_peak,
+            kv_cache_nbytes(target_cache)
+            + keys.untyped_storage().nbytes()
+            + values.untyped_storage().nbytes(),
+        )
         target_layer.keys = keys
         target_layer.values = values
+    return transient_peak
+
+
+def _fork_score_cache(model: Any, cache: Any, press: BasePress) -> Any:
+    """Fork and compress a cache for presses with cached-KV score inputs."""
+    if not hasattr(cache, "layers"):
+        raise TypeError("direct cache fork requires a Transformers Cache")
+    forked = copy(cache)
+    forked.layers = [copy(layer) for layer in cache.layers]
+    _compress_score_cache_into(model, cache, forked, press)
     return forked
+
+
+def _copy_cache_to_host(cache: Any) -> Any:
+    """Create an exact detached CPU rollback image of a Transformers cache."""
+    if not hasattr(cache, "layers"):
+        raise TypeError("host rollback requires a Transformers Cache")
+    host = copy(cache)
+    host.layers = [copy(layer) for layer in cache.layers]
+    for source_layer, host_layer in zip(
+        cache.layers, host.layers, strict=True
+    ):
+        host_layer.keys = source_layer.keys.detach().to("cpu", copy=True)
+        host_layer.values = source_layer.values.detach().to("cpu", copy=True)
+    return host
+
+
+def _restore_cache_from_host(host_cache: Any, device: torch.device) -> Any:
+    """Restore an independent device cache from an exact host image."""
+    restored = copy(host_cache)
+    restored.layers = [copy(layer) for layer in host_cache.layers]
+    for host_layer, restored_layer in zip(
+        host_cache.layers, restored.layers, strict=True
+    ):
+        restored_layer.keys = host_layer.keys.to(device, copy=True)
+        restored_layer.values = host_layer.values.to(device, copy=True)
+    return restored
 
 
 def _extend_reference(
@@ -285,12 +338,26 @@ def _attempt_grace_from_cache(
     s: int,
     ratio: float,
     max_new: int,
-) -> tuple[list[int], float, bool, Any]:
-    """Fork the reference cache and evaluate grace without re-prefilling."""
+    rollback_mode: str = "device_fork",
+) -> tuple[list[int], float, bool, Any, Any | None, int, int]:
+    """Evaluate grace from cache with a device fork or exact host rollback."""
     if max_new <= 0:
         raise ValueError("a direct cache attempt needs at least one token")
+    if rollback_mode not in {"device_fork", "host"}:
+        raise ValueError(f"unknown rollback mode: {rollback_mode}")
     device = next(lm.model.parameters()).device
-    cache = _fork_score_cache(lm.model, reference_cache, press)
+    host_cache = None
+    host_rollback_bytes = 0
+    compression_peak_bytes = 0
+    if rollback_mode == "host":
+        host_cache = _copy_cache_to_host(reference_cache)
+        host_rollback_bytes = kv_cache_nbytes(host_cache)
+        compression_peak_bytes = _compress_score_cache_into(
+            lm.model, reference_cache, reference_cache, press
+        )
+        cache = reference_cache
+    else:
+        cache = _fork_score_cache(lm.model, reference_cache, press)
     collector = reference_collector.fork_continuation()
     new_ids = [first_id]
     grace_budget = min(alarm.k, max_new)
@@ -343,7 +410,21 @@ def _attempt_grace_from_cache(
         state=ref_state, block=block, ratio=ratio, k=alarm.k
     )
     score = alarm.score(row)
-    return new_ids, score, alarm.commits(score), cache
+    committed = alarm.commits(score)
+    restored_cache = (
+        _restore_cache_from_host(host_cache, device)
+        if host_cache is not None and not committed
+        else None
+    )
+    return (
+        new_ids,
+        score,
+        committed,
+        cache,
+        restored_cache,
+        host_rollback_bytes,
+        compression_peak_bytes,
+    )
 
 
 def _continue_attempt(
@@ -417,6 +498,7 @@ def run_episode(
     stride: int = 16,
     gate: GateLike | None = None,
     sustain_interval: int | None = None,
+    rollback_mode: str = "device_fork",
 ) -> LiveEpisode:
     """Run one live grace-window episode for one (prompt, ratio).
 
@@ -508,24 +590,33 @@ def run_episode(
             press,
             StreamingLLMPress | KnormPress | ExpectedAttentionStatsPress,
         ):
-            grace_ids, score, committed, attempt_cache = (
-                _attempt_grace_from_cache(
-                    lm,
-                    prompt_ids,
-                    ref_ids[:s],
-                    ref_ids[s],
-                    cache,
-                    ref_collector,
-                    press,
-                    alarm,
-                    ref_state,
-                    s,
-                    ratio,
-                    max_new_tokens - s,
-                )
+            held_kv_bytes = kv_cache_nbytes(cache)
+            (
+                grace_ids,
+                score,
+                committed,
+                attempt_cache,
+                restored_cache,
+                host_rollback_bytes,
+                compression_peak_bytes,
+            ) = _attempt_grace_from_cache(
+                lm,
+                prompt_ids,
+                ref_ids[:s],
+                ref_ids[s],
+                cache,
+                ref_collector,
+                press,
+                alarm,
+                ref_state,
+                s,
+                ratio,
+                max_new_tokens - s,
+                rollback_mode,
             )
             recomputed_prefill_tokens = 0
         else:
+            held_kv_bytes = kv_cache_nbytes(cache)
             grace_ids, score, committed, attempt_cache = _attempt_grace(
                 lm,
                 prompt_ids,
@@ -537,11 +628,17 @@ def run_episode(
                 ratio,
                 max_new_tokens - s,
             )
+            restored_cache = None
+            host_rollback_bytes = 0
+            compression_peak_bytes = 0
             recomputed_prefill_tokens = prompt_ids.numel() + s
-        held_kv_bytes = kv_cache_nbytes(cache)
         grace_kv_bytes = kv_cache_nbytes(attempt_cache)
         attempt_kv_bytes = grace_kv_bytes
-        attempt_system_peak = held_kv_bytes + grace_kv_bytes
+        attempt_system_peak = (
+            max(held_kv_bytes, grace_kv_bytes, compression_peak_bytes)
+            if rollback_mode == "host" and host_rollback_bytes
+            else held_kv_bytes + grace_kv_bytes
+        )
         new_ids = grace_ids
         if committed:
             cache = None
@@ -580,11 +677,17 @@ def run_episode(
                 attempt_system_peak,
                 continuation_kv_bytes,
             )
+        elif restored_cache is not None:
+            cache = restored_cache
         _sync(device)
         wall = time.perf_counter() - t0
         episode.peak_kv_cache_bytes = max(
             episode.peak_kv_cache_bytes,
             attempt_system_peak,
+        )
+        episode.peak_host_rollback_bytes = max(
+            episode.peak_host_rollback_bytes,
+            host_rollback_bytes,
         )
         episode.attempts.append(
             AttemptRecord(
@@ -597,6 +700,7 @@ def run_episode(
                 peak_kv_cache_bytes=attempt_kv_bytes,
                 recomputed_prefill_tokens=recomputed_prefill_tokens,
                 gate_score=gate_score,
+                host_rollback_bytes=host_rollback_bytes,
             )
         )
         if committed:
