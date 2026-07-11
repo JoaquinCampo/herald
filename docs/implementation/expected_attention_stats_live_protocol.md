@@ -31,6 +31,44 @@ It produces a fresh frozen alarm bundle. Do not reuse the existing
 - The memory gate uses end-to-end retained KV-cache bytes, including the
   concurrent held-reference and forked grace cache, never allocator memory.
 
+## Flat-checkout sync
+
+Run this from the local repository only after the sweep process has exited.
+It copies code, never results or models, and never uses `--delete`. The
+remote package directory is `herald/`, not `src/herald/`.
+
+```bash
+REMOTE="orion:/clustergpu/home/jcampo/herald-v2"
+
+rsync -av --exclude='__pycache__/' src/herald/ "$REMOTE/herald/"
+rsync -av \
+  scripts/build_switch_dataset.py \
+  scripts/extract_hybrid_streams.py \
+  scripts/export_alarm_bundle.py \
+  scripts/run_live_controller.py \
+  scripts/evaluate_live_fidelity.py \
+  scripts/evaluate_deployment.py \
+  "$REMOTE/"
+rsync -av pyproject.toml uv.lock "$REMOTE/"
+```
+
+Before building any derived artifact, verify that a dry run reports no
+remaining files to copy. Do not sync the active sweep's source while it is
+running.
+
+```bash
+rsync -naci --exclude='__pycache__/' src/herald/ "$REMOTE/herald/"
+rsync -naci \
+  scripts/build_switch_dataset.py \
+  scripts/extract_hybrid_streams.py \
+  scripts/export_alarm_bundle.py \
+  scripts/run_live_controller.py \
+  scripts/evaluate_live_fidelity.py \
+  scripts/evaluate_deployment.py \
+  "$REMOTE/"
+rsync -naci pyproject.toml uv.lock "$REMOTE/"
+```
+
 ## Commands
 
 Run the GPU stages on Orion after its required preflight. Orion uses a
