@@ -18,9 +18,11 @@ from herald.deployment_evidence import (  # noqa: E402
     initialize_live_run,
     verify_live_run,
 )
+from herald.expected_attention_stats import StatisticsArtifact  # noqa: E402
 from herald.generate import (  # noqa: E402
     generate_always_on_press,
     generate_always_on_streaming,
+    generate_always_on_sustained,
     generate_baseline,
     generate_int8_cache,
     load_model,
@@ -45,8 +47,20 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--mechanism",
-        choices=("int8", "streaming_low_ratio", "snapkv"),
+        choices=(
+            "int8",
+            "streaming_low_ratio",
+            "snapkv",
+            "expected_stats_sustained",
+        ),
         default="int8",
+    )
+    parser.add_argument(
+        "--expected-attention-stats",
+        type=Path,
+        default=Path(
+            "results/calibration/expected_attention_stats_ifeval_s0_v2"
+        ),
     )
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--limit-prompts", type=int, default=None)
@@ -89,10 +103,19 @@ def main() -> None:
         compressor = "streaming_llm_always_on"
         ratio = 0.05
         sustain_interval = 32
-    else:
+    elif args.mechanism == "snapkv":
         compressor = "snapkv_always_on"
         ratio = 0.25
         sustain_interval = None
+    else:
+        compressor = "expected_attention_stats_always_on"
+        ratio = 0.25
+        sustain_interval = 32
+    statistics = (
+        StatisticsArtifact.load(args.expected_attention_stats)
+        if args.mechanism == "expected_stats_sustained"
+        else None
+    )
     targets = json.loads(args.targets.read_text())
     prompt_ids = sorted(
         targets["compressors"]["expected_attention_stats"]["test_prompt_ids"]
@@ -119,6 +142,14 @@ def main() -> None:
                 RESIDUAL_LENGTH if args.mechanism == "int8" else None
             ),
             "targets": str(args.targets),
+            "expected_attention_stats": (
+                str(args.expected_attention_stats)
+                if statistics is not None
+                else None
+            ),
+            "expected_attention_stats_sha256": (
+                statistics.digest if statistics is not None else None
+            ),
         },
         resume=args.resume,
     )
@@ -204,12 +235,29 @@ def main() -> None:
                 sustain_interval=32,
             )
             final_kv_cache_bytes = candidate.peak_kv_cache_bytes
-        else:
+        elif args.mechanism == "snapkv":
             candidate = generate_always_on_press(
                 model,
                 record,
                 max_new_tokens,
                 press=get_press("snapkv", ratio),
+            )
+            final_kv_cache_bytes = candidate.peak_kv_cache_bytes
+        else:
+            if statistics is None:
+                raise RuntimeError("expected statistics were not loaded")
+            candidate = generate_always_on_sustained(
+                model,
+                record,
+                max_new_tokens,
+                press=get_press(
+                    "expected_attention_stats",
+                    ratio,
+                    model=model.model,
+                    statistics=statistics,
+                ),
+                ratio=ratio,
+                sustain_interval=32,
             )
             final_kv_cache_bytes = candidate.peak_kv_cache_bytes
         total_wall = time.perf_counter() - started

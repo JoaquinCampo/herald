@@ -19,7 +19,7 @@ both sides get the same total budget.
 import copy
 from contextlib import nullcontext
 from dataclasses import dataclass
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -433,6 +433,55 @@ def generate_always_on_streaming(
         gen_ids=ids,
         text=lm.tokenizer.decode(ids, skip_special_tokens=True),
         peak_kv_cache_bytes=peak_kv_cache_bytes,
+    )
+
+
+def generate_always_on_sustained(
+    lm: LoadedModel,
+    record: PromptRecord,
+    max_new_tokens: int,
+    *,
+    press: BasePress,
+    ratio: float,
+    sustain_interval: int,
+) -> BaselineRun:
+    """Generate with one direct prefill press and sustained ratio pruning."""
+    prompt = build_input_ids(lm, record)
+    device = next(lm.model.parameters()).device.type
+    input_ids, attn = _left_pad([prompt], lm.pad_id, device)
+    prompt_len = int(input_ids.shape[1])
+    observer = PrefillCachePeakObserver()
+    sustained_press = SustainedRatioPress(
+        base_press=cast(Any, press),
+        compression_ratio=ratio,
+        interval=sustain_interval,
+    )
+    with (
+        torch.no_grad(),
+        observer(lm.model),
+        press(lm.model),
+        sustained_press(lm.model),
+    ):
+        out = lm.model.generate(  # type: ignore[operator]
+            input_ids=input_ids,
+            attention_mask=attn,
+            generation_config=lm.gen_config,
+            max_new_tokens=max_new_tokens,
+            return_dict_in_generate=True,
+        )
+    cache = getattr(out, "past_key_values", None)
+    if cache is None:
+        raise RuntimeError("always-on generation did not return a KV cache")
+    ids = _trim_at_eos(out.sequences[0, prompt_len:].tolist(), lm.eos_ids)
+    return BaselineRun(
+        prompt_id=record.prompt_id,
+        gen_ids=ids,
+        text=lm.tokenizer.decode(ids, skip_special_tokens=True),
+        peak_kv_cache_bytes=max(
+            observer.peak_kv_cache_bytes,
+            sustained_press.peak_kv_cache_bytes,
+            kv_cache_nbytes(cache),
+        ),
     )
 
 
