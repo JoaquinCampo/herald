@@ -5,7 +5,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
-from run_int8_cache import parse_args  # noqa: E402
+import run_int8_cache  # type: ignore[import-not-found]  # noqa: E402
 
 
 def test_runner_accepts_knorm_always_on_mechanism(
@@ -23,6 +23,6 @@ def test_runner_accepts_knorm_always_on_mechanism(
         ],
     )
 
-    args = parse_args()
+    args = run_int8_cache.parse_args()
 
     assert args.mechanism == "knorm"
