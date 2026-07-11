@@ -175,3 +175,31 @@ It fails all non-sample-size deployment gates. No full split was run. All
 attempts reported zero recomputed prefill tokens; Orion returned to the
 keepalive-only 653 MiB state. Raw artifacts are in
 `results/live_controller_cachefork_sllm_r32_gated/`.
+
+## 2026-07-10: minimum-switch-position policy is not a new live candidate
+
+A read-only review considered a fixed minimum switch position as a way to
+veto early StreamingLLM commits. The existing cell position-gate experiment
+already tests the stricter form of that idea: it selects the earliest
+per-(task, ratio) safe position using donor and training compressors, then
+keeps the first alarm-qualified position at or after that threshold. Its
+canonical held-out results are recorded in
+`results/predictor/experiments/position_gate/summary.json` and its
+cross-compressor limitations in `docs/implementation/exhaustion_report.md`.
+At the strict `epsilon=0.01` setting, the safe flat-block policy achieved
+only 1.5% to 2.1% replay savings across the three held-out compressors.
+
+This review does not create a new policy selection or deployment result.
+The five current live triage prompts (`ifeval-1069`, `ifeval-1075`,
+`ifeval-1087`, `ifeval-1107`, and `ifeval-1128`) belong to the frozen
+canonical test population. Their live outcomes must remain evaluation-only:
+no position threshold, tolerance, or cell scope may be selected or retuned
+using them. Moreover, replay savings and `1 - s / ref_len` do not measure
+end-to-end latency or isolated peak-KV savings.
+
+No minimum-position live run was launched. A future test would require a
+new preregistered selector trained only on non-triage, donor-compressor
+prompt groups, with the alarm, threshold, attempt grid, and deployment
+contract unchanged. It would still need to clear the five-prompt triage
+before any N>=30 paired evaluation. This branch is otherwise exhausted as
+a standalone policy lever.
