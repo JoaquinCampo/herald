@@ -40,8 +40,8 @@ remote package directory is `herald/`, not `src/herald/`.
 ```bash
 REMOTE="orion:/clustergpu/home/jcampo/herald-v2"
 
-rsync -av --exclude='__pycache__/' src/herald/ "$REMOTE/herald/"
-rsync -av \
+rsync -avc --exclude='__pycache__/' src/herald/ "$REMOTE/herald/"
+rsync -avc \
   scripts/build_switch_dataset.py \
   scripts/extract_hybrid_streams.py \
   scripts/export_alarm_bundle.py \
@@ -49,24 +49,24 @@ rsync -av \
   scripts/evaluate_live_fidelity.py \
   scripts/evaluate_deployment.py \
   "$REMOTE/"
-rsync -av pyproject.toml uv.lock "$REMOTE/"
+rsync -avc pyproject.toml uv.lock "$REMOTE/"
 ```
 
-Before building any derived artifact, verify that a dry run reports no
-remaining files to copy. Do not sync the active sweep's source while it is
-running.
+To resume a previously interrupted raw sweep, include `scripts/run_sweep.py`
+in the second command before rerunning its exact original command. The root
+sweep configuration must remain unchanged.
+
+Before building any derived artifact, verify source content with SHA-256.
+This avoids trusting timestamps or filesystem metadata. Do not sync the
+active sweep's source while it is running.
 
 ```bash
-rsync -naci --exclude='__pycache__/' src/herald/ "$REMOTE/herald/"
-rsync -naci \
-  scripts/build_switch_dataset.py \
-  scripts/extract_hybrid_streams.py \
-  scripts/export_alarm_bundle.py \
-  scripts/run_live_controller.py \
-  scripts/evaluate_live_fidelity.py \
-  scripts/evaluate_deployment.py \
-  "$REMOTE/"
-rsync -naci pyproject.toml uv.lock "$REMOTE/"
+diff -u \
+  <(cd src/herald && find . -type f -name '*.py' -print | LC_ALL=C sort |
+    while IFS= read -r path; do shasum -a 256 "$path"; done | sed 's/  / /') \
+  <(ssh orion 'cd /clustergpu/home/jcampo/herald-v2/herald &&
+    find . -type f -name "*.py" -print | LC_ALL=C sort |
+    while IFS= read -r path; do sha256sum "$path"; done' | sed 's/  / /')
 ```
 
 ## Commands
