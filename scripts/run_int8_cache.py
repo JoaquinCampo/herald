@@ -51,6 +51,7 @@ def parse_args() -> argparse.Namespace:
             "int8",
             "streaming_low_ratio",
             "snapkv",
+            "knorm",
             "expected_stats_sustained",
         ),
         default="int8",
@@ -105,6 +106,10 @@ def main() -> None:
         sustain_interval = 32
     elif args.mechanism == "snapkv":
         compressor = "snapkv_always_on"
+        ratio = 0.25
+        sustain_interval = None
+    elif args.mechanism == "knorm":
+        compressor = "knorm_always_on"
         ratio = 0.25
         sustain_interval = None
     else:
@@ -235,12 +240,13 @@ def main() -> None:
                 sustain_interval=32,
             )
             final_kv_cache_bytes = candidate.peak_kv_cache_bytes
-        elif args.mechanism == "snapkv":
+        elif args.mechanism in {"snapkv", "knorm"}:
+            press_name = "snapkv" if args.mechanism == "snapkv" else "knorm"
             candidate = generate_always_on_press(
                 model,
                 record,
                 max_new_tokens,
-                press=get_press("snapkv", ratio),
+                press=get_press(press_name, ratio),
             )
             final_kv_cache_bytes = candidate.peak_kv_cache_bytes
         else:
