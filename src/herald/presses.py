@@ -9,7 +9,8 @@ one-time-at-the-switch semantics directly.
 """
 
 from collections.abc import Callable
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, cast
 
 from kvpress import (
     ExpectedAttentionPress,
@@ -26,11 +27,40 @@ from herald.expected_attention_stats import (
     make_expected_attention_stats_press,
 )
 
+
+@dataclass
+class SafeSnapKVPress(SnapKVPress):  # type: ignore[misc]
+    """SnapKV that leaves contexts no longer than its scoring window alone."""
+
+    def compress(
+        self,
+        module: Any,
+        hidden_states: Any,
+        keys: Any,
+        values: Any,
+        attentions: Any,
+        kwargs: dict[str, Any],
+    ) -> tuple[Any, Any]:
+        if int(keys.shape[2]) <= self.window_size:
+            return keys, values
+        return cast(
+            tuple[Any, Any],
+            super().compress(
+                module,
+                hidden_states,
+                keys,
+                values,
+                attentions,
+                kwargs,
+            ),
+        )
+
+
 # compression_ratio is the fraction of KV pairs REMOVED (kvpress
 # convention), so 0.875 keeps 12.5 percent.
 PRESS_REGISTRY: dict[str, Callable[..., BasePress]] = {
     "streaming_llm": StreamingLLMPress,
-    "snapkv": SnapKVPress,
+    "snapkv": SafeSnapKVPress,
     "expected_attention": ExpectedAttentionPress,
     "expected_attention_stats": ExpectedAttentionStatsPress,
     "knorm": KnormPress,
