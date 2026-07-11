@@ -306,4 +306,27 @@ feature-only selector branch. It strengthens two conclusions: decision
 latency must be effectively free, and abstention-heavy token eviction cannot
 prove population-level savings under the frozen contract.
 
+## 2026-07-11: dependency-free int8 KV-cache triage
+
+The preregistered model-native cache preserved every token, quantized completed
+KV blocks to signed int8 with explicit per-vector float32 scales, and retained
+the newest 128 tokens in bfloat16. Retained-byte accounting included quantized
+values, scales, residual tensors, and conservative layer-replacement transient
+peaks. No controller, alarm, rollback, or token eviction was involved.
+
+The immutable five-prompt paired run had zero quality or major damage and a
+positive real retained-KV savings bound, but failed end-to-end speed.
+
+| Quality upper 95% | Major-damage upper 95% | Slowdown upper 95% | Peak-KV mean, lower 95% | Failed gate |
+| ---: | ---: | ---: | ---: | ---: | --- |
+| 0.0% | 0.0% | 16.8% | 21.5%, 13.9% | end-to-end slowdown |
+
+Mean end-to-end slowdown was 8.2%, while per-token slowdown averaged 2.8% with
+a 3.6% upper bound. The discrepancy is direct evidence that fixed quantize and
+dequantize work on short generations breaks the deployment contract even when
+steady-state token cost appears acceptable. The speed failure is non-sample-
+size, so no N>=30 expansion or residual/scale retuning is allowed. This closes
+only the exact dependency-free int8/per-vector-scale/residual-128 runtime.
+
+
 

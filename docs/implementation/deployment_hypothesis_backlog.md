@@ -26,12 +26,22 @@ lower bound). Its abstention-heavy policy and repeated scorer calls show that
 another controller refinement is lower-value than a mechanism that saves bytes
 uniformly without decisions.
 
-After two runtime-representation stalls, return to Understand and rerank:
-quantized/mixed-precision KV is rank 1; segmented/indexed cache is rank 2;
-adaptive physical layer/head budgets are rank 3; a fused or amortized selector
-is rank 4. Select cache quantization next because it applies to every prompt,
-requires no rollback or online classifier, and directly tests a distinct
-compression family against all four deployment gates.
+After two runtime-representation stalls, a strategic retreat reranked cache
+quantization first. The dependency-free int8 branch preserved quality and had
+a positive 13.9% KV-savings lower bound, but failed speed with a 16.8% upper
+bound. A direct Orion preflight then showed that native PyTorch SDPA cannot
+consume mixed bfloat16-query/FP8-KV tensors and does not implement FP8 SDPA
+multiplication; pursuing FP8 therefore requires a new kernel or dependency.
+ThinK was also rejected at preflight because its installed implementation
+zeroes channels without reducing retained storage.
+
+Rerank model-native segmented/indexed cache as rank 1; adaptive physical
+layer/head budgets as rank 2; cache merging/reconstruction as rank 3; and a
+custom fused FP8 kernel as rank 4 pending dependency or kernel scope. Select a
+segmented/indexed representation next because it directly avoids contiguous
+candidate materialization while preserving exact retained tokens and offers
+the highest information about whether storage layout, rather than policy, is
+the remaining blocker.
 
 ## Retreat triggers
 
