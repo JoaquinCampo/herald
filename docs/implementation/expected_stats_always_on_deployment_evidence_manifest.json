@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-07-11",
+  "status": "rejected_expected_attention_stats_always_on_ratio_0_25_sustained_32",
+  "rollback_tag": "codex/herald-goal-start-0949baa",
+  "scope": {
+    "model": "Llama-3.1-8B-Instruct",
+    "task": "IFEval",
+    "prompts": "five frozen held-out evaluation-only triage prompts",
+    "compressor": "expected_attention_stats_always_on",
+    "ratio": 0.25,
+    "sustain_interval": 32,
+    "controller": "none; direct prefill and sustained decode pruning",
+    "statistics_sha256": "ca7450b7c388fb8612a32ed954ae72fbd7df810bcba7f7e353d6a13c10a21eaf",
+    "contract": "quality upper <= 1%, major-damage upper <= 1%, slowdown upper <= 5%, positive isolated peak-KV lower bound"
+  },
+  "verdict": {
+    "n_pairs": 5,
+    "quality_upper": 0.0,
+    "major_damage_upper": 0.0,
+    "slowdown_mean": 0.2505182754813222,
+    "slowdown_upper": 0.502861767434094,
+    "per_token_slowdown_mean": 0.2187234510938742,
+    "peak_kv_savings_mean": 0.24947885617294716,
+    "peak_kv_savings_lower": 0.1358599928567784,
+    "failed_gates": ["end_to_end_slowdown"],
+    "claim_limit": "closes only always-on ExpectedAttentionStats ratio 0.25 sustained-32; no N>=30 expansion"
+  },
+  "commands": [
+    "PYTHONPATH=. HF_HUB_OFFLINE=1 uv run --no-sync python scripts/run_int8_cache.py --mechanism expected_stats_sustained --expected-attention-stats results/calibration/expected_attention_stats_ifeval_s0_v2 --out-dir results/expected_stats_always_on_s32_v1 --limit-prompts 5 --device cuda --dtype bfloat16",
+    "PYTHONPATH=. uv run --no-sync python scripts/evaluate_deployment.py --live-dir results/expected_stats_always_on_s32_v1 --target-compressor expected_attention_stats_always_on --target-ratio 0.25 --target-sustain-interval 32 --min-pairs 5 --bootstrap-resamples 2000 --report-only",
+    "uv run python scripts/verify_deployment_evidence.py --manifest docs/implementation/expected_stats_always_on_deployment_evidence_manifest.json"
+  ],
+  "artifacts": [
+    {"path": "results/expected_stats_always_on_s32_v1/baseline.jsonl", "sha256": "88f1120dd4a740e0ba421caca9bcad66b79f81374f11ef70c4f37753a97acf84"},
+    {"path": "results/expected_stats_always_on_s32_v1/episodes.jsonl", "sha256": "985f52a34a8e8af763fe8a38cbf600ca7f6c37374dd8559949bdff89ab51a0a2"},
+    {"path": "results/expected_stats_always_on_s32_v1/run_manifest.json", "sha256": "e0dba40008a84c1eedfe2cada1e5f089bea6e0dc54380bfb617e32cb68ab1ce1"},
+    {"path": "results/expected_stats_always_on_s32_v1/deployment_report.json", "sha256": "774a76948bccc32d1e1687a964c5b0503e7dc8ef1a97266553559b027e671367"},
+    {"path": "results/expected_stats_always_on_s32_v1/run.log", "sha256": "a18c3a3923b19af6b3f1b87bd61fde5c4ac922accd9b4e1a70cd5bbf27f9af20"}
+  ],
+  "repository_revision": "c30562fdd5921abecd94eea58e64a6573c72ce5d",
+  "repository_artifacts": [
+    {"path": "src/herald/generate.py", "sha256": "a8e5fc2c36a0eb4822212c30453bd9233b3a100017edfa9d7b7f2c8929a1f30f"},
+    {"path": "src/herald/sustained_press.py", "sha256": "739a5f981116fe2796657f3f1b8a6c0ebdb5d79969a10d9fef9772e41e4852e5"},
+    {"path": "src/herald/expected_attention_stats.py", "sha256": "6c2609c2c96fd553e7622957339cdff90d291401d05b8241a7455a64a884bc26"},
+    {"path": "src/herald/kv_metrics.py", "sha256": "c2b6d8852a07c5ad1d3b7e366903da329e7a0c8715d9244a8d4484a6c1cbca74"},
+    {"path": "scripts/run_int8_cache.py", "sha256": "376850db2294dbc8885580e5aa6d180180410cbe9ab0d98e46eea37484541be9"},
+    {"path": "tests/test_always_on_cache.py", "sha256": "f263fecebd3b07a8c62180c4159a293f2e81a5354b8a6e2e476a94dbafcf66e4"},
+    {"path": "docs/implementation/expected_stats_always_on_preregistration.md", "sha256": "976fad76bed189b206c7a2f714346c8eab1a035bada75eff6792b40e142c9c96"},
+    {"path": "docs/implementation/deployment_experiment_log.md", "sha256": "d0dcc1a4de86aab24be04d5d0847225e4b7f5c81d8e714499b7ab6675c202105"},
+    {"path": "docs/implementation/deployment_hypothesis_backlog.md", "sha256": "f83b21e3e831be31a9c9ac0c2cd87b36c676aada5397a965f1ecc9d4d6a3ae7a"}
+  ]
+}
