@@ -39,13 +39,22 @@ upper bound) and real savings (-15.6% lower bound), demonstrating that neither
 removing controller overhead nor merely reducing the ratio fixes periodic
 materialization and regrowth costs.
 
-Rerank model-native segmented/indexed cache as rank 1; adaptive physical
-layer/head budgets as rank 2; cache merging/reconstruction as rank 3; and a
-custom fused FP8 kernel as rank 4 pending dependency or kernel scope. Select a
-segmented/indexed representation next because it directly avoids contiguous
-candidate materialization while preserving exact retained tokens and offers
-the highest information about whether storage layout, rather than policy, is
-the remaining blocker.
+Always-on SnapKV ratio 0.25 then tested a technically distinct attention-score
+policy without controller or rollback. It achieved a positive 11.3% retained-KV
+lower bound, but one catastrophic early termination drove quality and
+major-damage upper bounds to 40% and 60%. Its nominal speed win is invalid as
+equivalent-work evidence; per-token slowdown was 33.9%. The exact branch is
+rejected without ratio tuning on frozen prompts.
+
+After this additional quality/runtime stall, return to Understand before
+implementing the next branch. Rerank model-native segmented/indexed cache as
+rank 1; adaptive physical layer/head budgets as rank 2; cache
+merging/reconstruction as rank 3; and a custom fused FP8 kernel as rank 4
+pending dependency or kernel scope. Select a segmented/indexed representation
+next only after verifying the model attention path can consume discontiguous
+retained storage without silently materializing an equivalent contiguous
+cache. That preflight has the highest information value because it can reject
+an impractical model-specific rewrite before implementation.
 
 ## Retreat triggers
 

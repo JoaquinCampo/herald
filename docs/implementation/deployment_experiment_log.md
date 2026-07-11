@@ -346,6 +346,29 @@ the small retained-byte benefit. Both failures are non-sample-size; no N>=30
 expansion or ratio/interval retuning is permitted. This closes only the exact
 always-on ratio-0.05 interval-32 implementation.
 
+## 2026-07-11: always-on SnapKV ratio-0.25 triage
+
+The first launch exposed KVPress's strict `query_length > window_size`
+assertion on an exactly 64-token prompt. No parameter was changed. A uniform
+wrapper was test-first added to skip compression whenever context length is not
+larger than the default scoring window, matching the method's domain. The
+incomplete artifacts were discarded and one fresh immutable run completed.
+
+SnapKV produced large measured savings and apparently favorable end-to-end
+wall time, but one prompt suffered major quality damage and terminated early.
+The timing advantage is therefore not evidence of efficient equivalent work;
+per-token slowdown was 33.9%.
+
+| Quality upper 95% | Major-damage upper 95% | Slowdown upper 95% | Peak-KV mean, lower 95% | Failed gates |
+| ---: | ---: | ---: | ---: | ---: | --- |
+| 40.0% | 60.0% | -6.8% | 47.0%, 11.3% | quality, major damage |
+
+The non-sample-size quality failures forbid expansion or ratio adjustment.
+This closes only always-on SnapKV ratio 0.25 with its default window and the
+uniform short-context guard. It also demonstrates why early termination must
+not be interpreted as a speed win.
+
+
 
 
 
