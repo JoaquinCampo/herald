@@ -10,8 +10,16 @@
     "model": "Llama-3.1-8B-Instruct",
     "task": "IFEval",
     "prompts": "five held-out evaluation-only triage prompts",
-    "ratios": [0.1, 0.125, 0.2, 0.25],
-    "sustain_intervals": [32, 1],
+    "ratios": [
+      0.1,
+      0.125,
+      0.2,
+      0.25
+    ],
+    "sustain_intervals": [
+      32,
+      1
+    ],
     "frozen_gate": "streaming_llm ratio 0.25 only",
     "contract": "quality upper <= 1%, major-damage upper <= 1%, slowdown upper <= 5%, positive isolated peak-KV lower bound"
   },
@@ -29,31 +37,112 @@
     "uv run python scripts/verify_deployment_evidence.py"
   ],
   "artifacts": [
-    {"path": "results/live_controller_cachefork_v1/baseline.jsonl", "sha256": "5a347f6abd680cc9373362911505b0095b81411e29cae7e76cdde9c3980f1b45"},
-    {"path": "results/live_controller_cachefork_v1/episodes.jsonl", "sha256": "9b45b1b5cc5599f9ae017b4d0950dcc37ff5e6fce921e4cbccafa8769aa2976f"},
-    {"path": "results/live_controller_cachefork_v1/deployment_report.json", "sha256": "788e69c9e71bf48814aa364eba6b8419bc1004aea72db6617a9512f6fe89c917"},
-    {"path": "results/live_controller_cachefork_sllm_r32/baseline.jsonl", "sha256": "7489d067b7dbf5de60fc685bad0c6e4b3c52a6fd569188ca06445a33d70333cb"},
-    {"path": "results/live_controller_cachefork_sllm_r32/episodes.jsonl", "sha256": "9791885990519fbcc50e51debd5b3cfa00e18dba061e71d3b5e7116bc9aeb630"},
-    {"path": "results/live_controller_cachefork_sllm_r32/pilot_triage_report.json", "sha256": "2843fe8620948c1277bcf09d6b667e870d8e9c1ca8c0efffde61201d444538f3"},
-    {"path": "results/live_controller_cachefork_sllm_r32/deployment_report_min30.json", "sha256": "05ec26dd16b401b2c3a482358d9d444df5610651b2a12d943f77fd9bf7e054b2"},
-    {"path": "results/live_controller_cachefork_sllm_r1/baseline.jsonl", "sha256": "e31a6868c7f5ed24ad40ea34bc6ba6907b9520822f0aa9f5b220edf8d70ea062"},
-    {"path": "results/live_controller_cachefork_sllm_r1/episodes.jsonl", "sha256": "66fabbc632f7836b077fe90b7c15cf686b16ec7e5bcb8cb784d2b5fd8d6d718a"},
-    {"path": "results/live_controller_cachefork_sllm_r1/pilot_triage_report.json", "sha256": "b3424774a84401014a0bde7990d4f27d4d191cbc7ba546a22665b04d3174b9ee"},
-    {"path": "results/live_controller_cachefork_sllm_r1/deployment_report_min30.json", "sha256": "620dcfb60ac93ca713bd874f47ce27699045090f87a4dacca43277390d3412a5"},
-    {"path": "results/live_controller_cachefork_sllm_r32_gated/baseline.jsonl", "sha256": "747bb14481b8b62bab777e6bc3757394ba1598b566bcdb750b8ddb28ee983f81"},
-    {"path": "results/live_controller_cachefork_sllm_r32_gated/episodes.jsonl", "sha256": "21c7bd064172048beb805fecf41ea3a1857c6e7fc877d48678d92b5c9ffdf2a8"},
-    {"path": "results/live_controller_cachefork_sllm_r32_gated/pilot_triage_report.json", "sha256": "0d566d59eeb5b537f2f4ba4d0c151d255ff9809a9e13d0871744e44836b9b10d"},
-    {"path": "results/live_controller_cachefork_sllm_r32_gated/deployment_report_min30.json", "sha256": "b62c9988a1bf7e75e8906aa42ca7d933f0f6ce6229784a292eb18b93b9975e8d"},
-    {"path": "results/predictor/alarm_bundle/fidelity_targets.json", "sha256": "7e632c832530f32810ff24e80c9cae49c37c1adaf9b29bc54eea6776abe8ff7b"},
-    {"path": "results/predictor/alarm_bundle/streaming_llm/manifest.json", "sha256": "9cbbe05d392bc7bc740ceea1f8ced9465f96cd271f53d4ae25935445667214ec"},
-    {"path": "results/predictor/gate_bundle/streaming_llm/manifest.json", "sha256": "10bfc93e97b5786e8e27abcd3b3ba4c22d7356adb40335823cedbabdc8cce485"},
-    {"path": "src/herald/live_controller.py", "sha256": "e169f0c5354a0ee35e9ff5838b41f857156e34b88015209b81c6151da9695fe4"},
-    {"path": "src/herald/sustained_press.py", "sha256": "5c718f83ab40ac6d5ee2878e9037e8ad07d1556066a94c884a3478dda529bb07"},
-    {"path": "src/herald/deployment_contract.py", "sha256": "f3b56e6885c240e3c0a1f3d09553e32e37a9535f1de4d18377527f54ef1f3085"},
-    {"path": "scripts/run_live_controller.py", "sha256": "f98f0c78dcfdc9553a8c2456a532f9451957fc847a94de654418caf3ef0ff17e"},
-    {"path": "scripts/evaluate_deployment.py", "sha256": "b52bc7fdbb3b6aa4d461583967ed645e803676fdd619b09593ccd7be0dd5d2b8"},
-    {"path": "docs/implementation/deployment_contract.md", "sha256": "54aa8f8f0306efe307ec224eaf062f010c3c678fd3868eff22d7f5250399f078"},
-    {"path": "docs/implementation/deployment_experiment_log.md", "sha256": "4d5cb883e625b54e70f250b780702043b9ba79e880601e43d613e6567b68ea7e"},
-    {"path": "docs/implementation/deployment_exhaustion_report.md", "sha256": "67c164b8fb3e96016cc37d33e770ccc8404264b0fb36bebd6043f98652e7cafa"}
+    {
+      "path": "results/live_controller_cachefork_v1/baseline.jsonl",
+      "sha256": "5a347f6abd680cc9373362911505b0095b81411e29cae7e76cdde9c3980f1b45"
+    },
+    {
+      "path": "results/live_controller_cachefork_v1/episodes.jsonl",
+      "sha256": "9b45b1b5cc5599f9ae017b4d0950dcc37ff5e6fce921e4cbccafa8769aa2976f"
+    },
+    {
+      "path": "results/live_controller_cachefork_v1/deployment_report.json",
+      "sha256": "788e69c9e71bf48814aa364eba6b8419bc1004aea72db6617a9512f6fe89c917"
+    },
+    {
+      "path": "results/live_controller_cachefork_sllm_r32/baseline.jsonl",
+      "sha256": "7489d067b7dbf5de60fc685bad0c6e4b3c52a6fd569188ca06445a33d70333cb"
+    },
+    {
+      "path": "results/live_controller_cachefork_sllm_r32/episodes.jsonl",
+      "sha256": "9791885990519fbcc50e51debd5b3cfa00e18dba061e71d3b5e7116bc9aeb630"
+    },
+    {
+      "path": "results/live_controller_cachefork_sllm_r32/pilot_triage_report.json",
+      "sha256": "2843fe8620948c1277bcf09d6b667e870d8e9c1ca8c0efffde61201d444538f3"
+    },
+    {
+      "path": "results/live_controller_cachefork_sllm_r32/deployment_report_min30.json",
+      "sha256": "05ec26dd16b401b2c3a482358d9d444df5610651b2a12d943f77fd9bf7e054b2"
+    },
+    {
+      "path": "results/live_controller_cachefork_sllm_r1/baseline.jsonl",
+      "sha256": "e31a6868c7f5ed24ad40ea34bc6ba6907b9520822f0aa9f5b220edf8d70ea062"
+    },
+    {
+      "path": "results/live_controller_cachefork_sllm_r1/episodes.jsonl",
+      "sha256": "66fabbc632f7836b077fe90b7c15cf686b16ec7e5bcb8cb784d2b5fd8d6d718a"
+    },
+    {
+      "path": "results/live_controller_cachefork_sllm_r1/pilot_triage_report.json",
+      "sha256": "b3424774a84401014a0bde7990d4f27d4d191cbc7ba546a22665b04d3174b9ee"
+    },
+    {
+      "path": "results/live_controller_cachefork_sllm_r1/deployment_report_min30.json",
+      "sha256": "620dcfb60ac93ca713bd874f47ce27699045090f87a4dacca43277390d3412a5"
+    },
+    {
+      "path": "results/live_controller_cachefork_sllm_r32_gated/baseline.jsonl",
+      "sha256": "747bb14481b8b62bab777e6bc3757394ba1598b566bcdb750b8ddb28ee983f81"
+    },
+    {
+      "path": "results/live_controller_cachefork_sllm_r32_gated/episodes.jsonl",
+      "sha256": "21c7bd064172048beb805fecf41ea3a1857c6e7fc877d48678d92b5c9ffdf2a8"
+    },
+    {
+      "path": "results/live_controller_cachefork_sllm_r32_gated/pilot_triage_report.json",
+      "sha256": "0d566d59eeb5b537f2f4ba4d0c151d255ff9809a9e13d0871744e44836b9b10d"
+    },
+    {
+      "path": "results/live_controller_cachefork_sllm_r32_gated/deployment_report_min30.json",
+      "sha256": "b62c9988a1bf7e75e8906aa42ca7d933f0f6ce6229784a292eb18b93b9975e8d"
+    },
+    {
+      "path": "results/predictor/alarm_bundle/fidelity_targets.json",
+      "sha256": "7e632c832530f32810ff24e80c9cae49c37c1adaf9b29bc54eea6776abe8ff7b"
+    },
+    {
+      "path": "results/predictor/alarm_bundle/streaming_llm/manifest.json",
+      "sha256": "9cbbe05d392bc7bc740ceea1f8ced9465f96cd271f53d4ae25935445667214ec"
+    },
+    {
+      "path": "results/predictor/gate_bundle/streaming_llm/manifest.json",
+      "sha256": "10bfc93e97b5786e8e27abcd3b3ba4c22d7356adb40335823cedbabdc8cce485"
+    }
+  ],
+  "repository_revision": "aaf701b4231eba59d78ca22ac87f0ab9968a9980",
+  "repository_artifacts": [
+    {
+      "path": "src/herald/live_controller.py",
+      "sha256": "e169f0c5354a0ee35e9ff5838b41f857156e34b88015209b81c6151da9695fe4"
+    },
+    {
+      "path": "src/herald/sustained_press.py",
+      "sha256": "5c718f83ab40ac6d5ee2878e9037e8ad07d1556066a94c884a3478dda529bb07"
+    },
+    {
+      "path": "src/herald/deployment_contract.py",
+      "sha256": "f3b56e6885c240e3c0a1f3d09553e32e37a9535f1de4d18377527f54ef1f3085"
+    },
+    {
+      "path": "scripts/run_live_controller.py",
+      "sha256": "f98f0c78dcfdc9553a8c2456a532f9451957fc847a94de654418caf3ef0ff17e"
+    },
+    {
+      "path": "scripts/evaluate_deployment.py",
+      "sha256": "b52bc7fdbb3b6aa4d461583967ed645e803676fdd619b09593ccd7be0dd5d2b8"
+    },
+    {
+      "path": "docs/implementation/deployment_contract.md",
+      "sha256": "54aa8f8f0306efe307ec224eaf062f010c3c678fd3868eff22d7f5250399f078"
+    },
+    {
+      "path": "docs/implementation/deployment_experiment_log.md",
+      "sha256": "4d5cb883e625b54e70f250b780702043b9ba79e880601e43d613e6567b68ea7e"
+    },
+    {
+      "path": "docs/implementation/deployment_exhaustion_report.md",
+      "sha256": "67c164b8fb3e96016cc37d33e770ccc8404264b0fb36bebd6043f98652e7cafa"
+    }
   ]
 }

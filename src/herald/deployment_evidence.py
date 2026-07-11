@@ -1,6 +1,7 @@
 """Verification for hash-backed deployment evidence manifests."""
 
 import json
+import subprocess
 from collections.abc import Mapping, Sequence
 from hashlib import sha256
 from math import isfinite
@@ -215,6 +216,25 @@ def verify_manifest(manifest: Mapping[str, Any], root: Path) -> list[str]:
             continue
         if _sha256(artifact) != expected_hash:
             errors.append(f"sha256 mismatch: {path}")
+
+    repository_artifacts = manifest.get("repository_artifacts", [])
+    if not isinstance(repository_artifacts, list):
+        raise ValueError("manifest repository_artifacts must be a list")
+    if repository_artifacts:
+        revision = _repository_revision(manifest)
+        for entry in repository_artifacts:
+            path, expected_hash = _artifact_fields(entry)
+            _validate_repository_path(path)
+            content = _git_artifact(resolved_root, revision, path)
+            if content is None:
+                errors.append(
+                    f"missing artifact at repository revision: {path}"
+                )
+                continue
+            if sha256(content).hexdigest() != expected_hash:
+                errors.append(
+                    f"sha256 mismatch at repository revision: {path}"
+                )
     return errors
 
 
@@ -381,6 +401,36 @@ def _record_candidate_id(
             f"invalid candidate_id for episode {prompt_id}: {error}"
         )
         return None
+
+
+def _repository_revision(manifest: Mapping[str, Any]) -> str:
+    revision = manifest.get("repository_revision")
+    if (
+        not isinstance(revision, str)
+        or len(revision) != 40
+        or any(char not in "0123456789abcdef" for char in revision)
+    ):
+        raise ValueError(
+            "manifest repository_revision must be 40 hexadecimal characters"
+        )
+    return revision
+
+
+def _validate_repository_path(path: str) -> None:
+    candidate = Path(path)
+    if candidate.is_absolute() or ".." in candidate.parts:
+        raise ValueError(f"artifact path escapes repository: {path}")
+
+
+def _git_artifact(root: Path, revision: str, path: str) -> bytes | None:
+    result = subprocess.run(
+        ["git", "-C", str(root), "show", f"{revision}:{path}"],
+        check=False,
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        return None
+    return result.stdout
 
 
 def _artifact_fields(entry: Any) -> tuple[str, str]:

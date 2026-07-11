@@ -108,7 +108,10 @@
     {
       "path": "results/expected_stats_live_triage_sustained1_s0_v2/run_manifest.json",
       "sha256": "52fc08841a44c37ab7d11845af76d071dbc41cbd63a1af86c361e56c2063c5e1"
-    },
+    }
+  ],
+  "repository_revision": "0267e5d256dedb7296ec84c3daa4ef21a7fcddf1",
+  "repository_artifacts": [
     {
       "path": "src/herald/expected_attention_stats.py",
       "sha256": "6c2609c2c96fd553e7622957339cdff90d291401d05b8241a7455a64a884bc26"
