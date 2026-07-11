@@ -432,3 +432,23 @@ decode regrowth on this population, while full prefill scoring and cache
 replacement still imposed material runtime cost. These are non-sample-size
 failures, so no N>=30 expansion or ratio change is allowed. This closes only
 the exact always-on Knorm ratio-0.25 one-shot path.
+
+## 2026-07-11: reconstruction and adaptive-storage preflight
+
+A post-stall code-level retreat inspected the installed KVPress mechanisms and
+Transformers cache contract before another implementation. `KVzipPress`
+performs context reconstruction through multiple additional model forwards and
+its own documentation warns of 2–3x prefill overhead; its context manager also
+compresses only after the enclosed initial forward, so it cannot be dropped
+into the existing `generate()` path. `FastKVzipPress` requires model-specific
+Hub gate weights that are not available in the offline runtime. AdaKV's
+head-adaptive path retains dense fake keys and therefore cannot satisfy the
+real-memory gate. Physical variable-length per-head storage and exact token
+merging both require a custom attention representation or kernel because
+Llama's cache API returns one dense tensor per layer.
+
+These observations reject installed reconstruction/adaptive mechanisms as the
+next practical deployment candidate; they do not claim that fused merge or
+reconstruction kernels are impossible. The highest-value in-scope lever is now
+the existing quality-safe int8 branch: remove its full-tensor float32 scale
+arithmetic while preserving the same residual length and paired protocol.

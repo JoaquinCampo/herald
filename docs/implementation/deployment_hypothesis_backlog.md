@@ -64,14 +64,20 @@ major-damage upper 60%, slowdown upper 113.4%, and retained-KV lower -26.7%.
 Its 13.8% mean per-token slowdown shows that even a nominally cheap one-time
 scorer is not free, while decode regrowth erased prefill-only physical savings.
 
-This is the third consecutive direct compression/runtime stall after the
-segmented preflight and always-on ExpectedAttentionStats, so return to
-Understand again. Rank one-shot cache merging/reconstruction first because it
-can preserve information that eviction discards without repeated decode work;
-rank adaptive physical layer/head budgets second; and fused paged/FP8 kernels
-third behind dependency or kernel scope. Before implementation, inspect the
-installed reconstruction mechanisms and cache API to reject any candidate
-that needs multiple full model passes, fake keys, or non-saving dense storage.
+The reconstruction preflight found no installed fair candidate: KVzip requires
+multiple additional forwards and 2–3x prefill work, FastKVzip requires absent
+model-specific weights, AdaKV retains dense fake keys, and physical per-head or
+merge storage needs a custom attention kernel. These remain broad research
+branches but are not the next practical in-scope run.
+
+Rerank **native int8 with bfloat16 scale arithmetic/storage** first. The prior
+int8 branch uniquely passed quality and real memory and had only 2.8% mean
+per-token slowdown; its implementation upcasts every KV element to float32 in
+both quantization and dequantization. Keeping the same signed-int8 scheme and
+residual-128 policy while removing those conversions is a bounded runtime
+hypothesis with a credible route to the 5% speed gate. Rank fused paged/merge
+attention second and model-specific learned reconstruction third behind
+kernel/dependency scope.
 
 ## Retreat triggers
 
