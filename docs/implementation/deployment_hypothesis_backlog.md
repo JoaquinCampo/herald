@@ -16,7 +16,18 @@ The current bottleneck is not merely compressor quality. Both closed direct-cach
 
 ## Selection
 
-Select rank 1 first. It changes the rollback representation while holding compressor, ratio, alarm, prompts, and sustained policy fixed. Therefore any memory or speed movement has a narrow causal interpretation. If host transfer makes the speed gate impossible or the measured GPU peak still includes both caches, record the result and advance to rank 2; do not tune on triage prompts.
+Rank 1 was tested and rejected at five-prompt triage: quality and real GPU-KV
+savings passed, but synchronous rollback produced a 29.3% slowdown upper bound.
+Per the preregistration, it was not expanded.
+
+The backlog is now reranked: irreversible pre-compression selection is rank 1;
+quantized or mixed-precision KV is rank 2; segmented/indexed cache is rank 3;
+adaptive physical layer/head budgets are rank 4. Select pre-compression next
+because it removes both repeated transfers and post-compression grace attempts
+while preserving the now-demonstrated ExpectedAttentionStats quality/savings
+combination. Its selector must be newly trained and frozen from the existing
+non-triage sweep; the old alarm-imitation gate is not compressor-specific to
+ExpectedAttentionStats and is not valid evidence for this use.
 
 ## Retreat triggers
 

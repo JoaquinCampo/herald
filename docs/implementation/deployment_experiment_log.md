@@ -253,3 +253,29 @@ target-specific deployment report. No candidate may advance to N>=30,
 broader model/task validation, or a deployment claim. This rejects the
 evaluated ratio-0.25 controller modes, not ExpectedAttentionStats as a general
 method.
+
+## 2026-07-11: exact host-rollback ExpectedAttentionStats triage
+
+The preregistered in-place host-rollback mechanism reused the candidate GPU
+cache and retained an exact uncompressed rollback image on CPU. The shipped
+runtime separately recorded host bytes and included layer-replacement
+transients in isolated GPU-KV peak accounting. Two launch-preflight failures
+(import path, then a non-empty evidence directory caused by log placement)
+produced no episodes; both were corrected before the immutable run.
+
+The five frozen prompts then ran once with ratio 0.25, sustained interval 32,
+the unchanged ExpectedAttentionStats artifact and alarm, and 2,000
+prompt-cluster bootstrap resamples. All live outputs preserved paired quality.
+
+| Quality upper 95% | Major-damage upper 95% | Slowdown upper 95% | Peak-KV mean, lower 95% | Failed gate |
+| ---: | ---: | ---: | ---: | --- |
+| 0.0% | 0.0% | 29.3% | 24.4%, 11.5% | end-to-end slowdown |
+
+This is the first evaluated mechanism in the program with a positive lower
+confidence bound on real isolated GPU-KV savings and no paired quality damage,
+but its 12.1% mean slowdown and 29.3% upper bound fail the frozen speed gate.
+The non-sample-size failure forbids N>=30 expansion. It closes only synchronous
+exact host rollback for this candidate. The result localizes the next problem:
+avoid repeated device/host rollback transfers and grace attempts, rather than
+retuning the compressor or weakening the contract.
+
