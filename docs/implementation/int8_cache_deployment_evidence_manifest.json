@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-07-11",
+  "status": "rejected_dependency_free_int8_cache_residual_128",
+  "rollback_tag": "codex/herald-goal-start-0949baa",
+  "scope": {
+    "model": "Llama-3.1-8B-Instruct",
+    "task": "IFEval",
+    "prompts": "five frozen held-out evaluation-only triage prompts",
+    "compressor": "int8_cache",
+    "ratio_identity": 0.5,
+    "residual_length": 128,
+    "controller": "none; model-native symmetric int8 cache with per-vector scales",
+    "contract": "quality upper <= 1%, major-damage upper <= 1%, slowdown upper <= 5%, positive isolated peak-KV lower bound"
+  },
+  "verdict": {
+    "n_pairs": 5,
+    "quality_upper": 0.0,
+    "major_damage_upper": 0.0,
+    "slowdown_upper": 0.16821754236137224,
+    "peak_kv_savings_lower": 0.13866274151706567,
+    "failed_gates": ["end_to_end_slowdown"],
+    "claim_limit": "closes only dependency-free int8/per-vector-scale/residual-128; no N>=30 expansion"
+  },
+  "commands": [
+    "PYTHONPATH=. HF_HUB_OFFLINE=1 uv run --no-sync python scripts/run_int8_cache.py --out-dir results/int8_cache_triage_r128_v1 --limit-prompts 5 --device cuda --dtype bfloat16",
+    "PYTHONPATH=. uv run --no-sync python scripts/evaluate_deployment.py --live-dir results/int8_cache_triage_r128_v1 --target-compressor int8_cache --target-ratio 0.5 --min-pairs 5 --bootstrap-resamples 2000 --report-only",
+    "uv run python scripts/verify_deployment_evidence.py --manifest docs/implementation/int8_cache_deployment_evidence_manifest.json"
+  ],
+  "artifacts": [
+    {"path": "results/int8_cache_triage_r128_v1/baseline.jsonl", "sha256": "adc77282b840c060978567f47bb48219c9291a25b63f1aa5cec8f8408dc564ba"},
+    {"path": "results/int8_cache_triage_r128_v1/episodes.jsonl", "sha256": "9e460778f5000b1f1007c052acdddec8aedd7cc254b9cc87008e8947ca52e429"},
+    {"path": "results/int8_cache_triage_r128_v1/run_manifest.json", "sha256": "aa85a697772efe6329d862084b460f0382fd5222549d9719400149ad5e003ded"},
+    {"path": "results/int8_cache_triage_r128_v1/deployment_report.json", "sha256": "9f6869995a434f1e8fb0e6fcb051162b24e3e38c1fcf10b4a75f4770bad10032"},
+    {"path": "results/int8_cache_triage_r128_v1/run.log", "sha256": "890773988ebc8e8d2a6c9dfc720b01a02ba80cd06493c983fd9e8955fabbdd1c"}
+  ],
+  "repository_revision": "90ffe7886db8d4606d1bf314d18b1e5f203e4842",
+  "repository_artifacts": [
+    {"path": "src/herald/int8_cache.py", "sha256": "4d3aba9fc8052338d5a597596326a7091727f67a96e9fe32d40b007eef780f38"},
+    {"path": "src/herald/generate.py", "sha256": "49ad3f432f4aa994fc7b62968e14950c7b4723be83ac45a6515d73279a8eba84"},
+    {"path": "src/herald/kv_metrics.py", "sha256": "e18343af8ffa0f96b95e218f46b6f645db97d075ce61c5dc16caf77b7b1d71a4"},
+    {"path": "scripts/run_int8_cache.py", "sha256": "142d4f9036d49a730ad14fe01c8996721a035aadf42eee5e975b2712fb45f610"},
+    {"path": "tests/test_int8_cache.py", "sha256": "fd46467962f5cbc5b54369be23431a2cdb20de7219e7a160ccec0ffdf2c3bf54"},
+    {"path": "docs/implementation/int8_cache_preregistration.md", "sha256": "7d61c801937fcd2e4d7f2d2edd99f774cfcedeb3483aed93c43c68af040e4fd8"},
+    {"path": "docs/implementation/deployment_experiment_log.md", "sha256": "9c711611798a4ad5902851819d1a91987effe4427b2005497393556b2ae85117"},
+    {"path": "docs/implementation/deployment_hypothesis_backlog.md", "sha256": "d93f9ba3e967113796f1f5f53d71a7af07081de83b540180684d266268ec6d29"}
+  ]
+}
