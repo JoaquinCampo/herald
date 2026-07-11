@@ -155,6 +155,16 @@ def _fork_score_cache(model: Any, cache: Any, press: BasePress) -> Any:
         forked.layers,
         strict=True,
     ):
+        attention = model_layer.self_attn
+        if isinstance(press, ExpectedAttentionStatsPress):
+            # KVPress wires this parent-owned RoPE module while registering
+            # hooks. A direct cache fork calls compress without that context.
+            rotary_emb = getattr(language_model, "rotary_emb", None)
+            if rotary_emb is None:
+                raise RuntimeError(
+                    "expected-attention stats needs model rotary embeddings"
+                )
+            attention.rotary_emb = rotary_emb
         # ExpectedAttentionStatsPress only reads q_len from this shape.
         # KV-only presses do not inspect hidden states at all.
         empty_hidden_states = torch.empty(
@@ -166,7 +176,7 @@ def _fork_score_cache(model: Any, cache: Any, press: BasePress) -> Any:
             device=source_layer.keys.device,
         )
         keys, values = press.compress(
-            model_layer.self_attn,
+            attention,
             empty_hidden_states,
             source_layer.keys,
             source_layer.values,
@@ -536,7 +546,12 @@ def run_episode(
                     interval=sustain_interval,
                 )
                 if sustain_interval is not None
-                and isinstance(press, StreamingLLMPress | KnormPress)
+                and isinstance(
+                    press,
+                    StreamingLLMPress
+                    | KnormPress
+                    | ExpectedAttentionStatsPress,
+                )
                 else None
             )
             continued, attempt_cache, sustained_peak = _continue_attempt(

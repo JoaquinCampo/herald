@@ -1,3 +1,5 @@
+# pyright: reportMissingImports=false
+
 """Decode-time KV compression that maintains a logical cache ratio."""
 
 from collections import defaultdict
@@ -7,6 +9,9 @@ from dataclasses import dataclass, field
 from typing import Any, cast
 
 from kvpress.presses.base_press import BasePress
+from kvpress.presses.expected_attention_with_stats import (
+    ExpectedAttentionStatsPress,
+)
 from kvpress.presses.knorm_press import KnormPress
 from kvpress.presses.streaming_llm_press import StreamingLLMPress
 from kvpress.utils import extract_keys_and_values
@@ -18,7 +23,7 @@ from herald.kv_metrics import kv_cache_nbytes
 class SustainedRatioPress(BasePress):  # type: ignore[misc]
     """Periodically prune decode growth to a fraction of logical length."""
 
-    base_press: StreamingLLMPress | KnormPress
+    base_press: StreamingLLMPress | KnormPress | ExpectedAttentionStatsPress
     compression_ratio: float
     interval: int = 32
     peak_kv_cache_bytes: int = field(init=False, default=0)
@@ -70,11 +75,11 @@ class SustainedRatioPress(BasePress):  # type: ignore[misc]
     def forward_hook(
         self,
         module: Any,
-        inputs: list[Any],
+        input: list[Any],
         kwargs: dict[str, Any],
         output: list[Any],
     ) -> list[Any]:
-        del inputs
+        del input
         hidden_states = kwargs["hidden_states"]
         if kwargs["cache_position"][-1] <= hidden_states.shape[1]:
             return output

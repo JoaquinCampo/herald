@@ -281,6 +281,32 @@ def test_expected_attention_stats_collection_uses_all_layers(
     assert torch.isfinite(cov).all()
 
 
+def test_expected_attention_stats_direct_fork_wires_parent_rope(
+    lm: LoadedModel,
+) -> None:
+    language_model = lm.model.model
+    for layer in language_model.layers:
+        if hasattr(layer.self_attn, "rotary_emb"):
+            delattr(layer.self_attn, "rotary_emb")
+
+    episode = LC.run_episode(
+        lm,
+        _rec(LONG, "p-expected-stats-rope"),
+        lambda: _expected_attention_stats_press(lm),
+        ScriptedAlarm([True]),
+        compressor="expected_attention_stats",
+        ratio=0.5,
+        max_new_tokens=M,
+        stride=STRIDE,
+    )
+
+    assert episode.commit_s == 0
+    assert all(
+        layer.self_attn.rotary_emb is language_model.rotary_emb
+        for layer in language_model.layers
+    )
+
+
 def test_expected_attention_stats_cache_fork_matches_prefill(
     lm: LoadedModel,
 ) -> None:
@@ -469,6 +495,37 @@ def test_sustained_ratio_reduces_retained_kv_peak(lm: LoadedModel) -> None:
         lambda: get_press("streaming_llm", 0.5),
         ScriptedAlarm([True]),
         compressor="streaming_llm",
+        ratio=0.5,
+        max_new_tokens=M,
+        stride=STRIDE,
+        sustain_interval=4,
+    )
+
+    assert sustained.attempts[0].peak_kv_cache_bytes < (
+        plain.attempts[0].peak_kv_cache_bytes
+    )
+
+
+def test_sustained_expected_attention_stats_reduces_retained_kv_peak(
+    lm: LoadedModel,
+) -> None:
+    record = _rec(LONG, "p-sustained-expected-stats")
+    plain = LC.run_episode(
+        lm,
+        record,
+        lambda: _expected_attention_stats_press(lm),
+        ScriptedAlarm([True]),
+        compressor="expected_attention_stats",
+        ratio=0.5,
+        max_new_tokens=M,
+        stride=STRIDE,
+    )
+    sustained = LC.run_episode(
+        lm,
+        record,
+        lambda: _expected_attention_stats_press(lm),
+        ScriptedAlarm([True]),
+        compressor="expected_attention_stats",
         ratio=0.5,
         max_new_tokens=M,
         stride=STRIDE,
