@@ -31,6 +31,8 @@ def kv_cache_nbytes(cache: Any) -> int:
                     )
                 tensors.extend(layer_tensors)
                 continue
+            if not bool(getattr(layer, "is_initialized", True)):
+                continue
             keys = getattr(layer, "keys", None)
             values = getattr(layer, "values", None)
             if not isinstance(keys, torch.Tensor) or not isinstance(

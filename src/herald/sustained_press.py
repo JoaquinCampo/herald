@@ -20,6 +20,38 @@ from herald.kv_metrics import kv_cache_nbytes
 
 
 @dataclass
+class PeakTrackingStreamingLLMPress(StreamingLLMPress):  # type: ignore[misc]
+    """StreamingLLM prefill press with exact retained-cache peak tracking."""
+
+    peak_kv_cache_bytes: int = field(init=False, default=0)
+
+    def forward_hook(
+        self,
+        module: Any,
+        input: list[Any],
+        kwargs: dict[str, Any],
+        output: list[Any],
+    ) -> list[Any]:
+        cache = kwargs["past_key_values"]
+        hidden_states = kwargs["hidden_states"]
+        is_prefill = kwargs["cache_position"][-1] <= hidden_states.shape[1]
+        if is_prefill:
+            self.peak_kv_cache_bytes = max(
+                self.peak_kv_cache_bytes,
+                kv_cache_nbytes(cache),
+            )
+        result = cast(
+            list[Any], super().forward_hook(module, input, kwargs, output)
+        )
+        if is_prefill:
+            self.peak_kv_cache_bytes = max(
+                self.peak_kv_cache_bytes,
+                kv_cache_nbytes(cache),
+            )
+        return result
+
+
+@dataclass
 class SustainedRatioPress(BasePress):  # type: ignore[misc]
     """Periodically prune decode growth to a fraction of logical length."""
 

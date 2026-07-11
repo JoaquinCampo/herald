@@ -19,6 +19,7 @@ from herald.deployment_evidence import (  # noqa: E402
     verify_live_run,
 )
 from herald.generate import (  # noqa: E402
+    generate_always_on_streaming,
     generate_baseline,
     generate_int8_cache,
     load_model,
@@ -39,6 +40,11 @@ def parse_args() -> argparse.Namespace:
         default=Path(
             "results/expected_stats_alarm_bundle_full_s0_v2/fidelity_targets.json"
         ),
+    )
+    parser.add_argument(
+        "--mechanism",
+        choices=("int8", "streaming_low_ratio"),
+        default="int8",
     )
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--limit-prompts", type=int, default=None)
@@ -73,13 +79,21 @@ def records_by_key(path: Path, key: str) -> dict[str, dict[str, Any]]:
 
 def main() -> None:
     args = parse_args()
+    if args.mechanism == "int8":
+        compressor = COMPRESSOR
+        ratio = RATIO
+        sustain_interval = None
+    else:
+        compressor = "streaming_llm_always_on"
+        ratio = 0.05
+        sustain_interval = 32
     targets = json.loads(args.targets.read_text())
     prompt_ids = sorted(
         targets["compressors"]["expected_attention_stats"]["test_prompt_ids"]
     )
     if args.limit_prompts is not None:
         prompt_ids = prompt_ids[: args.limit_prompts]
-    current_candidate_id = candidate_id(COMPRESSOR, RATIO, None)
+    current_candidate_id = candidate_id(compressor, ratio, sustain_interval)
     manifest = initialize_live_run(
         args.out_dir,
         {
@@ -90,10 +104,14 @@ def main() -> None:
             "model_name_or_path": args.model_id or MODELS["llama"],
             "dtype": args.dtype,
             "device": args.device,
-            "compressor": COMPRESSOR,
-            "ratio": RATIO,
-            "nbits": 8,
-            "residual_length": RESIDUAL_LENGTH,
+            "compressor": compressor,
+            "ratio": ratio,
+            "sustain_interval": sustain_interval,
+            "mechanism": args.mechanism,
+            "nbits": 8 if args.mechanism == "int8" else None,
+            "residual_length": (
+                RESIDUAL_LENGTH if args.mechanism == "int8" else None
+            ),
             "targets": str(args.targets),
         },
         resume=args.resume,
@@ -132,7 +150,7 @@ def main() -> None:
         model_id=args.model_id,
     )
     max_new_tokens = TASKS["ifeval"].max_new_tokens
-    print(f"int8 cache: {len(prompt_ids)} paired prompts", flush=True)
+    print(f"{args.mechanism}: {len(prompt_ids)} paired prompts", flush=True)
 
     completed = 0
     for prompt_id in prompt_ids:
@@ -163,21 +181,32 @@ def main() -> None:
         if key in episodes:
             continue
         started = time.perf_counter()
-        candidate, cache = generate_int8_cache(
-            model,
-            record,
-            max_new_tokens,
-            residual_length=RESIDUAL_LENGTH,
-        )
+        if args.mechanism == "int8":
+            candidate, cache = generate_int8_cache(
+                model,
+                record,
+                max_new_tokens,
+                residual_length=RESIDUAL_LENGTH,
+            )
+            final_kv_cache_bytes = cache.retained_peak_nbytes()
+        else:
+            candidate = generate_always_on_streaming(
+                model,
+                record,
+                max_new_tokens,
+                ratio=ratio,
+                sustain_interval=32,
+            )
+            final_kv_cache_bytes = candidate.peak_kv_cache_bytes
         total_wall = time.perf_counter() - started
         q_live = score("ifeval", candidate.text, record.gold)
         q_ref = float(baselines[prompt_id]["q_ref_live"])
         episode: dict[str, Any] = {
             "key": key,
             "prompt_id": prompt_id,
-            "compressor": COMPRESSOR,
-            "ratio": RATIO,
-            "sustain_interval": None,
+            "compressor": compressor,
+            "ratio": ratio,
+            "sustain_interval": sustain_interval,
             "candidate_id": current_candidate_id,
             "run_id": run_id,
             "kv_measurement_scope": END_TO_END_RETAINED_KV_CACHE,
@@ -196,7 +225,7 @@ def main() -> None:
             "total_wall_s": total_wall,
             "peak_mem_bytes": 0,
             "peak_kv_cache_bytes": candidate.peak_kv_cache_bytes,
-            "final_kv_cache_bytes": cache.retained_peak_nbytes(),
+            "final_kv_cache_bytes": final_kv_cache_bytes,
             "text": candidate.text,
         }
         append_jsonl(episodes_path, episode)
