@@ -160,7 +160,18 @@ def test_rejects_incomplete_hybrid_sweep_before_dataset_build(
         dq=0.0,
         features=features,
     )
+    extra_feature = next(
+        (tmp_path / "llama" / "ifeval" / "hybrid_features").rglob("*s99.npy")
+    )
+    extra_feature.unlink()
     with pytest.raises(ValueError, match="unexpected hybrid cells"):
+        validate_sweep_completeness(tmp_path, config)
+
+    stale_shard = (
+        tmp_path / "llama" / "ifeval" / "hybrids" / "stale__0.2500.jsonl"
+    )
+    stale_shard.write_text("")
+    with pytest.raises(ValueError, match="unexpected hybrid shards"):
         validate_sweep_completeness(tmp_path, config)
 
     (tmp_path / "llama" / "ifeval" / "references" / "p0.npy").unlink()

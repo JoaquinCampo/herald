@@ -14,6 +14,7 @@ from herald.storage import (
     reference_done,
     safe_id,
 )
+from herald.switch_dataset import parse_hybrid_shard
 
 SWEEP_CONFIG_SHA256_METADATA_KEY = b"herald.sweep_config_sha256"
 
@@ -66,6 +67,25 @@ def validate_sweep_completeness(
     errors: list[str] = []
     for model in selected_models:
         for task in selected_tasks:
+            expected_shards = {
+                (compressor, ratio)
+                for compressor in config.compressors
+                for ratio in config.ratios
+            }
+            hybrid_dir = results_dir / model / task / "hybrids"
+            for shard in hybrid_dir.glob("*.jsonl"):
+                try:
+                    shard_key = parse_hybrid_shard(shard)
+                except ValueError:
+                    errors.append(
+                        f"{model}/{task}: invalid hybrid shard {shard.name}"
+                    )
+                    continue
+                if shard_key not in expected_shards:
+                    errors.append(
+                        f"{model}/{task}: unexpected hybrid shards "
+                        f"({shard.name})"
+                    )
             prompt_ids = reference_done(results_dir, model, task)
             if len(prompt_ids) != config.prompts_per_task:
                 errors.append(
@@ -116,7 +136,6 @@ def validate_sweep_completeness(
                         task,
                         compressor,
                         ratio,
-                        require_features=True,
                     )
                     actual = set(keys)
                     expected = {
@@ -143,6 +162,23 @@ def validate_sweep_completeness(
                         errors.append(
                             f"{model}/{task}/{compressor}/{ratio}: "
                             f"missing {len(missing)} hybrid cells"
+                        )
+                    feature_keys = set(
+                        hybrid_record_keys(
+                            results_dir,
+                            model,
+                            task,
+                            compressor,
+                            ratio,
+                            require_features=True,
+                        )
+                    )
+                    missing_features = expected - feature_keys
+                    if missing_features:
+                        errors.append(
+                            f"{model}/{task}/{compressor}/{ratio}: "
+                            "missing hybrid features "
+                            f"({len(missing_features)})"
                         )
     if errors:
         raise ValueError("incomplete hybrid sweep: " + "; ".join(errors))
