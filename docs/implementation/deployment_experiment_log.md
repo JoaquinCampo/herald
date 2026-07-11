@@ -142,3 +142,36 @@ frequency as a standalone remedy. Raw artifacts are in
 `results/live_controller_cachefork_sllm_r1/`: `baseline.jsonl`,
 `episodes.jsonl`, `pilot_triage_report.json`, and
 `deployment_report_min30.json`.
+
+## 2026-07-10: frozen StreamingLLM gate did not alter sustained control
+
+The next existing policy lever was the frozen StreamingLLM scorer gate at
+the in-distribution ratio 0.25. It was evaluated with interval-32 sustained
+pruning, the unchanged frozen alarm, and the same five held-out prompts. The
+gate model and its threshold were loaded from
+`results/predictor/gate_bundle/streaming_llm/`, not refit or adjusted.
+
+Command:
+
+```bash
+export PATH="/clustergpu/home/jcampo/.local/bin:$PATH"
+HF_HUB_OFFLINE=1 uv run --no-sync python \
+  scripts/run_live_controller.py \
+  --compressors streaming_llm --ratios 0.25 \
+  --sustain-interval 32 \
+  --gate-dir results/predictor/gate_bundle \
+  --limit-prompts 5 \
+  --out-dir results/live_controller_cachefork_sllm_r32_gated \
+  --bundle-dir results/predictor/alarm_bundle \
+  --references-dir results/sweep/llama/ifeval/references \
+  --device cuda --dtype bfloat16 --stride 16
+```
+
+The gate skipped zero of the live attempts, so this policy produced the same
+commit positions and failure pattern as ungated interval-32 ratio 0.25. Its
+five-prompt triage report has quality upper 80.0%, major-damage upper 80.0%,
+slowdown upper 11.6%, and peak-KV savings mean 23.2% with lower bound -4.3%.
+It fails all non-sample-size deployment gates. No full split was run. All
+attempts reported zero recomputed prefill tokens; Orion returned to the
+keepalive-only 653 MiB state. Raw artifacts are in
+`results/live_controller_cachefork_sllm_r32_gated/`.
