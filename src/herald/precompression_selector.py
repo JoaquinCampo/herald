@@ -15,7 +15,7 @@ XGB_PARAMS: dict[str, Any] = {
     "subsample": 0.8,
     "colsample_bytree": 0.8,
     "min_child_weight": 10,
-    "nthread": -1,
+    "nthread": 1,
 }
 SEEDS = (0, 1, 2)
 

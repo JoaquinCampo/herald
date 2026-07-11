@@ -17,7 +17,7 @@ A compressor-specific selector using only uncompressed reference features can ch
 
 ## Model and threshold selection
 
-Fit the existing three-seed XGBoost binary classifier family with the repository's frozen alarm hyperparameters; do not search model hyperparameters. Aggregate seed probabilities by their mean. On calibration prompts, evaluate a deterministic grid of unique scores. For each threshold, each prompt commits at the earliest stride-qualified row predicted safe, or never commits.
+Fit the existing three-seed XGBoost binary classifier family with the repository's frozen alarm hyperparameters; do not search model hyperparameters. Force one training thread so local and Orion reductions are deterministic. Aggregate seed probabilities by their mean. On calibration prompts, evaluate a deterministic grid of unique scores. For each threshold, each prompt commits at the earliest stride-qualified row predicted safe, or never commits.
 
 Select the threshold with greatest analytical retained-token opportunity subject to both prompt-cluster bootstrap upper 95% bounds being at most 1% for paired damage incidence and major-damage incidence. Analytical opportunity is selection-only and never counts as deployment memory evidence. If no nontrivial threshold satisfies calibration, reject the selector without live triage.
 
