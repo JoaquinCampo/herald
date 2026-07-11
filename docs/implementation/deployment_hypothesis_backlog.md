@@ -46,15 +46,22 @@ major-damage upper bounds to 40% and 60%. Its nominal speed win is invalid as
 equivalent-work evidence; per-token slowdown was 33.9%. The exact branch is
 rejected without ratio tuning on frozen prompts.
 
-After this additional quality/runtime stall, return to Understand before
-implementing the next branch. Rerank model-native segmented/indexed cache as
-rank 1; adaptive physical layer/head budgets as rank 2; cache
-merging/reconstruction as rank 3; and a custom fused FP8 kernel as rank 4
-pending dependency or kernel scope. Select a segmented/indexed representation
-next only after verifying the model attention path can consume discontiguous
-retained storage without silently materializing an equivalent contiguous
-cache. That preflight has the highest information value because it can reject
-an impractical model-specific rewrite before implementation.
+The native two-call segmented-attention preflight passed numerical equivalence
+but was 192% to 363% slower than contiguous flash attention across 256 to
+4,096 retained tokens. It avoided contiguous candidate bytes, but failed its
+preregistered runtime rejection criterion uniformly. A fused paged or
+segmented kernel is now grouped with custom FP8 as kernel-development or
+approval-gated dependency work rather than the next practical branch.
+
+Rerank **always-on ExpectedAttentionStats ratio 0.25 sustained-32 without a
+controller or rollback** first. It is low-cost and directly separates the
+known quality-preserving ExpectedAttentionStats policy from cache-fork,
+transfer, grace, and repeated controller overhead; unlike the irreversible
+selector, it gives every prompt physical savings. Rank cache
+merging/reconstruction second, adaptive physical layer/head budgets third,
+and fused paged/FP8 kernels fourth. The always-on branch uses the already
+frozen compressor artifact and ratio and therefore requires no selection on
+the five triage prompts.
 
 ## Retreat triggers
 

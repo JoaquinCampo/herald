@@ -368,7 +368,32 @@ This closes only always-on SnapKV ratio 0.25 with its default window and the
 uniform short-context guard. It also demonstrates why early termination must
 not be interpreted as a speed win.
 
+## 2026-07-11: native two-segment flash-attention preflight
 
+After the additional runtime and quality stalls, the required strategic retreat
+returned to the model attention path. Transformers 4.57.6 requires each cache
+layer's `update` method to return contiguous key/value tensors to Llama's SDPA
+interface. Orion's PyTorch 2.10 native flash-attention operator can instead
+accept Llama's 32-query-head/8-KV-head geometry and returns per-query
+log-sum-exp metadata, allowing mathematically exact attention over separate
+sink and recent segments without repeating KV heads or materializing a
+contiguous candidate.
 
+A preregistered synthetic CUDA preflight compared that two-call representation
+against one contiguous native flash-attention call. It used bfloat16 Llama
+geometry, alternating measurement order, 50 warmups, and 200 synchronized
+repetitions at each retained length.
 
+| Retained tokens | Contiguous | Two segments | Slowdown | Max / mean absolute error |
+| ---: | ---: | ---: | ---: | ---: |
+| 256 | 0.0161 ms | 0.0747 ms | 362.5% | 0.00184 / 0.000188 |
+| 1,024 | 0.0175 ms | 0.0750 ms | 329.3% | 0.00079 / 0.000082 |
+| 4,096 | 0.0266 ms | 0.0778 ms | 192.4% | 0.00045 / 0.000041 |
 
+Numerical acceptance passed, and separate segment storage avoids one full
+contiguous candidate allocation. Runtime failed the frozen preflight rejection
+criterion at every length: the second kernel dispatch and exact log-sum-exp
+combination dominate one-token decode. No model-path implementation or frozen
+prompt run is justified. This closes only the tested native two-call
+flash-attention representation; a fused paged/segmented kernel remains a
+distinct dependency- or kernel-development branch.
