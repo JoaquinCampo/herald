@@ -53,15 +53,20 @@ preregistered runtime rejection criterion uniformly. A fused paged or
 segmented kernel is now grouped with custom FP8 as kernel-development or
 approval-gated dependency work rather than the next practical branch.
 
-Rerank **always-on ExpectedAttentionStats ratio 0.25 sustained-32 without a
-controller or rollback** first. It is low-cost and directly separates the
-known quality-preserving ExpectedAttentionStats policy from cache-fork,
-transfer, grace, and repeated controller overhead; unlike the irreversible
-selector, it gives every prompt physical savings. Rank cache
+Always-on ExpectedAttentionStats ratio 0.25 sustained-32 preserved all paired
+quality and achieved a 13.6% retained-KV lower bound, but failed speed with a
+50.3% end-to-end upper bound and 21.9% mean per-token slowdown. Repeated
+compressor scoring and cache replacement—not controller or rollback—are now
+the localized cost.
+
+Rerank a **one-shot always-on Knorm ratio-0.25** branch first. It tests a
+weight-free, cheap geometric compressor family not covered by the closed live
+branches, incurs no sustained decode work, and uses a canonical preregistered
+grid ratio rather than selecting from frozen outcomes. Rank one-shot cache
 merging/reconstruction second, adaptive physical layer/head budgets third,
-and fused paged/FP8 kernels fourth. The always-on branch uses the already
-frozen compressor artifact and ratio and therefore requires no selection on
-the five triage prompts.
+and fused paged/FP8 kernels fourth. A Knorm failure will distinguish whether
+cheap one-time selection can satisfy speed before investing in a novel merge
+operator.
 
 ## Retreat triggers
 

@@ -397,3 +397,21 @@ combination dominate one-token decode. No model-path implementation or frozen
 prompt run is justified. This closes only the tested native two-call
 flash-attention representation; a fused paged/segmented kernel remains a
 distinct dependency- or kernel-development branch.
+
+## 2026-07-11: always-on ExpectedAttentionStats sustained-32 triage
+
+The frozen ExpectedAttentionStats artifact and ratio 0.25 ran directly at
+prefill and every 32 decode tokens with no controller, alarm, gate, grace
+window, cache fork, host copy, or rollback. All five paired outputs preserved
+quality and the real retained-KV lower confidence bound was positive.
+
+| Quality upper 95% | Major-damage upper 95% | Slowdown mean, upper 95% | Peak-KV mean, lower 95% | Failed gate |
+| ---: | ---: | ---: | ---: | --- |
+| 0.0% | 0.0% | 25.1%, 50.3% | 24.9%, 13.6% | end-to-end slowdown |
+
+Per-token slowdown was 21.9% with a 22.8% upper bound. Removing all decision
+and rollback machinery therefore did not remove the binding cost: repeated
+ExpectedAttentionStats scoring, selection, and cache replacement is itself too
+slow in the installed runtime. The non-sample-size speed failure forbids N>=30
+expansion. This closes only the exact always-on ratio-0.25 sustained-32 path;
+it does not retune the frozen ratio or interval.
