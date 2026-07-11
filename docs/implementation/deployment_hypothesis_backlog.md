@@ -20,14 +20,18 @@ Rank 1 was tested and rejected at five-prompt triage: quality and real GPU-KV
 savings passed, but synchronous rollback produced a 29.3% slowdown upper bound.
 Per the preregistration, it was not expanded.
 
-The backlog is now reranked: irreversible pre-compression selection is rank 1;
-quantized or mixed-precision KV is rank 2; segmented/indexed cache is rank 3;
-adaptive physical layer/head budgets are rank 4. Select pre-compression next
-because it removes both repeated transfers and post-compression grace attempts
-while preserving the now-demonstrated ExpectedAttentionStats quality/savings
-combination. Its selector must be newly trained and frozen from the existing
-non-triage sweep; the old alarm-imitation gate is not compressor-specific to
-ExpectedAttentionStats and is not valid evidence for this use.
+The irreversible feature-only selector was then rejected: it preserved quality
+but failed speed (12.7% upper bound) and positive population KV savings (0.0%
+lower bound). Its abstention-heavy policy and repeated scorer calls show that
+another controller refinement is lower-value than a mechanism that saves bytes
+uniformly without decisions.
+
+After two runtime-representation stalls, return to Understand and rerank:
+quantized/mixed-precision KV is rank 1; segmented/indexed cache is rank 2;
+adaptive physical layer/head budgets are rank 3; a fused or amortized selector
+is rank 4. Select cache quantization next because it applies to every prompt,
+requires no rollback or online classifier, and directly tests a distinct
+compression family against all four deployment gates.
 
 ## Retreat triggers
 

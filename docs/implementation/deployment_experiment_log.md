@@ -279,3 +279,31 @@ exact host rollback for this candidate. The result localizes the next problem:
 avoid repeated device/host rollback transfers and grace attempts, rather than
 retuning the compressor or weakening the contract.
 
+## 2026-07-11: irreversible pre-compression selector triage
+
+A new ExpectedAttentionStats-specific feature-only selector used the existing
+4,923-row sweep with the frozen 46 target prompts excluded. Of 154 development
+prompts, the sorted every-fifth rule assigned 31 to calibration and 123 to
+training. The Orion-canonical three-seed bundle committed on 12 calibration
+prompts with zero observed damage and 13.6% mean analytical opportunity. A
+second Orion fit was byte-identical. Cross-architecture local fitting produced
+a different threshold despite matching data and XGBoost versions, so the
+bundle is explicitly bound to the Orion runtime; no frozen target outcome was
+examined during that investigation.
+
+The immutable five-prompt run made one irreversible in-place compression on
+two prompts and no compression on three. All paired outputs preserved quality.
+
+| Quality upper 95% | Major-damage upper 95% | Slowdown upper 95% | Peak-KV mean, lower 95% | Failed gates |
+| ---: | ---: | ---: | ---: | ---: | --- |
+| 0.0% | 0.0% | 12.7% | 9.6%, 0.0% | end-to-end slowdown, positive KV savings |
+
+The repeated feature-only scoring path still added 10.8% mean end-to-end
+slowdown, including on no-commit prompts, and conservative coverage left the
+memory lower bound at zero. Both are non-sample-size failures, so no N>=30
+expansion or threshold change is allowed. This closes the exact irreversible
+feature-only selector branch. It strengthens two conclusions: decision
+latency must be effectively free, and abstention-heavy token eviction cannot
+prove population-level savings under the frozen contract.
+
+
