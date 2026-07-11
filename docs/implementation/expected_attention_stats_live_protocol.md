@@ -16,13 +16,20 @@ It produces a fresh frozen alarm bundle. Do not reuse the existing
   row-identity key. Bundle export rejects a row-order mismatch.
 - Run the live controller only on the frozen test prompt IDs from its new
   `fidelity_targets.json`.
+- Each live directory has an immutable identity manifest, including exact
+  candidate ratios, required prompt coverage, and bundle and gate directory
+  digests. Use a fresh empty directory for each candidate, prompt limit, and
+  sustain mode. Resume only with the exact same configuration and explicit
+  `--resume`.
+- The memory gate uses end-to-end retained KV-cache bytes, including the
+  concurrent held-reference and forked grace cache, never allocator memory.
 
 ## Commands
 
 Run the GPU stages on Orion after its required preflight. Orion uses a
 flat checkout, so run from `/clustergpu/home/jcampo/herald-v2` and omit the
-local `scripts/` prefix. Replace `$STATS`, `$SWEEP`, `$PREDICTOR`, and
-`$BUNDLE` with new empty output paths.
+local `scripts/` prefix. Replace `$STATS`, `$SWEEP`, `$PREDICTOR`,
+`$BUNDLE`, and `$LIVE` with new empty output paths.
 
 ```bash
 export PATH="/clustergpu/home/jcampo/.local/bin:$PATH"
@@ -56,20 +63,26 @@ uv run --no-sync python export_alarm_bundle.py \
   --expected-attention-stats "$STATS" --out-dir "$BUNDLE"
 
 HF_HUB_OFFLINE=1 uv run --no-sync python run_live_controller.py \
-  --bundle-dir "$BUNDLE" --out-dir results/live_expected_attention_stats \
+  --bundle-dir "$BUNDLE" --out-dir "$LIVE" \
   --references-dir "$SWEEP/llama/ifeval/references" \
   --compressors expected_attention_stats --ratios 0.25 \
   --expected-attention-stats "$STATS"
 
 uv run --no-sync python evaluate_live_fidelity.py \
-  --live-dir results/live_expected_attention_stats \
+  --live-dir "$LIVE" \
   --targets "$BUNDLE/fidelity_targets.json" --skip-static
 
 uv run --no-sync python evaluate_deployment.py \
-  --live-dir results/live_expected_attention_stats \
+  --live-dir "$LIVE" \
+  --target-compressor expected_attention_stats --target-ratio 0.25 \
   --bootstrap-resamples 2000
 ```
 
 The five-prompt prompt-disjoint triage may use `--limit-prompts 5` on the
-live command. It is not contract evidence. Only a strict survivor may run
-the full frozen test set and then the N>=30 paired deployment contract.
+live command with a distinct `$LIVE` directory. It is not contract evidence.
+Run sustained candidates in their own directories, for example with
+`--sustain-interval 32`, then evaluate with
+`--target-sustain-interval 32`. Only a strict survivor may run a new full
+frozen-test directory and then the N>=30 paired deployment contract. The
+contract evaluator rejects partial manifest coverage, mixed modes, duplicate
+prompt evidence, or a target not named in the frozen run manifest.

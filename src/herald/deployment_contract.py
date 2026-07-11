@@ -8,6 +8,8 @@ from typing import Any
 
 import numpy as np
 
+from herald.deployment_evidence import END_TO_END_RETAINED_KV_CACHE
+
 
 @dataclass(frozen=True)
 class DeploymentContract:
@@ -148,6 +150,8 @@ def evaluate_deployment(
         raise ValueError("at least one measurement is required")
 
     prompt_ids = [row.prompt_id for row in measurements]
+    if len(set(prompt_ids)) != len(prompt_ids):
+        raise ValueError("deployment measurements require unique prompt IDs")
     quality_damage = _estimate(
         [
             row.quality_reference - row.quality_candidate
@@ -227,7 +231,7 @@ def evaluate_deployment(
                 seed_offset=4,
             )
 
-    enough_pairs = len(measurements) >= active.min_pairs
+    enough_pairs = len(prompt_ids) >= active.min_pairs
     mean_quality_pass = (
         quality_damage.upper <= active.quality_noninferiority_margin
     )
@@ -258,8 +262,8 @@ def evaluate_deployment(
 
     return DeploymentEvaluation(
         contract=active,
-        n_pairs=len(measurements),
-        n_prompts=len(set(prompt_ids)),
+        n_pairs=len(prompt_ids),
+        n_prompts=len(prompt_ids),
         quality_damage=quality_damage,
         major_damage_rate=major_damage_rate,
         end_to_end_slowdown=end_to_end_slowdown,
@@ -284,6 +288,13 @@ def measurement_from_live_records(
     prompt_id = str(_required(episode, "prompt_id"))
     if prompt_id != str(_required(baseline, "prompt_id")):
         raise ValueError("episode and baseline prompt_id must match")
+    if (
+        baseline.get("kv_measurement_scope") != END_TO_END_RETAINED_KV_CACHE
+        or episode.get("kv_measurement_scope") != END_TO_END_RETAINED_KV_CACHE
+    ):
+        raise ValueError(
+            "baseline and episode require end-to-end kv_measurement_scope"
+        )
 
     commit_s = episode.get("commit_s")
     if commit_s is None:

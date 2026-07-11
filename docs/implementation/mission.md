@@ -18,10 +18,11 @@ The exact thresholds, baselines, statistics, and forbidden proxies are in
 
 ## Proof
 
-A structured report from `scripts/evaluate_deployment.py` over a tracked,
-reproducible experiment manifest. The report must identify at least one
-feasible configuration and rank feasible configurations by the lower 95%
-confidence bound of isolated peak KV savings.
+A target-specific structured report from `scripts/evaluate_deployment.py`
+over a tracked, reproducible experiment manifest. Each report must bind one
+exact candidate and contain its complete manifest prompt coverage. Compare
+only passing target reports, then rank them by the lower 95% confidence bound
+of isolated peak KV savings.
 
 The implementation, tests, report, evidence manifest, and documentation
 must agree. Missing model/task coverage is named as a limit, not implied by

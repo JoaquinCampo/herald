@@ -418,7 +418,13 @@ def run_episode(
     gate: GateLike | None = None,
     sustain_interval: int | None = None,
 ) -> LiveEpisode:
-    """Run one live grace-window episode for one (prompt, ratio)."""
+    """Run one live grace-window episode for one (prompt, ratio).
+
+    ``peak_kv_cache_bytes`` measures actual end-to-end retained KV cache:
+    the live reference cache, the concurrent held-reference plus forked grace
+    cache during an attempt, or the committed continuation cache. It excludes
+    allocator accounting and is therefore the paired deployment memory metric.
+    """
     device = next(lm.model.parameters()).device.type
     if device == "cuda":
         torch.cuda.reset_peak_memory_stats()

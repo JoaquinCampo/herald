@@ -14,13 +14,15 @@ Also produces baseline.jsonl: one full uncompressed reference run per
 prompt (timing baseline + determinism check against the recorded
 reference).
 
-Resumable: existing keys in the output files are skipped. Designed
-for single-run Orion use (batch=1, one GPU).
+Every run records an immutable identity manifest. A non-empty output
+path requires explicit ``--resume`` with exactly matching configuration.
+Designed for single-run Orion use (batch=1, one GPU).
 
-Usage (Orion):
-  HF_HUB_OFFLINE=1 uv run python scripts/run_live_controller.py \
+Usage (Orion flat checkout):
+  export PATH="/clustergpu/home/jcampo/.local/bin:$PATH"
+  HF_HUB_OFFLINE=1 uv run --no-sync python run_live_controller.py \
       --limit-prompts 2   # smoke
-  HF_HUB_OFFLINE=1 uv run python scripts/run_live_controller.py
+  HF_HUB_OFFLINE=1 uv run --no-sync python run_live_controller.py
 """
 
 import argparse
@@ -34,7 +36,14 @@ from typing import Any
 
 sys.path.insert(0, "src")
 
-from herald.config import TASKS  # noqa: E402
+from herald.config import MODELS, TASKS  # noqa: E402
+from herald.deployment_evidence import (  # noqa: E402
+    END_TO_END_RETAINED_KV_CACHE,
+    candidate_id,
+    directory_sha256,
+    initialize_live_run,
+    verify_live_run,
+)
 from herald.expected_attention_stats import (  # noqa: E402
     StatisticsArtifact,
     validate_statistics_provenance,
@@ -80,6 +89,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--stride", type=int, default=16)
     p.add_argument("--sustain-interval", type=int, default=None)
     p.add_argument("--prompts-per-task", type=int, default=200)
+    p.add_argument("--resume", action="store_true")
     return p.parse_args()
 
 
@@ -161,24 +171,6 @@ def load_recorded_reference(
     return _read_json_object(path)
 
 
-def existing_keys(path: Path, key_field: str) -> set[str]:
-    if not path.exists():
-        return set()
-    keys = set()
-    with path.open() as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                record = _json_object(line, source=str(path))
-                try:
-                    keys.add(str(record[key_field]))
-                except KeyError as error:
-                    raise RuntimeError(
-                        f"missing {key_field!r} in {path}"
-                    ) from error
-    return keys
-
-
 def records_by_key(path: Path, key_field: str) -> dict[str, dict[str, Any]]:
     if not path.exists():
         return {}
@@ -188,11 +180,16 @@ def records_by_key(path: Path, key_field: str) -> dict[str, dict[str, Any]]:
             if line.strip():
                 record = _json_object(line, source=str(path))
                 try:
-                    records[str(record[key_field])] = record
+                    key = str(record[key_field])
                 except KeyError as error:
                     raise RuntimeError(
                         f"missing {key_field!r} in {path}"
                     ) from error
+                if key in records:
+                    raise RuntimeError(
+                        f"duplicate {key_field!r} in {path}: {key}"
+                    )
+                records[key] = record
     return records
 
 
@@ -217,20 +214,19 @@ def prefix_comparison(
 def main() -> None:
     args = parse_args()
     out_dir = Path(args.out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
     episodes_path = out_dir / "episodes.jsonl"
     baseline_path = out_dir / "baseline.jsonl"
     ref_dir = Path(args.references_dir)
     compressors = [item for item in args.compressors.split(",") if item]
     ratios = parse_ratios(args.ratios)
     max_new_tokens = TASKS["ifeval"].max_new_tokens
+    bundle_dir = Path(args.bundle_dir)
+    gate_dir = Path(args.gate_dir) if args.gate_dir is not None else None
 
-    bundles = {
-        c: AlarmBundle.load(Path(args.bundle_dir) / c) for c in compressors
-    }
+    bundles = {c: AlarmBundle.load(bundle_dir / c) for c in compressors}
     gates = (
-        {c: GateBundle.load(Path(args.gate_dir) / c) for c in compressors}
-        if args.gate_dir is not None
+        {c: GateBundle.load(gate_dir / c) for c in compressors}
+        if gate_dir is not None
         else None
     )
     statistics = _load_statistics_for_bundle(
@@ -238,9 +234,7 @@ def main() -> None:
         bundles,
         args.expected_attention_stats,
     )
-    targets = _read_json_object(
-        Path(args.bundle_dir) / "fidelity_targets.json"
-    )
+    targets = _read_json_object(bundle_dir / "fidelity_targets.json")
     test_pids = {
         c: set(targets["compressors"][c]["test_prompt_ids"])
         for c in compressors
@@ -254,6 +248,55 @@ def main() -> None:
     all_pids = sorted(set().union(*test_pids.values()))
     if args.limit_prompts is not None:
         all_pids = all_pids[: args.limit_prompts]
+    statistics_digest = statistics.digest if statistics is not None else None
+    candidate_prompt_ids: dict[str, list[str]] = {}
+    for compressor in compressors:
+        candidate_prompts = sorted(test_pids[compressor] & set(all_pids))
+        for ratio in ratios:
+            current_candidate_id = candidate_id(
+                compressor,
+                ratio,
+                args.sustain_interval,
+            )
+            candidate_prompt_ids[current_candidate_id] = candidate_prompts
+    candidate_ids = list(candidate_prompt_ids)
+    manifest = initialize_live_run(
+        out_dir,
+        {
+            "task": "ifeval",
+            "prompt_ids": all_pids,
+            "candidate_ids": candidate_ids,
+            "candidate_prompt_ids": candidate_prompt_ids,
+            "bundle_dir": str(bundle_dir),
+            "bundle_sha256": directory_sha256(bundle_dir),
+            "gate_dir": None if gate_dir is None else str(gate_dir),
+            "gate_sha256": (
+                None if gate_dir is None else directory_sha256(gate_dir)
+            ),
+            "references_dir": str(ref_dir),
+            "model_name_or_path": args.model_id or MODELS["llama"],
+            "dtype": args.dtype,
+            "device": args.device,
+            "stride": args.stride,
+            "sustain_interval": args.sustain_interval,
+            "expected_attention_stats_sha256": statistics_digest,
+        },
+        resume=args.resume,
+    )
+    run_id = str(manifest["run_id"])
+    baselines = records_by_key(baseline_path, "prompt_id")
+    episodes = records_by_key(episodes_path, "key")
+    evidence_errors = verify_live_run(
+        manifest,
+        list(baselines.values()),
+        list(episodes.values()),
+    )
+    if evidence_errors:
+        raise RuntimeError(
+            "invalid resumed live evidence: " + "; ".join(evidence_errors)
+        )
+    done_baseline = set(baselines)
+    done_episodes = set(episodes)
     print(
         f"live controller: {len(all_pids)} prompts x "
         f"{len(compressors)} compressors x {len(ratios)} ratios",
@@ -280,10 +323,6 @@ def main() -> None:
     if statistics is not None:
         statistics.validate_model(lm.model)
 
-    statistics_digest = statistics.digest if statistics is not None else None
-    baselines = records_by_key(baseline_path, "prompt_id")
-    done_baseline = set(baselines)
-    done_episodes = existing_keys(episodes_path, "key")
     n_done = 0
 
     for pid in all_pids:
@@ -299,6 +338,8 @@ def main() -> None:
                 "wall_s": wall,
                 "ref_len": len(ref.gen_ids),
                 "q_ref_live": q_ref_live,
+                "run_id": run_id,
+                "kv_measurement_scope": END_TO_END_RETAINED_KV_CACHE,
                 "peak_kv_cache_bytes": ref.peak_kv_cache_bytes,
             }
             if recorded is not None:
@@ -319,7 +360,12 @@ def main() -> None:
             if pid not in test_pids[compressor]:
                 continue
             for ratio in ratios:
-                key = f"{compressor}|{ratio:.4f}|{pid}"
+                current_candidate_id = candidate_id(
+                    compressor,
+                    ratio,
+                    args.sustain_interval,
+                )
+                key = f"{current_candidate_id}|{pid}"
                 if key in done_episodes:
                     continue
                 press_factory = partial(
@@ -370,6 +416,9 @@ def main() -> None:
                     "compressor": compressor,
                     "ratio": ratio,
                     "sustain_interval": args.sustain_interval,
+                    "candidate_id": current_candidate_id,
+                    "run_id": run_id,
+                    "kv_measurement_scope": END_TO_END_RETAINED_KV_CACHE,
                     "expected_attention_stats_sha256": (
                         statistics_digest
                         if compressor == "expected_attention_stats"

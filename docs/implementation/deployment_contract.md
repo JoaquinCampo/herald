@@ -22,8 +22,9 @@ software environment.
   compression attempts, reverted tokens, and continuation work count.
 - Quality uses the live baseline output from the same run, never a stale
   recorded reference from another environment.
-- Prompt IDs are the bootstrap clusters. At least 30 paired observations
-  are required for a configuration-level claim.
+- Prompt IDs are the bootstrap clusters. At least 30 unique paired prompts
+  are required for a configuration-level claim. Duplicate evidence is a hard
+  error, never a way to increase N.
 
 ## Hard constraints
 
@@ -57,19 +58,23 @@ allocator peaks are not an acceptable substitute because they include
 model weights, workspaces, fragmentation, and unrelated tensors.
 
 The lower endpoint of the bootstrap 95% interval for isolated peak KV
-savings must be positive. Among configurations that pass quality and
-speed, selection maximizes that lower confidence bound. KV-byte-token
-area is reported when available to capture time-averaged residency.
+savings must be positive. The candidate measurement is the actual live
+retained cache peak, including concurrent reference and grace-fork caches,
+not allocator accounting. Among configurations that pass quality and speed,
+selection maximizes that lower confidence bound. KV-byte-token area is
+reported when available to capture time-averaged residency.
 
 Compression exposure (`1 - switch_position / output_length`) is a policy
 diagnostic only. It is not a memory-savings result.
 
 ## Evaluator behavior
 
-The evaluator writes structured JSON and exits nonzero when no tested
-configuration is feasible. Missing isolated KV measurements are a hard
-failure; the evaluator never falls back to allocator peaks or analytical
-exposure proxies.
+The evaluator accepts one explicit compressor, ratio, and sustain mode at
+a time. Its live manifest binds the exact candidate, frozen bundle and gate
+directory digests, test prompts, and runtime configuration. It rejects partial
+coverage, stale or mixed run IDs, mode mixing, duplicate evidence, missing
+isolated KV measurements, allocator peaks, and analytical exposure proxies.
+It writes structured JSON and exits nonzero when its named target is infeasible.
 
 The current ignored `live_controller_v3` artifact predates this contract.
 It has no isolated KV measurements, and no ratio clears the 5% slowdown

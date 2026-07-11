@@ -14,6 +14,11 @@ from herald.deployment_contract import (  # noqa: E402
     evaluate_deployment,
     measurement_from_live_records,
 )
+from herald.deployment_evidence import (  # noqa: E402
+    candidate_id,
+    load_live_run_manifest,
+    verify_live_run,
+)
 
 
 def load_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -33,6 +38,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-slowdown", type=float, default=0.05)
     parser.add_argument("--min-pairs", type=int, default=30)
     parser.add_argument("--bootstrap-resamples", type=int, default=2_000)
+    parser.add_argument("--target-compressor", required=True)
+    parser.add_argument("--target-ratio", type=float, required=True)
+    parser.add_argument("--target-sustain-interval", type=int, default=None)
     parser.add_argument("--report-only", action="store_true")
     return parser.parse_args()
 
@@ -51,29 +59,51 @@ def main() -> None:
         min_pairs=args.min_pairs,
         bootstrap_resamples=args.bootstrap_resamples,
     )
-    baselines = {
-        str(row["prompt_id"]): row
-        for row in load_jsonl(live_dir / "baseline.jsonl")
-    }
-    groups: dict[tuple[str, float], list[dict[str, Any]]] = defaultdict(list)
-    for episode in load_jsonl(live_dir / "episodes.jsonl"):
-        key = (str(episode["compressor"]), float(episode["ratio"]))
-        groups[key].append(episode)
+    manifest = load_live_run_manifest(live_dir / "run_manifest.json")
+    baseline_rows = load_jsonl(live_dir / "baseline.jsonl")
+    episode_rows = load_jsonl(live_dir / "episodes.jsonl")
+    evidence_errors = verify_live_run(
+        manifest,
+        baseline_rows,
+        episode_rows,
+        require_complete=True,
+    )
+    if evidence_errors:
+        raise RuntimeError(
+            "invalid live evidence: " + "; ".join(evidence_errors)
+        )
+    baselines = {str(row["prompt_id"]): row for row in baseline_rows}
+    target_id = candidate_id(
+        args.target_compressor,
+        args.target_ratio,
+        args.target_sustain_interval,
+    )
+    run_config = manifest["run_config"]
+    if not isinstance(run_config, dict):
+        raise RuntimeError("live evidence manifest has invalid run_config")
+    candidate_ids = run_config.get("candidate_ids")
+    if not isinstance(candidate_ids, list) or target_id not in candidate_ids:
+        raise RuntimeError(
+            f"target candidate is not bound by run manifest: {target_id}"
+        )
+
+    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for episode in episode_rows:
+        groups[str(episode["candidate_id"])].append(episode)
+    if target_id not in groups:
+        raise RuntimeError(f"target candidate has no episodes: {target_id}")
 
     reports: dict[str, dict[str, Any]] = {}
-    feasible: list[tuple[str, float]] = []
-    for (compressor, ratio), episodes in sorted(groups.items()):
+    target_evaluation = None
+    for name, episodes in sorted(groups.items()):
         measurements = [
             measurement_from_live_records(ep, baselines[str(ep["prompt_id"])])
             for ep in episodes
         ]
         evaluation = evaluate_deployment(measurements, contract=contract)
-        name = f"{compressor}|{ratio:.4f}"
         reports[name] = evaluation.as_dict()
-        if evaluation.feasible:
-            if evaluation.peak_kv_savings is None:
-                raise AssertionError("feasible report lacks KV savings")
-            feasible.append((name, evaluation.peak_kv_savings.lower))
+        if name == target_id:
+            target_evaluation = evaluation
         memory = (
             "unverified"
             if evaluation.peak_kv_savings is None
@@ -87,8 +117,9 @@ def main() -> None:
             f"peak_kv_savings={memory} "
             f"failures={','.join(evaluation.failures) or 'none'}"
         )
+    if target_evaluation is None:
+        raise AssertionError("target candidate report was not produced")
 
-    feasible.sort(key=lambda item: item[1], reverse=True)
     result = {
         "schema_version": 1,
         "contract": {
@@ -102,14 +133,15 @@ def main() -> None:
             "min_pairs": contract.min_pairs,
             "bootstrap_resamples": contract.bootstrap_resamples,
         },
-        "overall_pass": bool(feasible),
-        "best_feasible": feasible[0][0] if feasible else None,
+        "target_candidate": target_id,
+        "overall_pass": target_evaluation.feasible,
+        "best_feasible": target_id if target_evaluation.feasible else None,
         "groups": reports,
     }
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     print(f"wrote {output}")
-    if not feasible and not args.report_only:
+    if not target_evaluation.feasible and not args.report_only:
         raise SystemExit(1)
 
 

@@ -141,6 +141,14 @@ def test_minimum_sample_size_is_enforced() -> None:
     assert "minimum_pairs" in report.failures
 
 
+def test_duplicate_prompt_ids_are_rejected() -> None:
+    with pytest.raises(ValueError, match="unique prompt IDs"):
+        evaluate_deployment(
+            [_measurement("p0"), _measurement("p0"), _measurement("p1")],
+            contract=_contract(),
+        )
+
+
 def test_invalid_measurement_is_rejected() -> None:
     with pytest.raises(ValueError, match="baseline_wall_s"):
         _measurement("p0", baseline_wall_s=0.0)
@@ -153,6 +161,7 @@ def test_live_record_adapter_uses_live_baseline_and_isolated_kv() -> None:
         "ref_len": 100,
         "q_ref_live": 0.8,
         "q_ref_recorded": 0.2,
+        "kv_measurement_scope": "end_to_end_retained_kv_cache",
         "peak_kv_cache_bytes": 1_000,
     }
     episode = {
@@ -161,6 +170,7 @@ def test_live_record_adapter_uses_live_baseline_and_isolated_kv() -> None:
         "n_new_ids": 70,
         "q_live": 0.75,
         "total_wall_s": 10.2,
+        "kv_measurement_scope": "end_to_end_retained_kv_cache",
         "peak_kv_cache_bytes": 500,
     }
 
@@ -174,6 +184,28 @@ def test_live_record_adapter_uses_live_baseline_and_isolated_kv() -> None:
     assert row.candidate_peak_kv_bytes == 500
 
 
+def test_live_record_adapter_requires_end_to_end_kv_scope() -> None:
+    baseline = {
+        "prompt_id": "p0",
+        "wall_s": 10.0,
+        "ref_len": 100,
+        "q_ref_live": 1.0,
+        "peak_kv_cache_bytes": 1_000,
+    }
+    episode = {
+        "prompt_id": "p0",
+        "commit_s": None,
+        "ref_len_live": 100,
+        "n_new_ids": 0,
+        "q_live": 1.0,
+        "total_wall_s": 10.0,
+        "peak_kv_cache_bytes": 900,
+    }
+
+    with pytest.raises(ValueError, match="kv_measurement_scope"):
+        measurement_from_live_records(episode, baseline)
+
+
 def test_live_record_adapter_rejects_allocator_peak_as_kv_measurement() -> (
     None
 ):
@@ -182,6 +214,7 @@ def test_live_record_adapter_rejects_allocator_peak_as_kv_measurement() -> (
         "wall_s": 10.0,
         "ref_len": 100,
         "q_ref_live": 1.0,
+        "kv_measurement_scope": "end_to_end_retained_kv_cache",
         "peak_mem_bytes": 10_000,
     }
     episode = {
@@ -191,6 +224,7 @@ def test_live_record_adapter_rejects_allocator_peak_as_kv_measurement() -> (
         "n_new_ids": 0,
         "q_live": 1.0,
         "total_wall_s": 10.0,
+        "kv_measurement_scope": "end_to_end_retained_kv_cache",
         "peak_mem_bytes": 9_000,
     }
 
