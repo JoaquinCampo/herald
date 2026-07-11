@@ -15,6 +15,7 @@ import shutil
 import sys
 import time
 import uuid
+import warnings
 from pathlib import Path
 from typing import Any, cast
 
@@ -121,6 +122,24 @@ def _required_float(value: object, *, source: str) -> float:
     return result
 
 
+def _optional_finite_float(value: object, *, source: str) -> float | None:
+    if isinstance(value, np.generic):
+        value = value.item()
+    if not isinstance(value, str | int | float):
+        raise ValueError(f"expected numeric {source}, got {value!r}")
+    try:
+        result = float(value)
+    except ValueError as error:
+        raise ValueError(
+            f"expected numeric {source}, got {value!r}"
+        ) from error
+    if np.isnan(result):
+        return None
+    if not np.isfinite(result):
+        raise ValueError(f"expected finite {source}, got {value!r}")
+    return result
+
+
 def _required_int(value: object, *, source: str) -> int:
     if isinstance(value, np.generic):
         value = value.item()
@@ -206,10 +225,12 @@ def hyb_summaries(
     m = np.minimum(lengths, k)
     step = np.arange(k)[None, :, None]
     b = np.where(step < m[:, None, None], b, np.nan)
-    with np.errstate(all="ignore"):
-        mean = np.nanmean(b, axis=1)
-        mn = np.nanmin(b, axis=1)
-        mx = np.nanmax(b, axis=1)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        with np.errstate(all="ignore"):
+            mean = np.nanmean(b, axis=1)
+            mn = np.nanmin(b, axis=1)
+            mx = np.nanmax(b, axis=1)
     step0 = b[:, 0]
     last = b[np.arange(len(b)), np.maximum(m - 1, 0)]
     slope = (last - step0) / np.maximum(m - 1, 1).astype(np.float32)[:, None]
@@ -381,10 +402,9 @@ def main() -> None:
         ):
             for row, row_index in zip(work, indices, strict=True):
                 for feature_index, name in enumerate(summary_names):
-                    value = _required_float(
+                    row[name] = _optional_finite_float(
                         mat[row_index, feature_index], source=name
                     )
-                    row[name] = None if np.isnan(value) else value
         train_features = featurize(work_train, columns)
         test_features = featurize(work_test, columns)
         oof_sum = np.zeros(len(train))
