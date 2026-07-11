@@ -8,7 +8,12 @@ from pathlib import Path
 from typing import Any
 
 from herald.config import Config
-from herald.storage import hybrid_done, load_reference, reference_done
+from herald.storage import (
+    hybrid_done,
+    load_reference,
+    reference_done,
+    safe_id,
+)
 
 SWEEP_CONFIG_SHA256_METADATA_KEY = b"herald.sweep_config_sha256"
 
@@ -70,6 +75,19 @@ def validate_sweep_completeness(
                 continue
             expected_by_prompt: dict[str, set[int]] = {}
             for prompt_id in prompt_ids:
+                feature_path = (
+                    results_dir
+                    / model
+                    / task
+                    / "references"
+                    / f"{safe_id(prompt_id)}.npy"
+                )
+                if not feature_path.is_file():
+                    errors.append(
+                        f"{model}/{task}/{prompt_id}: "
+                        "missing reference features"
+                    )
+                    continue
                 try:
                     reference = load_reference(
                         results_dir,

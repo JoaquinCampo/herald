@@ -125,6 +125,10 @@ def test_rejects_incomplete_hybrid_sweep_before_dataset_build(
     with pytest.raises(ValueError, match="tasks not in sweep config"):
         validate_sweep_completeness(tmp_path, config, tasks=["gsm8k"])
 
+    (tmp_path / "llama" / "ifeval" / "references" / "p0.npy").unlink()
+    with pytest.raises(ValueError, match="missing reference features"):
+        validate_sweep_completeness(tmp_path, config)
+
 
 def test_validates_parquet_against_bound_sweep_config(tmp_path: Path) -> None:
     config = tmp_path / "config.json"
