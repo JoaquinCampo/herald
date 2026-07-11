@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-07-11",
+  "status": "rejected_snapkv_always_on_ratio_0_25_one_shot",
+  "rollback_tag": "codex/herald-goal-start-0949baa",
+  "scope": {
+    "model": "Llama-3.1-8B-Instruct",
+    "task": "IFEval",
+    "prompts": "five frozen held-out evaluation-only triage prompts",
+    "compressor": "snapkv_always_on",
+    "ratio": 0.25,
+    "sustain_interval": 0,
+    "controller": "none; direct one-shot prefill compression with uniform short-context guard",
+    "contract": "quality upper <= 1%, major-damage upper <= 1%, slowdown upper <= 5%, positive isolated peak-KV lower bound"
+  },
+  "verdict": {
+    "n_pairs": 5,
+    "quality_upper": 0.4,
+    "major_damage_upper": 0.6,
+    "slowdown_upper": -0.068,
+    "peak_kv_savings_mean": 0.47,
+    "peak_kv_savings_lower": 0.113,
+    "per_token_slowdown_mean": 0.339,
+    "failed_gates": ["quality_noninferiority", "major_damage_rate"],
+    "claim_limit": "closes only always-on SnapKV ratio 0.25 one-shot with the default window and uniform short-context guard; no N>=30 expansion"
+  },
+  "commands": [
+    "PYTHONPATH=. HF_HUB_OFFLINE=1 uv run --no-sync python scripts/run_int8_cache.py --mechanism snapkv --out-dir results/snapkv_always_on_r025_v1 --limit-prompts 5 --device cuda --dtype bfloat16",
+    "PYTHONPATH=. uv run --no-sync python scripts/evaluate_deployment.py --live-dir results/snapkv_always_on_r025_v1 --target-compressor snapkv_always_on --target-ratio 0.25 --target-sustain-interval 0 --min-pairs 5 --bootstrap-resamples 2000 --report-only",
+    "uv run python scripts/verify_deployment_evidence.py --manifest docs/implementation/snapkv_always_on_deployment_evidence_manifest.json"
+  ],
+  "artifacts": [
+    {"path": "results/snapkv_always_on_r025_v1/baseline.jsonl", "sha256": "fdd97b02a0fa5624e5dc91350cbcf33b6c9b9d9ff83a3c1140622e4720b1de2c"},
+    {"path": "results/snapkv_always_on_r025_v1/episodes.jsonl", "sha256": "e52e9f10ccfa7da009f3c5ed4f7868e33eb1627ffd2addf4708fae6a4d9a8652"},
+    {"path": "results/snapkv_always_on_r025_v1/run_manifest.json", "sha256": "d91c3930f1fdf83377b605b19009644ea1f8794a0534238c29d1b48a050406fa"},
+    {"path": "results/snapkv_always_on_r025_v1/deployment_report.json", "sha256": "7beec80a68ed735d8c440ce2c45ed7aedf5cdcd4d75d0b12c13a12073e74ad4b"},
+    {"path": "results/snapkv_always_on_r025_v1/run.log", "sha256": "9a2a2d26f32a8cd108b6501bddbc70072c87cbdf2b85d395797cb9510f37cf7f"}
+  ],
+  "repository_revision": "ed7b6666192caeed9831b323b8f5a276acca52b7",
+  "repository_artifacts": [
+    {"path": "src/herald/generate.py", "sha256": "a675af4be5ee62e6e28b69d0ba4aa4875d70b7730d4bec451032100e5cab455c"},
+    {"path": "src/herald/sustained_press.py", "sha256": "739a5f981116fe2796657f3f1b8a6c0ebdb5d79969a10d9fef9772e41e4852e5"},
+    {"path": "src/herald/presses.py", "sha256": "1d8089a7e223a07ef896d29034565798b74496b49405c8d91fd9cb1d5a9d60f6"},
+    {"path": "src/herald/kv_metrics.py", "sha256": "c2b6d8852a07c5ad1d3b7e366903da329e7a0c8715d9244a8d4484a6c1cbca74"},
+    {"path": "scripts/run_int8_cache.py", "sha256": "c55683994f94a3a6a022b6cf3301d9ba86d30b3b6f8c5381da801c92caea215b"},
+    {"path": "tests/test_always_on_cache.py", "sha256": "36c5f52fcf7f1c4ac5f5d85746e1f9b7c0b5ac2aae37ad71500da70207a460d6"},
+    {"path": "tests/test_presses.py", "sha256": "03f398aa28218f8da1fb4dc8ad8423338d567eb2598c63fe615af2af3ff3139a"},
+    {"path": "docs/implementation/snapkv_always_on_preregistration.md", "sha256": "e2060cbc1e11223d021f1d7679c90ce65d100f0381c2979a20b231981f1ec513"},
+    {"path": "docs/implementation/deployment_experiment_log.md", "sha256": "b1af526560d4b72ba6eb90653926463f557a697cf7cd7671950e42b52dfe8d20"},
+    {"path": "docs/implementation/deployment_hypothesis_backlog.md", "sha256": "94bce56971bba9cb133d2bf83c57daa0f51a8bb9eaa796d676ab3e437e1d24c0"}
+  ]
+}
