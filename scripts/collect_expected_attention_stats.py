@@ -24,6 +24,7 @@ from herald.expected_attention_stats import (  # noqa: E402
     StatisticsArtifact,
     StatisticsMetadata,
     collect_query_moments,
+    fingerprint_calibration_inputs,
 )
 from herald.generate import build_input_ids, load_model  # noqa: E402
 from herald.switch_baselines import split_prompt_ids  # noqa: E402
@@ -112,6 +113,10 @@ def main() -> None:
         excluded_test_prompt_ids=test_ids,
         max_prompt_tokens=args.max_prompt_tokens,
         query_token_count=query_token_count,
+        calibration_input_sha256=fingerprint_calibration_inputs(
+            calibration_ids,
+            inputs,
+        ),
     )
     artifact = StatisticsArtifact(metadata=metadata, mu=mu, cov=cov)
     digest = artifact.save(args.out_dir)
@@ -124,6 +129,9 @@ def main() -> None:
                 "n_calibration_prompts": len(calibration_ids),
                 "n_excluded_test_prompts": len(test_ids),
                 "query_token_count": query_token_count,
+                "calibration_input_sha256": (
+                    metadata.calibration_input_sha256
+                ),
             },
             sort_keys=True,
         )

@@ -26,7 +26,27 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 METADATA_FILE = "metadata.json"
 STATISTICS_FILE = "query_statistics.npz"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+
+
+def fingerprint_calibration_inputs(
+    prompt_ids: Sequence[str],
+    input_ids: Sequence[torch.Tensor],
+) -> str:
+    """Hash the exact tokenized inputs used to estimate query moments."""
+    if len(prompt_ids) != len(input_ids):
+        raise ValueError("prompt_ids and input_ids must have equal length")
+    digest = hashlib.sha256()
+    for prompt_id, token_ids in zip(prompt_ids, input_ids, strict=True):
+        if token_ids.ndim != 1:
+            raise ValueError("calibration token IDs must be rank 1")
+        canonical = token_ids.detach().cpu().to(torch.int64).contiguous()
+        encoded_id = prompt_id.encode()
+        digest.update(len(encoded_id).to_bytes(8, "big"))
+        digest.update(encoded_id)
+        digest.update(canonical.numel().to_bytes(8, "big"))
+        digest.update(canonical.numpy().tobytes())
+    return digest.hexdigest()
 
 
 class StatisticsMetadata(BaseModel):
@@ -48,6 +68,7 @@ class StatisticsMetadata(BaseModel):
     excluded_test_prompt_ids: list[str] = Field(min_length=1)
     max_prompt_tokens: int = Field(ge=1)
     query_token_count: int = Field(ge=2)
+    calibration_input_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     artifact_sha256: str | None = None
 
     @model_validator(mode="after")

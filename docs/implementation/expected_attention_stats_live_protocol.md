@@ -8,7 +8,8 @@ It produces a fresh frozen alarm bundle. Do not reuse the existing
 
 - Statistics use only prompt IDs outside the deterministic held-out split.
 - The statistics artifact contains query-moment shapes, calibration IDs,
-  excluded test IDs, settings, and a content digest.
+  excluded test IDs, a tokenized-input fingerprint, settings, and a content
+  digest.
 - The alarm bundle records that digest. The live controller refuses a missing
   or mismatched digest.
 - Hybrid streams are extracted from the same switch parquet and carry a

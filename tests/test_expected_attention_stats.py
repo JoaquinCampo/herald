@@ -14,6 +14,7 @@ from herald.expected_attention_stats import (
     QueryMomentAccumulator,
     StatisticsArtifact,
     StatisticsMetadata,
+    fingerprint_calibration_inputs,
     load_expected_attention_stats_press,
     validate_statistics_bundle_binding,
     validate_statistics_provenance,
@@ -52,6 +53,7 @@ def _metadata() -> StatisticsMetadata:
         excluded_test_prompt_ids=["test-1"],
         max_prompt_tokens=128,
         query_token_count=10,
+        calibration_input_sha256="0" * 64,
     )
 
 
@@ -83,6 +85,25 @@ def test_artifact_roundtrip_and_press_factory(tmp_path: Path) -> None:
     assert press.mu.device == model._parameter.device
     assert press.mu.dtype == model._parameter.dtype
     assert torch.equal(press.mu, loaded.mu)
+
+
+def test_calibration_input_fingerprint_binds_prompt_ids_and_tokens() -> None:
+    prompt_ids = ["train-1", "train-2"]
+    inputs = [
+        torch.tensor([1, 2, 3], dtype=torch.long),
+        torch.tensor([4, 5], dtype=torch.long),
+    ]
+
+    fingerprint = fingerprint_calibration_inputs(prompt_ids, inputs)
+
+    assert fingerprint == fingerprint_calibration_inputs(prompt_ids, inputs)
+    assert fingerprint != fingerprint_calibration_inputs(
+        prompt_ids,
+        [inputs[0], torch.tensor([4, 6], dtype=torch.long)],
+    )
+    assert fingerprint != fingerprint_calibration_inputs(
+        list(reversed(prompt_ids)), list(reversed(inputs))
+    )
 
 
 def test_sweep_config_requires_frozen_statistics_path() -> None:
