@@ -19,6 +19,18 @@ def kv_cache_nbytes(cache: Any) -> int:
     layers = getattr(cache, "layers", None)
     if layers is not None:
         for layer in layers:
+            retained_tensors = getattr(layer, "retained_tensors", None)
+            if callable(retained_tensors):
+                layer_tensors = retained_tensors()
+                if not all(
+                    isinstance(tensor, torch.Tensor)
+                    for tensor in layer_tensors
+                ):
+                    raise TypeError(
+                        "cache layer retained_tensors must return tensors"
+                    )
+                tensors.extend(layer_tensors)
+                continue
             keys = getattr(layer, "keys", None)
             values = getattr(layer, "values", None)
             if not isinstance(keys, torch.Tensor) or not isinstance(

@@ -35,6 +35,7 @@ from transformers import (
 from herald.attention_features import AttentionTap
 from herald.config import MODELS
 from herald.features import FEATURE_NAMES, FeatureCollector
+from herald.int8_cache import Int8QuantizedCache
 from herald.kv_metrics import kv_cache_nbytes
 from herald.tasks import PromptRecord
 
@@ -308,6 +309,44 @@ def generate_baseline(
         text=lm.tokenizer.decode(ids, skip_special_tokens=True),
         peak_kv_cache_bytes=kv_cache_nbytes(cache),
     )
+
+
+def generate_int8_cache(
+    lm: LoadedModel,
+    record: PromptRecord,
+    max_new_tokens: int,
+    *,
+    residual_length: int = 128,
+) -> tuple[BaselineRun, Int8QuantizedCache]:
+    """Generate through the dependency-free int8 cache runtime."""
+    prompt = build_input_ids(lm, record)
+    device = next(lm.model.parameters()).device.type
+    input_ids, attn = _left_pad([prompt], lm.pad_id, device)
+    prompt_len = int(input_ids.shape[1])
+    cache = Int8QuantizedCache(
+        lm.model.config,
+        residual_length=residual_length,
+    )
+    with torch.no_grad():
+        out = lm.model.generate(  # type: ignore[operator]
+            input_ids=input_ids,
+            attention_mask=attn,
+            generation_config=lm.gen_config,
+            max_new_tokens=max_new_tokens,
+            past_key_values=cache,
+            return_dict_in_generate=True,
+        )
+    output_cache = getattr(out, "past_key_values", None)
+    if output_cache is not cache:
+        raise RuntimeError("generation replaced the int8 KV cache")
+    ids = _trim_at_eos(out.sequences[0, prompt_len:].tolist(), lm.eos_ids)
+    run = BaselineRun(
+        prompt_id=record.prompt_id,
+        gen_ids=ids,
+        text=lm.tokenizer.decode(ids, skip_special_tokens=True),
+        peak_kv_cache_bytes=cache.retained_peak_nbytes(),
+    )
+    return run, cache
 
 
 def generate_hybrids(

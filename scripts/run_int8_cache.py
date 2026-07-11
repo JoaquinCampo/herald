@@ -1,0 +1,223 @@
+# pyright: reportMissingImports=false
+
+"""Run paired live evidence for the dependency-free int8 KV cache."""
+
+import argparse
+import json
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
+sys.path.insert(0, "src")
+
+from herald.config import MODELS, TASKS  # noqa: E402
+from herald.deployment_evidence import (  # noqa: E402
+    END_TO_END_RETAINED_KV_CACHE,
+    candidate_id,
+    initialize_live_run,
+    verify_live_run,
+)
+from herald.generate import (  # noqa: E402
+    generate_baseline,
+    generate_int8_cache,
+    load_model,
+)
+from herald.scoring import score  # noqa: E402
+from herald.tasks import PromptRecord, load_prompts  # noqa: E402
+
+COMPRESSOR = "int8_cache"
+RATIO = 0.5
+RESIDUAL_LENGTH = 128
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--targets",
+        type=Path,
+        default=Path(
+            "results/expected_stats_alarm_bundle_full_s0_v2/fidelity_targets.json"
+        ),
+    )
+    parser.add_argument("--out-dir", type=Path, required=True)
+    parser.add_argument("--limit-prompts", type=int, default=None)
+    parser.add_argument("--prompts-per-task", type=int, default=200)
+    parser.add_argument("--device", default="cuda")
+    parser.add_argument("--dtype", default="bfloat16")
+    parser.add_argument("--model-id", default=None)
+    parser.add_argument("--resume", action="store_true")
+    return parser.parse_args()
+
+
+def append_jsonl(path: Path, value: dict[str, Any]) -> None:
+    with path.open("a") as file:
+        file.write(json.dumps(value) + "\n")
+
+
+def records_by_key(path: Path, key: str) -> dict[str, dict[str, Any]]:
+    if not path.exists():
+        return {}
+    records: dict[str, dict[str, Any]] = {}
+    with path.open() as file:
+        for line in file:
+            if not line.strip():
+                continue
+            value = json.loads(line)
+            record_key = str(value[key])
+            if record_key in records:
+                raise RuntimeError(f"duplicate {key} in {path}: {record_key}")
+            records[record_key] = value
+    return records
+
+
+def main() -> None:
+    args = parse_args()
+    targets = json.loads(args.targets.read_text())
+    prompt_ids = sorted(
+        targets["compressors"]["expected_attention_stats"]["test_prompt_ids"]
+    )
+    if args.limit_prompts is not None:
+        prompt_ids = prompt_ids[: args.limit_prompts]
+    current_candidate_id = candidate_id(COMPRESSOR, RATIO, None)
+    manifest = initialize_live_run(
+        args.out_dir,
+        {
+            "task": "ifeval",
+            "prompt_ids": prompt_ids,
+            "candidate_ids": [current_candidate_id],
+            "candidate_prompt_ids": {current_candidate_id: prompt_ids},
+            "model_name_or_path": args.model_id or MODELS["llama"],
+            "dtype": args.dtype,
+            "device": args.device,
+            "compressor": COMPRESSOR,
+            "ratio": RATIO,
+            "nbits": 8,
+            "residual_length": RESIDUAL_LENGTH,
+            "targets": str(args.targets),
+        },
+        resume=args.resume,
+    )
+    run_id = str(manifest["run_id"])
+    baseline_path = args.out_dir / "baseline.jsonl"
+    episodes_path = args.out_dir / "episodes.jsonl"
+    baselines = records_by_key(baseline_path, "prompt_id")
+    episodes = records_by_key(episodes_path, "key")
+    errors = verify_live_run(
+        manifest,
+        list(baselines.values()),
+        list(episodes.values()),
+    )
+    if errors:
+        raise RuntimeError(
+            "invalid resumed live evidence: " + "; ".join(errors)
+        )
+
+    records = {
+        record.prompt_id: record
+        for record in load_prompts(
+            "ifeval", args.prompts_per_task, TASKS["ifeval"]
+        )
+        if record.prompt_id in set(prompt_ids)
+    }
+    missing = [
+        prompt_id for prompt_id in prompt_ids if prompt_id not in records
+    ]
+    if missing:
+        raise RuntimeError(f"prompts not found in loader: {missing[:5]}")
+    model = load_model(
+        "llama",
+        dtype=args.dtype,
+        device=args.device,
+        model_id=args.model_id,
+    )
+    max_new_tokens = TASKS["ifeval"].max_new_tokens
+    print(f"int8 cache: {len(prompt_ids)} paired prompts", flush=True)
+
+    completed = 0
+    for prompt_id in prompt_ids:
+        record: PromptRecord = records[prompt_id]
+        if prompt_id not in baselines:
+            started = time.perf_counter()
+            baseline = generate_baseline(model, record, max_new_tokens)
+            baseline_wall = time.perf_counter() - started
+            baseline_record: dict[str, Any] = {
+                "prompt_id": prompt_id,
+                "wall_s": baseline_wall,
+                "ref_len": len(baseline.gen_ids),
+                "q_ref_live": score("ifeval", baseline.text, record.gold),
+                "run_id": run_id,
+                "kv_measurement_scope": END_TO_END_RETAINED_KV_CACHE,
+                "peak_kv_cache_bytes": baseline.peak_kv_cache_bytes,
+            }
+            append_jsonl(baseline_path, baseline_record)
+            baselines[prompt_id] = baseline_record
+            print(
+                f"BASELINE {prompt_id} len={len(baseline.gen_ids)} "
+                f"q={baseline_record['q_ref_live']:.3f} "
+                f"wall={baseline_wall:.1f}s",
+                flush=True,
+            )
+
+        key = f"{current_candidate_id}|{prompt_id}"
+        if key in episodes:
+            continue
+        started = time.perf_counter()
+        candidate, cache = generate_int8_cache(
+            model,
+            record,
+            max_new_tokens,
+            residual_length=RESIDUAL_LENGTH,
+        )
+        total_wall = time.perf_counter() - started
+        q_live = score("ifeval", candidate.text, record.gold)
+        q_ref = float(baselines[prompt_id]["q_ref_live"])
+        episode: dict[str, Any] = {
+            "key": key,
+            "prompt_id": prompt_id,
+            "compressor": COMPRESSOR,
+            "ratio": RATIO,
+            "sustain_interval": None,
+            "candidate_id": current_candidate_id,
+            "run_id": run_id,
+            "kv_measurement_scope": END_TO_END_RETAINED_KV_CACHE,
+            "commit_s": 0,
+            "attempts": [],
+            "skips": [],
+            "ref_len_live": int(baselines[prompt_id]["ref_len"]),
+            "ref_done": True,
+            "n_new_ids": len(candidate.gen_ids),
+            "q_live": q_live,
+            "dq_live": q_ref - float(q_live),
+            "q_ref_recorded": None,
+            "dq_recorded": None,
+            "savings": None,
+            "ref_wall_s": 0.0,
+            "total_wall_s": total_wall,
+            "peak_mem_bytes": 0,
+            "peak_kv_cache_bytes": candidate.peak_kv_cache_bytes,
+            "final_kv_cache_bytes": cache.retained_peak_nbytes(),
+            "text": candidate.text,
+        }
+        append_jsonl(episodes_path, episode)
+        episodes[key] = episode
+        completed += 1
+        print(
+            f"EPISODE {key} q={q_live:.3f} dq={episode['dq_live']} "
+            f"wall={total_wall:.1f}s kv={candidate.peak_kv_cache_bytes}",
+            flush=True,
+        )
+
+    errors = verify_live_run(
+        manifest,
+        list(baselines.values()),
+        list(episodes.values()),
+        require_complete=True,
+    )
+    if errors:
+        raise RuntimeError("incomplete live evidence: " + "; ".join(errors))
+    print(f"done: {completed} new episodes", flush=True)
+
+
+if __name__ == "__main__":
+    main()
