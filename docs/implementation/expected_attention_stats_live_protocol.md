@@ -58,7 +58,7 @@ HF_HUB_OFFLINE=1 uv run python scripts/run_live_controller.py \
 
 uv run python scripts/evaluate_live_fidelity.py \
   --live-dir results/live_expected_attention_stats \
-  --targets "$BUNDLE/fidelity_targets.json"
+  --targets "$BUNDLE/fidelity_targets.json" --skip-static
 
 uv run python scripts/evaluate_deployment.py \
   --live-dir results/live_expected_attention_stats \
