@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-07-11",
+  "status": "rejected_irreversible_expected_attention_stats_precompression_selector",
+  "rollback_tag": "codex/herald-goal-start-0949baa",
+  "scope": {
+    "model": "Llama-3.1-8B-Instruct",
+    "task": "IFEval",
+    "prompts": "five frozen held-out evaluation-only triage prompts",
+    "compressor": "expected_attention_stats",
+    "ratio": 0.25,
+    "sustain_interval": 32,
+    "controller": "feature-only irreversible pre-compression selector with in-place cache compression",
+    "contract": "quality upper <= 1%, major-damage upper <= 1%, slowdown upper <= 5%, positive isolated peak-KV lower bound"
+  },
+  "verdict": {
+    "n_pairs": 5,
+    "quality_upper": 0.0,
+    "major_damage_upper": 0.0,
+    "slowdown_upper": 0.1274628645325552,
+    "peak_kv_savings_lower": 0.0,
+    "failed_gates": ["end_to_end_slowdown", "positive_kv_savings"],
+    "claim_limit": "closes only the frozen feature-only irreversible selector; no N>=30 expansion"
+  },
+  "commands": [
+    "PYTHONPATH=. uv run --no-sync python scripts/train_precompression_selector.py",
+    "PYTHONPATH=. HF_HUB_OFFLINE=1 uv run --no-sync python scripts/run_live_controller.py --bundle-dir results/expected_stats_alarm_bundle_full_s0_v2 --precommit-selector-dir results/expected_stats_precommit_selector_s0_v1 --out-dir results/expected_stats_precommit_triage_s0_v1 --references-dir results/expected_stats_sweep_full_s0_v2/llama/ifeval/references --compressors expected_attention_stats --ratios 0.25 --expected-attention-stats results/calibration/expected_attention_stats_ifeval_s0_v2 --limit-prompts 5 --device cuda --dtype bfloat16 --stride 16 --sustain-interval 32",
+    "PYTHONPATH=. uv run --no-sync python scripts/evaluate_deployment.py --live-dir results/expected_stats_precommit_triage_s0_v1 --target-compressor expected_attention_stats --target-ratio 0.25 --target-sustain-interval 32 --min-pairs 5 --bootstrap-resamples 2000 --report-only",
+    "uv run python scripts/verify_deployment_evidence.py --manifest docs/implementation/precompression_selector_deployment_evidence_manifest.json"
+  ],
+  "artifacts": [
+    {"path": "results/expected_stats_precommit_selector_s0_v1/manifest.json", "sha256": "eca1181290e2274dab71ccf717c63d7a2f28b7a0139cf3c73da6d3948d30d12a"},
+    {"path": "results/expected_stats_precommit_selector_s0_v1/booster_0.json", "sha256": "f6045197c59555180442d52977953b27fa07fa7c9bad80183aeed351e25ad991"},
+    {"path": "results/expected_stats_precommit_selector_s0_v1/booster_1.json", "sha256": "7b33aba320e34d87c224a1e50846d02ee36ba9470d7f930b756cdf0a32138a5d"},
+    {"path": "results/expected_stats_precommit_selector_s0_v1/booster_2.json", "sha256": "f454727517895b1c3ec8965566246fd083192dbaec7d5b77c04f40e57b53650d"},
+    {"path": "results/expected_stats_precommit_triage_s0_v1/baseline.jsonl", "sha256": "53fcc7aa79bb179c95c1ddbccb8018f8d51128a9ea5d491963bfbeb0d32505ab"},
+    {"path": "results/expected_stats_precommit_triage_s0_v1/episodes.jsonl", "sha256": "fe3343d990ecb6f6cabef20ed71e281a94fb32836ab2b2b599c6bd4416cb54cc"},
+    {"path": "results/expected_stats_precommit_triage_s0_v1/run_manifest.json", "sha256": "9b2201199057e53054de9a35bb8ee67128d85a0d019a85c312665c3bff434f57"},
+    {"path": "results/expected_stats_precommit_triage_s0_v1/deployment_report.json", "sha256": "ae7b71bcbbec1d490759b029a00eb752a8392045e213a414636b6484d2d4c33a"},
+    {"path": "results/expected_stats_precommit_triage_s0_v1/run.log", "sha256": "ff8326ef1b0634cd154ca90a24737efdada74f7781544a77b93534644afd2619"}
+  ],
+  "repository_revision": "3115e0e6980b07e1bbb64f74f71aae897317f3f2",
+  "repository_artifacts": [
+    {"path": "src/herald/live_controller.py", "sha256": "a794fb0328d920e67ffe404c0983d8583648c3a3e23a16bebdcd6109ae8822cc"},
+    {"path": "src/herald/precompression_selector.py", "sha256": "6d89497d8dac12399e31e5227d4cdadd54ff13252bdbcc6309adac71fb793234"},
+    {"path": "scripts/run_live_controller.py", "sha256": "65eede0b622d8b45b3e0d2cc0a8d7a1720a9d71fe79f7f913c47438a402907e7"},
+    {"path": "scripts/train_precompression_selector.py", "sha256": "a568bfbf83445c51b4a1fe1932be1d0be55a45da1c821035878920b9b923d9d6"},
+    {"path": "tests/test_live_controller.py", "sha256": "21626191f04565df042031e29936dd670df3a918f1b0526729df6446b6c0608f"},
+    {"path": "tests/test_precompression_selector.py", "sha256": "442e0f85af416b63cb699fb744ae4a9d024534c4a3e49f2cd80f833a2eb82c34"},
+    {"path": "docs/implementation/precompression_selector_preregistration.md", "sha256": "d1bcaba57973ba41d15d0554587ae399a118663157a2bda6f7faa0d895baf2d8"},
+    {"path": "docs/implementation/deployment_experiment_log.md", "sha256": "430f7477a258851d71357a1e8c76cb744663fb9b624b693ded7e6a6a6625a243"},
+    {"path": "docs/implementation/deployment_hypothesis_backlog.md", "sha256": "4ceb6b8f32f952a4e6d900996c56df3b8e430b03b5e778a1479d5d771ac29853"}
+  ]
+}
