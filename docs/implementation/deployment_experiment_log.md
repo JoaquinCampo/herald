@@ -53,3 +53,46 @@ The cache fork removes the latency bottleneck on this prompt, but one-time
 prompt compression does not guarantee peak memory savings because generated
 tokens grow the cache again. A held-out campaign and sustained decode-cache
 candidate were launched from this result.
+
+## 2026-07-10: sustained StreamingLLM interval-32 held-out pilot
+
+On Orion, Llama-3.1-8B-Instruct ran five held-out IFEval prompts
+(`ifeval-1069`, `ifeval-1075`, `ifeval-1087`, `ifeval-1107`, and
+`ifeval-1128`) with the frozen StreamingLLM alarm, cache-fork attempts,
+and decode-cache pruning every 32 tokens. The runner recorded five paired
+plain baselines and 20 candidate episodes, four ratios per prompt.
+
+Command:
+
+```bash
+export PATH="/clustergpu/home/jcampo/.local/bin:$PATH"
+HF_HUB_OFFLINE=1 uv run --no-sync python \
+  scripts/run_live_controller.py \
+  --compressors streaming_llm \
+  --ratios 0.10,0.125,0.20,0.25 \
+  --sustain-interval 32 \
+  --limit-prompts 5 \
+  --out-dir results/live_controller_cachefork_sllm_r32 \
+  --bundle-dir results/predictor/alarm_bundle \
+  --references-dir results/sweep/llama/ifeval/references \
+  --device cuda --dtype bfloat16 --stride 16
+```
+
+The strict five-prompt triage used every active threshold but temporarily
+set `--min-pairs 5`; the active N=30 report was also written. Neither is a
+deployment claim. Both reports use 2,000 prompt-cluster bootstrap resamples.
+
+| Ratio | Quality upper 95% | Major-damage upper 95% | Slowdown upper 95% | Peak-KV mean, lower 95% |
+| --- | ---: | ---: | ---: | ---: |
+| 0.10 | 20.0% | 0.0% | 15.1% | 4.1%, -17.4% |
+| 0.125 | 40.0% | 60.0% | 12.3% | 7.9%, -15.3% |
+| 0.20 | 40.0% | 60.0% | 6.4% | 21.2%, -7.0% |
+| 0.25 | 80.0% | 80.0% | 11.4% | 23.2%, -4.3% |
+
+No ratio cleared the quality, speed, and positive lower-bound KV-savings
+gates. Ratios 0.125 through 0.25 also breached the major-damage gate.
+Therefore no cell was expanded to the full held-out split. All 20 cache-fork
+attempts reported zero recomputed prefill tokens, and the GPU was clean after
+completion. Raw artifacts are in `results/live_controller_cachefork_sllm_r32/`:
+`baseline.jsonl`, `episodes.jsonl`, `pilot_triage_report.json`, and
+`deployment_report_min30.json`.
