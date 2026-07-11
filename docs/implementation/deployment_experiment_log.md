@@ -96,3 +96,49 @@ attempts reported zero recomputed prefill tokens, and the GPU was clean after
 completion. Raw artifacts are in `results/live_controller_cachefork_sllm_r32/`:
 `baseline.jsonl`, `episodes.jsonl`, `pilot_triage_report.json`, and
 `deployment_report_min30.json`.
+
+## 2026-07-10: sustained StreamingLLM interval-1 mechanism pilot
+
+The interval-32 pilot could lose its memory advantage between pruning
+boundaries. To isolate that mechanism without changing the frozen alarm,
+prompts, ratios, or controller path, the same five-prompt held-out grid ran
+with `--sustain-interval 1`. This is a mechanism check, not a deployment
+claim or an interval-selection procedure.
+
+Command:
+
+```bash
+export PATH="/clustergpu/home/jcampo/.local/bin:$PATH"
+HF_HUB_OFFLINE=1 uv run --no-sync python \
+  scripts/run_live_controller.py \
+  --compressors streaming_llm \
+  --ratios 0.10,0.125,0.20,0.25 \
+  --sustain-interval 1 \
+  --limit-prompts 5 \
+  --out-dir results/live_controller_cachefork_sllm_r1 \
+  --bundle-dir results/predictor/alarm_bundle \
+  --references-dir results/sweep/llama/ifeval/references \
+  --device cuda --dtype bfloat16 --stride 16
+```
+
+The strict five-prompt triage again used every active threshold with
+`--min-pairs 5`, and a separate active N=30 report was written. Both use
+2,000 prompt-cluster bootstrap resamples.
+
+| Ratio | Quality upper 95% | Major-damage upper 95% | Slowdown upper 95% | Peak-KV mean, lower 95% |
+| --- | ---: | ---: | ---: | ---: |
+| 0.10 | 20.0% | 0.0% | 16.1% | 7.4%, -17.4% |
+| 0.125 | 20.0% | 0.0% | 93.6% | 8.6%, -16.1% |
+| 0.20 | 40.0% | 60.0% | 8.9% | 23.0%, -6.7% |
+| 0.25 | 60.0% | 60.0% | 9.3% | 29.8%, -3.0% |
+
+Per-token pruning improved mean peak-KV savings at the higher ratios, but
+no lower confidence bound became positive. It also did not repair the
+quality failures caused by the initial compression decision, and it
+breached the end-to-end speed limit at every ratio. No cell was expanded.
+All 20 cache-fork attempts again reported zero recomputed prefill tokens.
+The interval-1 and interval-32 grids therefore exhaust sustained-pruning
+frequency as a standalone remedy. Raw artifacts are in
+`results/live_controller_cachefork_sllm_r1/`: `baseline.jsonl`,
+`episodes.jsonl`, `pilot_triage_report.json`, and
+`deployment_report_min30.json`.
