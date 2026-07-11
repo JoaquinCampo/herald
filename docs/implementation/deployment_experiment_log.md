@@ -328,5 +328,24 @@ steady-state token cost appears acceptable. The speed failure is non-sample-
 size, so no N>=30 expansion or residual/scale retuning is allowed. This closes
 only the exact dependency-free int8/per-vector-scale/residual-128 runtime.
 
+## 2026-07-11: always-on low-ratio StreamingLLM triage
+
+The preregistered no-controller path applied StreamingLLM ratio 0.05 directly
+at prefill and maintained the same logical ratio every 32 decode tokens. It
+used no cache fork, rollback, alarm, gate, or recomputation. All five paired
+outputs preserved quality, but both runtime and retained-memory gates failed.
+
+| Quality upper 95% | Major-damage upper 95% | Slowdown upper 95% | Peak-KV mean, lower 95% | Failed gates |
+| ---: | ---: | ---: | ---: | ---: | --- |
+| 0.0% | 0.0% | 98.7% | 3.7%, -15.6% | end-to-end slowdown, positive KV savings |
+
+Per-token slowdown was consistently about 19%, showing sustained positional
+pruning itself—not controller or rollback work—was expensive in this runtime.
+At only 5% removal, pre-prune regrowth and prompt variation also overwhelmed
+the small retained-byte benefit. Both failures are non-sample-size; no N>=30
+expansion or ratio/interval retuning is permitted. This closes only the exact
+always-on ratio-0.05 interval-32 implementation.
+
+
 
 

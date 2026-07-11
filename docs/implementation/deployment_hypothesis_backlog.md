@@ -33,7 +33,11 @@ bound. A direct Orion preflight then showed that native PyTorch SDPA cannot
 consume mixed bfloat16-query/FP8-KV tensors and does not implement FP8 SDPA
 multiplication; pursuing FP8 therefore requires a new kernel or dependency.
 ThinK was also rejected at preflight because its installed implementation
-zeroes channels without reducing retained storage.
+zeroes channels without reducing retained storage. An always-on StreamingLLM
+ratio-0.05 interval-32 branch then preserved quality but failed speed (98.7%
+upper bound) and real savings (-15.6% lower bound), demonstrating that neither
+removing controller overhead nor merely reducing the ratio fixes periodic
+materialization and regrowth costs.
 
 Rerank model-native segmented/indexed cache as rank 1; adaptive physical
 layer/head budgets as rank 2; cache merging/reconstruction as rank 3; and a
