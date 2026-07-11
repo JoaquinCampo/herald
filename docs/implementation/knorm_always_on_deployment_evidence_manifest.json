@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-07-11",
+  "status": "rejected_knorm_always_on_ratio_0_25_one_shot",
+  "rollback_tag": "codex/herald-goal-start-0949baa",
+  "scope": {
+    "model": "Llama-3.1-8B-Instruct",
+    "task": "IFEval",
+    "prompts": "five frozen held-out evaluation-only triage prompts",
+    "compressor": "knorm_always_on",
+    "ratio": 0.25,
+    "sustain_interval": null,
+    "controller": "none; direct one-shot prefill compression",
+    "contract": "quality upper <= 1%, major-damage upper <= 1%, slowdown upper <= 5%, positive isolated peak-KV lower bound"
+  },
+  "verdict": {
+    "n_pairs": 5,
+    "quality_damage_mean": 0.1,
+    "quality_upper": 0.3,
+    "major_damage_mean": 0.2,
+    "major_damage_upper": 0.6,
+    "slowdown_mean": 0.46918410015157413,
+    "slowdown_upper": 1.134201654973007,
+    "per_token_slowdown_mean": 0.13752173902368395,
+    "peak_kv_savings_mean": -0.04040018428245,
+    "peak_kv_savings_lower": -0.267362979056711,
+    "failed_gates": ["quality_noninferiority", "major_damage_rate", "end_to_end_slowdown", "positive_kv_savings"],
+    "claim_limit": "closes only always-on Knorm ratio 0.25 one-shot; no N>=30 expansion"
+  },
+  "commands": [
+    "PYTHONPATH=. HF_HUB_OFFLINE=1 uv run --no-sync python scripts/run_int8_cache.py --mechanism knorm --out-dir results/knorm_always_on_r025_v1 --limit-prompts 5 --device cuda --dtype bfloat16",
+    "PYTHONPATH=. uv run --no-sync python scripts/evaluate_deployment.py --live-dir results/knorm_always_on_r025_v1 --target-compressor knorm_always_on --target-ratio 0.25 --min-pairs 5 --bootstrap-resamples 2000 --report-only",
+    "uv run python scripts/verify_deployment_evidence.py --manifest docs/implementation/knorm_always_on_deployment_evidence_manifest.json"
+  ],
+  "artifacts": [
+    {"path": "results/knorm_always_on_r025_v1/baseline.jsonl", "sha256": "7fb3155bc7262b527397c6c5e018bd37f252f7e7e63866843584295b161d0d08"},
+    {"path": "results/knorm_always_on_r025_v1/episodes.jsonl", "sha256": "99244d406a538b46bf6bdcf48a1b63dd790c19998767aff6adb5d031d5720d7a"},
+    {"path": "results/knorm_always_on_r025_v1/run_manifest.json", "sha256": "5f77485ba9656e8a22dace6bc86747b53bb9ab281e6c63f6cb60620928a8795f"},
+    {"path": "results/knorm_always_on_r025_v1/deployment_report.json", "sha256": "fe1eb1db80c7dfde420070d66a677dff3b4ca369e447c9bc20cb5cd42d9f4f7f"},
+    {"path": "results/knorm_always_on_r025_v1/run.log", "sha256": "a94340d0654e09b8c5c7adfe8d4a41ac49b2f41e1f49fccf17905823c3b53fab"}
+  ],
+  "repository_revision": "69ab103ff0123ca30599cf7513ae76f18fa05a06",
+  "repository_artifacts": [
+    {"path": "src/herald/generate.py", "sha256": "a8e5fc2c36a0eb4822212c30453bd9233b3a100017edfa9d7b7f2c8929a1f30f"},
+    {"path": "src/herald/presses.py", "sha256": "1d8089a7e223a07ef896d29034565798b74496b49405c8d91fd9cb1d5a9d60f6"},
+    {"path": "src/herald/kv_metrics.py", "sha256": "c2b6d8852a07c5ad1d3b7e366903da329e7a0c8715d9244a8d4484a6c1cbca74"},
+    {"path": "scripts/run_int8_cache.py", "sha256": "a8232cb5c9481523db6fc1bdc62acb2d4b0d20c0a14c3cd7075d8d3a53257c39"},
+    {"path": "tests/test_always_on_cache.py", "sha256": "f263fecebd3b07a8c62180c4159a293f2e81a5354b8a6e2e476a94dbafcf66e4"},
+    {"path": "tests/test_run_int8_cache_cli.py", "sha256": "1038f05d91569ec49bc069baff364d5682c53ef94e362446fc3ff74cd73dc85b"},
+    {"path": "docs/implementation/knorm_always_on_preregistration.md", "sha256": "815f67165ccb713f6734654a7f7d1de5c1276375ec405add488e13929f268034"},
+    {"path": "docs/implementation/deployment_experiment_log.md", "sha256": "e324698c8db64bfb0bb2c57d69989cf67122d31c42d88a580df0ce127f54bc56"},
+    {"path": "docs/implementation/deployment_hypothesis_backlog.md", "sha256": "512072fb4869e6b7356f16893370e0805fa77ee07c6129f12a22122a339b68e5"}
+  ]
+}
