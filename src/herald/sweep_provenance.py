@@ -11,6 +11,31 @@ from herald.config import Config
 SWEEP_CONFIG_SHA256_METADATA_KEY = b"herald.sweep_config_sha256"
 
 
+def initialize_sweep_config(results_dir: Path, config: Config) -> Path:
+    """Write a sweep config once, refusing to mix it with prior results."""
+    config_path = results_dir / "config.json"
+    expected = config.model_dump_json(indent=2)
+    if config_path.is_file():
+        try:
+            actual = config_path.read_text()
+        except OSError as error:
+            raise ValueError(
+                f"could not read existing sweep config: {config_path}"
+            ) from error
+        if actual != expected:
+            raise ValueError(
+                "existing sweep config does not match invocation"
+            )
+        return config_path
+    if results_dir.exists() and any(results_dir.iterdir()):
+        raise ValueError(
+            "sweep results directory contains artifacts without config.json"
+        )
+    results_dir.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(expected)
+    return config_path
+
+
 def sha256_file(path: Path) -> str:
     """Return the SHA-256 of one regular artifact file."""
     if not path.is_file():

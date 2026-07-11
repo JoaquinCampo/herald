@@ -19,6 +19,7 @@ from pathlib import Path
 from herald.config import COMPRESSORS, RATIOS, Config
 from herald.expected_attention_stats import StatisticsArtifact
 from herald.runner import run_sweep
+from herald.sweep_provenance import initialize_sweep_config
 
 
 def _csv(value: str) -> list[str]:
@@ -101,10 +102,7 @@ def main() -> None:
         expected_attention_stats_path=args.expected_attention_stats,
         expected_attention_stats_sha256=statistics_digest,
     )
-    args.results_dir.mkdir(parents=True, exist_ok=True)
-    (args.results_dir / "config.json").write_text(
-        config.model_dump_json(indent=2)
-    )
+    initialize_sweep_config(args.results_dir, config)
     print(
         json.dumps(
             {"event": "sweep_config", **config.model_dump(mode="json")}

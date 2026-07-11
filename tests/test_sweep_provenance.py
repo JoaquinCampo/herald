@@ -9,6 +9,7 @@ import pytest
 from herald.config import Config
 from herald.sweep_provenance import (
     bind_table_to_sweep_config,
+    initialize_sweep_config,
     validate_parquet_sweep_config,
 )
 
@@ -32,6 +33,29 @@ def _write_bound_parquet(parquet: Path, config: Path) -> None:
         bind_table_to_sweep_config(table, config),
         parquet,
     )
+
+
+def test_initializes_only_a_fresh_or_matching_sweep_config(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "config.json"
+    _write_config(config_path)
+    config = Config.model_validate_json(config_path.read_text())
+    fresh_results = tmp_path / "fresh"
+
+    expected_path = fresh_results / "config.json"
+    assert initialize_sweep_config(fresh_results, config) == expected_path
+    assert initialize_sweep_config(fresh_results, config) == expected_path
+
+    changed = config.model_copy(update={"ratios": [0.5]})
+    with pytest.raises(ValueError, match="does not match"):
+        initialize_sweep_config(fresh_results, changed)
+
+    orphaned_results = tmp_path / "orphaned"
+    orphaned_results.mkdir()
+    (orphaned_results / "reference.json").write_text("{}\n")
+    with pytest.raises(ValueError, match="without config.json"):
+        initialize_sweep_config(orphaned_results, config)
 
 
 def test_validates_parquet_against_bound_sweep_config(tmp_path: Path) -> None:
