@@ -49,6 +49,39 @@ the headline.
 - A failed hypothesis is retained as evidence and changes the next test.
 - Historical missions and results remain immutable records.
 
+## Completion audit checklist
+
+Do not declare a configuration deployable until every item has direct,
+current evidence.
+
+1. **Raw sweep lineage.** Preserve a completed root `config.json`, the
+   matching frozen-statistics digest, exact reference and hybrid coverage,
+   canonical feature artifacts, and a successful
+   `validate_sweep_completeness` invocation.
+2. **Frozen controller.** Preserve a new atomic alarm bundle,
+   `fidelity_targets.json`, source parquet, hybrid streams, and their
+   mutually verified hashes. The bundle must use prompt-disjoint train and
+   test identities.
+3. **Prompt-disjoint triage.** Preserve separate fresh five-prompt live
+   directories for each one-shot or sustained candidate. A triage result is
+   only a rejection or expansion decision, never a configuration claim.
+4. **Paired deployment evidence.** For any triage survivor, preserve a
+   fresh complete live manifest, one live uncompressed baseline and one
+   target-specific deployed episode per frozen test prompt, at least 30
+   unique paired prompts, and `evaluate_deployment.py` output. It must pass
+   the quality, major-damage, end-to-end slowdown, and isolated peak-KV
+   lower-bound gates.
+5. **Selection.** Compare only passing target-specific reports and rank
+   them by the lower 95% bound of isolated peak retained-KV savings. Neither
+   compression exposure, replay, analytical estimates, nor allocator peaks
+   may enter this comparison.
+6. **Broader claim.** Preserve prompt-disjoint live evidence for each
+   additional claimed task, model family, and long-context regime, or state
+   those scopes as exclusions.
+7. **Reproduction and integrity.** Verify the evidence manifest hashes,
+   commands, runtime environment, rollback tag, and absence of results or
+   models in Git before publishing a result.
+
 ## Stop
 
 Finish when the highest-performing configuration found in the declared
