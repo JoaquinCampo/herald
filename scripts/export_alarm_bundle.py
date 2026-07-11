@@ -9,9 +9,12 @@ ExpectedAttentionStatsPress, the exact frozen train-only statistics artifact.
 
 import argparse
 import json
+import os
 import random
+import shutil
 import sys
 import time
+import uuid
 from pathlib import Path
 from typing import Any, cast
 
@@ -21,6 +24,9 @@ import xgboost as xgb
 
 sys.path.insert(0, "src")
 
+from herald.alarm_bundle_provenance import (  # noqa: E402
+    bundle_source_provenance,
+)
 from herald.expected_attention_stats import (  # noqa: E402
     StatisticsArtifact,
     validate_statistics_provenance,
@@ -166,22 +172,21 @@ def _load_streams(
 
 def _statistics_digest(
     compressors: tuple[str, ...],
-    stats_path: Path | None,
+    artifact: StatisticsArtifact | None,
     test_prompt_ids: list[str],
 ) -> str | None:
     """Validate the no-leakage calibration split and return its digest."""
     needs_statistics = "expected_attention_stats" in compressors
     if not needs_statistics:
-        if stats_path is not None:
+        if artifact is not None:
             raise ValueError(
                 "--expected-attention-stats requires expected_attention_stats"
             )
         return None
-    if stats_path is None:
+    if artifact is None:
         raise ValueError(
             "expected_attention_stats requires --expected-attention-stats"
         )
-    artifact = StatisticsArtifact.load(stats_path)
     validate_statistics_provenance(
         artifact,
         task="ifeval",
@@ -223,9 +228,14 @@ def main() -> None:
         raise ValueError(
             "expected_attention_stats requires --expected-attention-stats"
         )
-    expected_statistics_sha256 = (
-        StatisticsArtifact.load(args.expected_attention_stats).digest
+    statistics_artifact = (
+        StatisticsArtifact.load(args.expected_attention_stats)
         if needs_statistics
+        else None
+    )
+    expected_statistics_sha256 = (
+        statistics_artifact.digest
+        if statistics_artifact is not None
         else None
     )
     sweep_config = validate_parquet_sweep_config(
@@ -251,10 +261,18 @@ def main() -> None:
     blocks, lengths, trailing, stream_keys, stream_parquet_sha256 = (
         _load_streams(args.streams_npz)
     )
-    if stream_parquet_sha256 != sha256_file(args.parquet):
+    parquet_sha256 = sha256_file(args.parquet)
+    streams_sha256 = sha256_file(args.streams_npz)
+    sweep_config_sha256 = sha256_file(args.sweep_config)
+    if stream_parquet_sha256 != parquet_sha256:
         raise ValueError(
             "hybrid streams were extracted from a different parquet"
         )
+    source_provenance = bundle_source_provenance(
+        parquet_sha256=parquet_sha256,
+        streams_sha256=streams_sha256,
+        sweep_config_sha256=sweep_config_sha256,
+    )
     if len(df) != len(blocks):
         raise ValueError(
             "parquet and stream row counts differ, regenerate aligned streams"
@@ -292,7 +310,7 @@ def main() -> None:
     )
     statistics_digest = _statistics_digest(
         compressors,
-        args.expected_attention_stats,
+        statistics_artifact,
         test_prompt_ids,
     )
     mat, summary_names = hyb_summaries(
@@ -308,6 +326,7 @@ def main() -> None:
         and not column.startswith("feat__attn_")
     )
     columns = feature_columns + summary_names
+    frozen_bundles: dict[str, AlarmBundle] = {}
     targets: dict[str, Any] = {
         "split_seed": SPLIT_SEED,
         "k": K,
@@ -316,7 +335,7 @@ def main() -> None:
         "variant": "feat_plus_alarm",
         "parquet": str(args.parquet),
         "streams_npz": str(args.streams_npz),
-        "sweep_config_sha256": sha256_file(args.sweep_config),
+        "source_provenance": source_provenance,
         "compressors": {},
     }
 
@@ -414,6 +433,7 @@ def main() -> None:
             replay_result.overhead, test_matrices.prompt_ids
         )
         bundle_meta: dict[str, Any] = {
+            "source_provenance": source_provenance,
             "split_seed": SPLIT_SEED,
             "variant": "feat_plus_alarm",
             "theta_method": "point",
@@ -437,7 +457,7 @@ def main() -> None:
             boosters=boosters,
             meta=bundle_meta,
         )
-        bundle.save(args.out_dir / compressor)
+        frozen_bundles[compressor] = bundle
         groups: list[dict[str, Any]] = []
         for index, (prompt_id, ratio) in enumerate(test_matrices.keys):
             valid_length = _required_int(
@@ -480,6 +500,7 @@ def main() -> None:
                 }
             )
         compressor_target: dict[str, Any] = {
+            "source_provenance": source_provenance,
             "theta": _required_float(theta, source="theta"),
             "test_prompt_ids": test_prompt_ids,
             "replay_test": {
@@ -519,10 +540,25 @@ def main() -> None:
             f"[{time.time() - started:.0f}s]",
             flush=True,
         )
-    args.out_dir.mkdir(parents=True, exist_ok=True)
-    target_path = args.out_dir / "fidelity_targets.json"
-    target_path.write_text(json.dumps(targets, indent=1) + "\n")
-    print(f"wrote {target_path}")
+    if args.out_dir.exists():
+        raise ValueError(
+            f"alarm bundle output directory already exists: {args.out_dir}"
+        )
+    args.out_dir.parent.mkdir(parents=True, exist_ok=True)
+    stage_dir = args.out_dir.parent / (
+        f".{args.out_dir.name}.staging-{uuid.uuid4().hex}"
+    )
+    stage_dir.mkdir()
+    try:
+        for compressor, bundle in frozen_bundles.items():
+            bundle.save(stage_dir / compressor)
+        target_path = stage_dir / "fidelity_targets.json"
+        target_path.write_text(json.dumps(targets, indent=1) + "\n")
+        os.replace(stage_dir, args.out_dir)
+    except BaseException:
+        shutil.rmtree(stage_dir, ignore_errors=True)
+        raise
+    print(f"wrote {args.out_dir / 'fidelity_targets.json'}")
 
 
 if __name__ == "__main__":

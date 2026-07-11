@@ -31,9 +31,8 @@ def main() -> None:
     ap.add_argument("--tasks", nargs="+", default=None)
     ap.add_argument("--models", nargs="+", default=None)
     ap.add_argument("--max-rows-per-task", type=int, default=None)
-    ap.add_argument("--sweep-config", type=Path, default=None)
     args = ap.parse_args()
-    sweep_config = args.sweep_config or args.results_dir / "config.json"
+    sweep_config = args.results_dir / "config.json"
 
     rows, summary = build_switch_dataset(
         args.results_dir,

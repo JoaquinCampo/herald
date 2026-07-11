@@ -36,6 +36,9 @@ from typing import Any
 
 sys.path.insert(0, "src")
 
+from herald.alarm_bundle_provenance import (  # noqa: E402
+    validate_bundle_target_binding,
+)
 from herald.config import MODELS, TASKS  # noqa: E402
 from herald.deployment_evidence import (  # noqa: E402
     END_TO_END_RETAINED_KV_CACHE,
@@ -229,12 +232,16 @@ def main() -> None:
         if gate_dir is not None
         else None
     )
+    targets = _read_json_object(bundle_dir / "fidelity_targets.json")
+    validate_bundle_target_binding(
+        {compressor: bundle.meta for compressor, bundle in bundles.items()},
+        targets,
+    )
     statistics = _load_statistics_for_bundle(
         compressors,
         bundles,
         args.expected_attention_stats,
     )
-    targets = _read_json_object(bundle_dir / "fidelity_targets.json")
     test_pids = {
         c: set(targets["compressors"][c]["test_prompt_ids"])
         for c in compressors
