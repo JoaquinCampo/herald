@@ -1,3 +1,5 @@
+# pyright: reportMissingImports=false
+
 """CLI to run a HERALD generation sweep (or slice).
 
 Build a Config from flags, persist it next to the results for
@@ -15,6 +17,7 @@ import json
 from pathlib import Path
 
 from herald.config import COMPRESSORS, RATIOS, Config
+from herald.expected_attention_stats import StatisticsArtifact
 from herald.runner import run_sweep
 
 
@@ -22,16 +25,34 @@ def _csv(value: str) -> list[str]:
     return [x.strip() for x in value.split(",") if x.strip()]
 
 
+def _ratios(value: str) -> list[float]:
+    """Parse a comma-separated ratio list for argparse."""
+    try:
+        return [float(item) for item in _csv(value)]
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            "ratios must be comma-separated finite decimal numbers"
+        ) from error
+
+
+def _tap_layers(value: str) -> tuple[int, ...]:
+    """Parse a comma-separated attention-layer list for argparse."""
+    try:
+        return tuple(int(item) for item in _csv(value))
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            "tap layers must be comma-separated integers"
+        ) from error
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description="HERALD generation sweep")
     p.add_argument("--models", type=_csv, default=["llama", "qwen3"])
     p.add_argument("--tasks", type=_csv, default=["gsm8k", "humaneval"])
-    p.add_argument(
-        "--compressors", type=_csv, default=list(COMPRESSORS)
-    )
+    p.add_argument("--compressors", type=_csv, default=list(COMPRESSORS))
     p.add_argument(
         "--ratios",
-        type=lambda v: [float(x) for x in _csv(v)],
+        type=_ratios,
         default=list(RATIOS),
     )
     p.add_argument("--prompts", type=int, default=200)
@@ -45,11 +66,22 @@ def main() -> None:
     p.add_argument("--device", default="cuda")
     p.add_argument("--tap-attention", action="store_true")
     p.add_argument(
+        "--expected-attention-stats",
+        type=Path,
+        default=None,
+        help="frozen local ExpectedAttentionStatsPress artifact directory",
+    )
+    p.add_argument(
         "--tap-layers",
-        type=lambda v: tuple(int(x) for x in _csv(v)),
+        type=_tap_layers,
         default=(),
     )
     args = p.parse_args()
+    statistics_digest = (
+        StatisticsArtifact.load(args.expected_attention_stats).digest
+        if args.expected_attention_stats is not None
+        else None
+    )
 
     config = Config(
         models=args.models,
@@ -66,14 +98,18 @@ def main() -> None:
         results_dir=args.results_dir,
         tap_attention=args.tap_attention,
         tap_layer_indices=args.tap_layers,
+        expected_attention_stats_path=args.expected_attention_stats,
+        expected_attention_stats_sha256=statistics_digest,
     )
     args.results_dir.mkdir(parents=True, exist_ok=True)
     (args.results_dir / "config.json").write_text(
         config.model_dump_json(indent=2)
     )
-    print(json.dumps({"event": "sweep_config", **json.loads(
-        config.model_dump_json()
-    )}))
+    print(
+        json.dumps(
+            {"event": "sweep_config", **config.model_dump(mode="json")}
+        )
+    )
     run_sweep(config, device=args.device)
 
 

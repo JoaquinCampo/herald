@@ -9,6 +9,7 @@ from herald.switch_baselines import (
     leave_one_compressor_splits,
     make_baseline_lock,
     predict_mean_baseline,
+    split_prompt_ids,
 )
 
 
@@ -66,6 +67,31 @@ def test_leave_one_compressor_splits_are_grouped() -> None:
         assert split.heldout_compressor not in {
             row["compressor"] for row in split.train
         }
+
+
+def test_split_prompt_ids_matches_evaluator_grouping() -> None:
+    prompt_ids = [f"p{i}" for i in range(40)]
+    rows = [
+        _row(prompt_id, compressor)
+        for prompt_id in prompt_ids
+        for compressor in ("expected_attention", "knorm")
+    ]
+    [split] = [
+        item
+        for item in leave_one_compressor_splits(rows, seed=7)
+        if item.heldout_compressor == "expected_attention"
+    ]
+
+    train, test = split_prompt_ids(
+        prompt_ids,
+        model="llama",
+        task="ifeval",
+        seed=7,
+    )
+
+    assert set(test) == {row["prompt_id"] for row in split.test}
+    assert set(train).isdisjoint(test)
+    assert set(train + test) == set(prompt_ids)
 
 
 def test_mean_baseline_backs_off_to_broader_group() -> None:

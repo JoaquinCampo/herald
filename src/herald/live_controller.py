@@ -1,3 +1,5 @@
+# pyright: reportPrivateImportUsage=false
+
 """Live grace-window controller (rung 2 mission).
 
 Executes the grace-window policy during actual generation, with the
@@ -33,6 +35,9 @@ from typing import Any, Protocol
 import numpy as np
 import torch
 from kvpress.presses.base_press import BasePress
+from kvpress.presses.expected_attention_with_stats import (
+    ExpectedAttentionStatsPress,
+)
 from kvpress.presses.knorm_press import KnormPress
 from kvpress.presses.streaming_llm_press import StreamingLLMPress
 
@@ -112,9 +117,22 @@ def _sync(device: str) -> None:
         torch.cuda.synchronize()
 
 
+def _token_ids(values: list[Any], *, source: str) -> list[int]:
+    """Convert generated token values, preserving a useful error boundary."""
+    try:
+        return [int(value) for value in values]
+    except (TypeError, ValueError) as error:
+        raise RuntimeError(
+            f"{source} returned a non-integral generated token"
+        ) from error
+
+
 def _fork_score_cache(model: Any, cache: Any, press: BasePress) -> Any:
-    """Fork and compress a cache for presses determined only by cached KV."""
-    if not isinstance(press, (StreamingLLMPress, KnormPress)):
+    """Fork and compress a cache for presses with cached-KV score inputs."""
+    if not isinstance(
+        press,
+        StreamingLLMPress | KnormPress | ExpectedAttentionStatsPress,
+    ):
         kind = type(press).__name__
         raise TypeError(f"direct cache fork does not support {kind}")
     if not hasattr(cache, "layers"):
@@ -137,9 +155,19 @@ def _fork_score_cache(model: Any, cache: Any, press: BasePress) -> Any:
         forked.layers,
         strict=True,
     ):
+        # ExpectedAttentionStatsPress only reads q_len from this shape.
+        # KV-only presses do not inspect hidden states at all.
+        empty_hidden_states = torch.empty(
+            (
+                source_layer.keys.shape[0],
+                source_layer.keys.shape[2],
+                0,
+            ),
+            device=source_layer.keys.device,
+        )
         keys, values = press.compress(
             model_layer.self_attn,
-            torch.empty(0, device=source_layer.keys.device),
+            empty_hidden_states,
             source_layer.keys,
             source_layer.values,
             torch.empty(0, device=source_layer.keys.device),
@@ -177,7 +205,10 @@ def _extend_reference(
             return_dict_in_generate=True,
         )
     new_ids = out.sequences[0, full.shape[1] :].tolist()
-    return [int(t) for t in new_ids], out.past_key_values
+    return (
+        _token_ids(new_ids, source="reference continuation"),
+        out.past_key_values,
+    )
 
 
 def _attempt_grace(
@@ -216,7 +247,10 @@ def _attempt_grace(
             logits_processor=[collector],
             return_dict_in_generate=True,
         )
-    new_ids = [int(t) for t in out.sequences[0, seq.shape[1] :].tolist()]
+    new_ids = _token_ids(
+        out.sequences[0, seq.shape[1] :].tolist(),
+        source="compression attempt",
+    )
     block = collector.stacked()[: alarm.k, 0, :]
     row = assemble_alarm_row_from_state(
         state=ref_state, block=block, ratio=ratio, k=alarm.k
@@ -277,7 +311,10 @@ def _attempt_grace_from_cache(
                 return_dict_in_generate=True,
             )
         new_ids.extend(
-            int(t) for t in out.sequences[0, seq.shape[1] :].tolist()
+            _token_ids(
+                out.sequences[0, seq.shape[1] :].tolist(),
+                source="direct cache attempt",
+            )
         )
         cache = getattr(out, "past_key_values", None)
         if cache is None:
@@ -341,7 +378,10 @@ def _continue_attempt(
             cache_position=cache_position,
             return_dict_in_generate=True,
         )
-    continued = [int(t) for t in out.sequences[0, seq.shape[1] :].tolist()]
+    continued = _token_ids(
+        out.sequences[0, seq.shape[1] :].tolist(),
+        source="compressed continuation",
+    )
     continued_cache = getattr(out, "past_key_values", None)
     if continued_cache is None:
         raise RuntimeError(
@@ -448,7 +488,10 @@ def run_episode(
         _sync(device)
         t0 = time.perf_counter()
         press = press_factory()
-        if isinstance(press, (StreamingLLMPress, KnormPress)):
+        if isinstance(
+            press,
+            StreamingLLMPress | KnormPress | ExpectedAttentionStatsPress,
+        ):
             grace_ids, score, committed, attempt_cache = (
                 _attempt_grace_from_cache(
                     lm,
@@ -478,7 +521,7 @@ def run_episode(
                 ratio,
                 max_new_tokens - s,
             )
-            recomputed_prefill_tokens = int(prompt_ids.numel()) + s
+            recomputed_prefill_tokens = prompt_ids.numel() + s
         held_kv_bytes = kv_cache_nbytes(cache)
         grace_kv_bytes = kv_cache_nbytes(attempt_cache)
         attempt_kv_bytes = grace_kv_bytes
@@ -493,7 +536,7 @@ def run_episode(
                     interval=sustain_interval,
                 )
                 if sustain_interval is not None
-                and isinstance(press, (StreamingLLMPress, KnormPress))
+                and isinstance(press, StreamingLLMPress | KnormPress)
                 else None
             )
             continued, attempt_cache, sustained_peak = _continue_attempt(
@@ -550,5 +593,5 @@ def run_episode(
         full_ids = ref_ids[: episode.commit_s] + episode.new_ids
     episode.text = lm.tokenizer.decode(full_ids, skip_special_tokens=True)
     if device == "cuda":
-        episode.peak_mem_bytes = int(torch.cuda.max_memory_allocated())
+        episode.peak_mem_bytes = torch.cuda.max_memory_allocated()
     return episode

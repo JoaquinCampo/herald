@@ -1,3 +1,5 @@
+# pyright: reportMissingImports=false
+
 """Run the live grace-window controller on the canonical test prompts.
 
 For every (compressor, ratio, test prompt) episode this executes the
@@ -23,6 +25,7 @@ Usage (Orion):
 
 import argparse
 import json
+import math
 import sys
 import time
 from functools import partial
@@ -32,6 +35,13 @@ from typing import Any
 sys.path.insert(0, "src")
 
 from herald.config import TASKS  # noqa: E402
+from herald.expected_attention_stats import (  # noqa: E402
+    StatisticsArtifact,
+    validate_statistics_provenance,
+)
+from herald.expected_attention_stats import (
+    validate_statistics_bundle_binding as validate_artifact_bundle_binding,
+)
 from herald.generate import generate_baseline, load_model  # noqa: E402
 from herald.grace_window import AlarmBundle, GateBundle  # noqa: E402
 from herald.live_controller import run_episode  # noqa: E402
@@ -57,6 +67,12 @@ def parse_args() -> argparse.Namespace:
         default=",".join(DEFAULT_COMPRESSORS),
     )
     p.add_argument("--ratios", default="0.25,0.5,0.75,0.875")
+    p.add_argument(
+        "--expected-attention-stats",
+        type=Path,
+        default=None,
+        help="frozen local artifact, required for expected_attention_stats",
+    )
     p.add_argument("--limit-prompts", type=int, default=None)
     p.add_argument("--device", default="cuda")
     p.add_argument("--model-id", default=None)
@@ -67,13 +83,82 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+def parse_ratios(value: str) -> list[float]:
+    """Parse comma-separated compression ratios with a clear CLI error."""
+    try:
+        return [float(item) for item in value.split(",") if item]
+    except ValueError as error:
+        raise ValueError(
+            "ratios must be comma-separated decimal numbers"
+        ) from error
+
+
+def _load_statistics_for_bundle(
+    compressors: list[str],
+    bundles: dict[str, AlarmBundle],
+    statistics_path: Path | None,
+) -> StatisticsArtifact | None:
+    """Require an expected-stats alarm bundle to name its exact artifact."""
+    needs_statistics = "expected_attention_stats" in compressors
+    if not needs_statistics:
+        if statistics_path is not None:
+            raise ValueError(
+                "--expected-attention-stats requires expected_attention_stats"
+            )
+        return None
+    if statistics_path is None:
+        raise ValueError(
+            "expected_attention_stats requires --expected-attention-stats"
+        )
+    artifact = StatisticsArtifact.load(statistics_path)
+    validate_artifact_bundle_binding(
+        artifact,
+        bundles["expected_attention_stats"].meta,
+    )
+    return artifact
+
+
+def _json_object(text: str, *, source: str) -> dict[str, Any]:
+    """Parse an object with a contextual failure, not a raw JSON error."""
+    try:
+        value = json.loads(text)
+    except json.JSONDecodeError as error:
+        raise RuntimeError(f"invalid JSON in {source}") from error
+    if not isinstance(value, dict):
+        raise RuntimeError(f"expected an object in {source}")
+    return value
+
+
+def _read_json_object(path: Path) -> dict[str, Any]:
+    """Read one JSON object with filesystem and parse errors identified."""
+    try:
+        return _json_object(path.read_text(), source=str(path))
+    except OSError as error:
+        raise RuntimeError(f"could not read JSON file {path}") from error
+
+
+def _required_float(value: object, *, source: str) -> float:
+    """Return a finite JSON numeric field with a contextual failure."""
+    if not isinstance(value, str | int | float):
+        raise RuntimeError(f"expected numeric {source}, got {value!r}")
+    try:
+        result = float(value)
+    except ValueError as error:
+        raise RuntimeError(
+            f"expected numeric {source}, got {value!r}"
+        ) from error
+    if not math.isfinite(result):
+        raise RuntimeError(f"expected finite {source}, got {value!r}")
+    return result
+
+
 def load_recorded_reference(
     ref_dir: Path, prompt_id: str
 ) -> dict[str, Any] | None:
     path = ref_dir / f"{safe_id(prompt_id)}.json"
     if not path.exists():
         return None
-    return json.loads(path.read_text())  # type: ignore[no-any-return]
+    return _read_json_object(path)
 
 
 def existing_keys(path: Path, key_field: str) -> set[str]:
@@ -84,7 +169,13 @@ def existing_keys(path: Path, key_field: str) -> set[str]:
         for line in f:
             line = line.strip()
             if line:
-                keys.add(str(json.loads(line)[key_field]))
+                record = _json_object(line, source=str(path))
+                try:
+                    keys.add(str(record[key_field]))
+                except KeyError as error:
+                    raise RuntimeError(
+                        f"missing {key_field!r} in {path}"
+                    ) from error
     return keys
 
 
@@ -95,8 +186,13 @@ def records_by_key(path: Path, key_field: str) -> dict[str, dict[str, Any]]:
     with path.open() as f:
         for line in f:
             if line.strip():
-                record = json.loads(line)
-                records[str(record[key_field])] = record
+                record = _json_object(line, source=str(path))
+                try:
+                    records[str(record[key_field])] = record
+                except KeyError as error:
+                    raise RuntimeError(
+                        f"missing {key_field!r} in {path}"
+                    ) from error
     return records
 
 
@@ -125,8 +221,8 @@ def main() -> None:
     episodes_path = out_dir / "episodes.jsonl"
     baseline_path = out_dir / "baseline.jsonl"
     ref_dir = Path(args.references_dir)
-    compressors = args.compressors.split(",")
-    ratios = [float(r) for r in args.ratios.split(",")]
+    compressors = [item for item in args.compressors.split(",") if item]
+    ratios = parse_ratios(args.ratios)
     max_new_tokens = TASKS["ifeval"].max_new_tokens
 
     bundles = {
@@ -137,13 +233,24 @@ def main() -> None:
         if args.gate_dir is not None
         else None
     )
-    targets = json.loads(
-        (Path(args.bundle_dir) / "fidelity_targets.json").read_text()
+    statistics = _load_statistics_for_bundle(
+        compressors,
+        bundles,
+        args.expected_attention_stats,
+    )
+    targets = _read_json_object(
+        Path(args.bundle_dir) / "fidelity_targets.json"
     )
     test_pids = {
         c: set(targets["compressors"][c]["test_prompt_ids"])
         for c in compressors
     }
+    if statistics is not None:
+        validate_statistics_provenance(
+            statistics,
+            task="ifeval",
+            test_prompt_ids=sorted(test_pids["expected_attention_stats"]),
+        )
     all_pids = sorted(set().union(*test_pids.values()))
     if args.limit_prompts is not None:
         all_pids = all_pids[: args.limit_prompts]
@@ -170,7 +277,10 @@ def main() -> None:
         device=args.device,
         model_id=args.model_id,
     )
+    if statistics is not None:
+        statistics.validate_model(lm.model)
 
+    statistics_digest = statistics.digest if statistics is not None else None
     baselines = records_by_key(baseline_path, "prompt_id")
     done_baseline = set(baselines)
     done_episodes = existing_keys(episodes_path, "key")
@@ -212,7 +322,13 @@ def main() -> None:
                 key = f"{compressor}|{ratio:.4f}|{pid}"
                 if key in done_episodes:
                     continue
-                press_factory = partial(get_press, compressor, ratio)
+                press_factory = partial(
+                    get_press,
+                    compressor,
+                    ratio,
+                    model=lm.model,
+                    statistics=statistics,
+                )
                 ep = run_episode(
                     lm,
                     record,
@@ -229,7 +345,15 @@ def main() -> None:
                 q_ref_rec = (
                     recorded.get("q") if recorded is not None else None
                 )
-                q_ref_live = float(baselines[pid]["q_ref_live"])
+                try:
+                    q_ref_live = _required_float(
+                        baselines[pid]["q_ref_live"],
+                        source="baseline q_ref_live",
+                    )
+                except KeyError as error:
+                    raise RuntimeError(
+                        f"missing baseline q_ref_live for {pid}"
+                    ) from error
                 rec_len = (
                     len(recorded.get("gen_ids", []))
                     if recorded is not None
@@ -246,6 +370,11 @@ def main() -> None:
                     "compressor": compressor,
                     "ratio": ratio,
                     "sustain_interval": args.sustain_interval,
+                    "expected_attention_stats_sha256": (
+                        statistics_digest
+                        if compressor == "expected_attention_stats"
+                        else None
+                    ),
                     "commit_s": ep.commit_s,
                     "attempts": [
                         {
@@ -274,12 +403,16 @@ def main() -> None:
                     "ref_done": ep.ref_done,
                     "n_new_ids": len(ep.new_ids),
                     "q_live": q_live,
-                    "dq_live": q_ref_live - float(q_live),
+                    "dq_live": q_ref_live
+                    - _required_float(q_live, source="live quality"),
                     "q_ref_recorded": q_ref_rec,
                     "dq_recorded": (
                         None
                         if q_ref_rec is None
-                        else float(q_ref_rec) - float(q_live)
+                        else _required_float(
+                            q_ref_rec, source="recorded reference quality"
+                        )
+                        - _required_float(q_live, source="live quality")
                     ),
                     "savings": savings,
                     "ref_wall_s": ep.ref_wall_s,

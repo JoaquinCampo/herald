@@ -1,3 +1,5 @@
+# pyright: reportMissingImports=false, reportOperatorIssue=false, reportPrivateImportUsage=false
+
 """Live grace-window controller invariants on a tiny CPU model.
 
 The controller must be numerically indistinguishable from the sweep
@@ -18,9 +20,11 @@ from typing import Any, cast
 import numpy as np
 import pytest
 import torch
+from kvpress import ExpectedAttentionStatsPress
 
 import herald.generate as G
 import herald.live_controller as LC
+from herald.expected_attention_stats import collect_query_moments
 from herald.features import FEATURE_NAMES
 from herald.generate import (
     LoadedModel,
@@ -70,6 +74,45 @@ def _rec(content: str, pid: str) -> PromptRecord:
         messages=[{"role": "user", "content": content}],
         gold={"instruction_id_list": [], "kwargs": []},
     )
+
+
+def _as_float(value: Any, *, source: str) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError) as error:
+        raise AssertionError(f"{source} must be numeric") from error
+
+
+def _expected_attention_stats_press(
+    lm: LoadedModel,
+) -> ExpectedAttentionStatsPress:
+    config = lm.model.config
+    dtype = next(lm.model.parameters()).dtype
+    press = ExpectedAttentionStatsPress(
+        compression_ratio=0.5,
+        use_covariance=False,
+    )
+    query_count = (
+        config.num_hidden_layers
+        * config.num_attention_heads
+        * config.head_dim
+    )
+    press.mu = (
+        torch.arange(query_count, dtype=dtype).reshape(
+            config.num_hidden_layers,
+            config.num_attention_heads,
+            config.head_dim,
+        )
+        / query_count
+    )
+    press.cov = torch.zeros(
+        config.num_hidden_layers,
+        config.num_attention_heads,
+        config.head_dim,
+        config.head_dim,
+        dtype=dtype,
+    )
+    return press
 
 
 class ScriptedAlarm:
@@ -180,7 +223,7 @@ def test_score_cache_fork_matches_kvpress_prefill(
     attention_mask = torch.ones_like(prompt_ids)
 
     with torch.no_grad():
-        plain = lm.model.generate(
+        plain = lm.model.generate(  # type: ignore[operator]
             input_ids=prompt_ids,
             attention_mask=attention_mask,
             generation_config=lm.gen_config,
@@ -189,7 +232,7 @@ def test_score_cache_fork_matches_kvpress_prefill(
         )
     press = get_press(compressor, 0.5)
     with torch.no_grad(), press(lm.model):
-        compressed = lm.model.generate(
+        compressed = lm.model.generate(  # type: ignore[operator]
             input_ids=prompt_ids,
             attention_mask=attention_mask,
             generation_config=lm.gen_config,
@@ -213,6 +256,134 @@ def test_score_cache_fork_matches_kvpress_prefill(
         )
 
 
+def test_expected_attention_stats_collection_uses_all_layers(
+    lm: LoadedModel,
+) -> None:
+    token_ids = torch.tensor([1, 2, 3, 4], dtype=torch.long)
+
+    mu, cov, count = collect_query_moments(
+        lm.model,
+        [token_ids],
+        n_sink=1,
+    )
+
+    config = lm.model.config
+    expected_mu_shape = (
+        config.num_hidden_layers,
+        config.num_attention_heads,
+        config.head_dim,
+    )
+    expected_cov_shape = (*expected_mu_shape, config.head_dim)
+    assert count == 3
+    assert tuple(mu.shape) == expected_mu_shape
+    assert tuple(cov.shape) == expected_cov_shape
+    assert torch.isfinite(mu).all()
+    assert torch.isfinite(cov).all()
+
+
+def test_expected_attention_stats_cache_fork_matches_prefill(
+    lm: LoadedModel,
+) -> None:
+    record = _rec(LONG, "p-fork-expected-attention-stats")
+    prompt_ids = G.build_input_ids(lm, record).unsqueeze(0)
+    attention_mask = torch.ones_like(prompt_ids)
+    press = _expected_attention_stats_press(lm)
+
+    with torch.no_grad():
+        plain = lm.model.generate(  # type: ignore[operator]
+            input_ids=prompt_ids,
+            attention_mask=attention_mask,
+            generation_config=lm.gen_config,
+            max_new_tokens=1,
+            return_dict_in_generate=True,
+        )
+    with torch.no_grad(), press(lm.model):
+        compressed = lm.model.generate(  # type: ignore[operator]
+            input_ids=prompt_ids,
+            attention_mask=attention_mask,
+            generation_config=lm.gen_config,
+            max_new_tokens=1,
+            return_dict_in_generate=True,
+        )
+
+    forked = LC._fork_score_cache(lm.model, plain.past_key_values, press)
+
+    for original_layer, forked_layer, compressed_layer in zip(
+        plain.past_key_values.layers,
+        forked.layers,
+        compressed.past_key_values.layers,
+        strict=True,
+    ):
+        assert torch.equal(forked_layer.keys, compressed_layer.keys)
+        assert torch.equal(forked_layer.values, compressed_layer.values)
+        assert forked_layer.keys.data_ptr() != original_layer.keys.data_ptr()
+        assert (
+            forked_layer.values.data_ptr() != original_layer.values.data_ptr()
+        )
+
+
+def test_expected_attention_stats_direct_attempt_matches_hybrid(
+    lm: LoadedModel,
+) -> None:
+    record = _rec(LONG, "p-expected-attention-stats-direct")
+    [ref] = generate_reference(lm, [record], M)
+    hybrid = generate_hybrids(
+        lm,
+        [(ref, 0)],
+        "expected_attention_stats",
+        0.5,
+        _expected_attention_stats_press(lm),
+        M,
+    )[0]
+
+    episode = LC.run_episode(
+        lm,
+        record,
+        lambda: _expected_attention_stats_press(lm),
+        ScriptedAlarm([True]),
+        compressor="expected_attention_stats",
+        ratio=0.5,
+        max_new_tokens=M,
+        stride=STRIDE,
+    )
+
+    assert episode.commit_s == 0
+    assert episode.new_ids == hybrid.new_ids
+    assert episode.text == hybrid.text
+    assert episode.attempts[0].recomputed_prefill_tokens == 0
+
+
+def test_expected_attention_stats_late_direct_attempt_matches_hybrid(
+    lm: LoadedModel,
+) -> None:
+    record = _rec(LONG, "p-expected-attention-stats-late")
+    [ref] = generate_reference(lm, [record], M)
+    hybrid = generate_hybrids(
+        lm,
+        [(ref, STRIDE)],
+        "expected_attention_stats",
+        0.5,
+        _expected_attention_stats_press(lm),
+        M,
+    )[0]
+
+    episode = LC.run_episode(
+        lm,
+        record,
+        lambda: _expected_attention_stats_press(lm),
+        ScriptedAlarm([False, True]),
+        compressor="expected_attention_stats",
+        ratio=0.5,
+        max_new_tokens=M,
+        stride=STRIDE,
+    )
+
+    assert episode.commit_s == STRIDE
+    assert episode.new_ids == hybrid.new_ids
+    assert episode.text == hybrid.text
+    assert episode.attempts[-1].recomputed_prefill_tokens == 0
+
+
 def test_chained_reference_features_match_one_call(
     lm: LoadedModel,
 ) -> None:
@@ -221,11 +392,17 @@ def test_chained_reference_features_match_one_call(
     ep = _run(lm, alarm)
     # the alarm rows carry feat__position == s, proving row alignment
     for a, row in zip(ep.attempts, alarm.rows, strict=True):
-        assert row["feat__position"] == float(a.s)
+        assert row["feat__position"] == _as_float(
+            a.s,
+            source="attempt position",
+        )
     # pre-switch entropy at row s must match the recorded reference
     ent = FEATURE_NAMES.index("entropy")
     for a, row in zip(ep.attempts, alarm.rows, strict=True):
-        want = float(ref.features[a.s, ent])
+        want = _as_float(
+            ref.features[a.s, ent],
+            source="reference entropy",
+        )
         assert row["feat__entropy"] == pytest.approx(want, rel=1e-4)
 
 
@@ -362,13 +539,15 @@ def test_gate_allow_all_reproduces_no_gate_episode(
     assert gated.new_ids == no_gate.new_ids
     assert gated.text == no_gate.text
     assert gated.skips == []
-    assert [
+    gated_attempts = [
         (a.s, a.score, a.committed, a.n_new_tokens, a.block_len)
         for a in gated.attempts
-    ] == [
+    ]
+    no_gate_attempts = [
         (a.s, a.score, a.committed, a.n_new_tokens, a.block_len)
         for a in no_gate.attempts
     ]
+    assert gated_attempts == no_gate_attempts
 
 
 def test_gate_sees_same_preswitch_features_as_alarm(
@@ -409,8 +588,9 @@ def test_alarm_sees_quantized_hybrid_stream(lm: LoadedModel) -> None:
     row = alarm.rows[1]
     ent = FEATURE_NAMES.index("entropy")
     for step, stat in ((0, "step0"),):
-        want = float(
-            np.float32(np.float16(np.float32(hyb.features[step, ent])))
+        want = _as_float(
+            np.float32(np.float16(np.float32(hyb.features[step, ent]))),
+            source="quantized hybrid entropy",
         )
         assert row[f"hyb__{stat}_entropy_k2"] == pytest.approx(
             want, rel=1e-6

@@ -61,6 +61,36 @@ class MeanBaseline:
     means: dict[tuple[object, ...], float]
 
 
+def split_prompt_ids(
+    prompt_ids: Sequence[str],
+    *,
+    model: str,
+    task: str,
+    seed: int = 0,
+    test_group_fraction: float = 0.25,
+) -> tuple[list[str], list[str]]:
+    """Return canonical prompt-disjoint train and test prompt IDs.
+
+    This exposes the exact deterministic grouping rule used by the
+    switch-level evaluator. Statistics calibration uses the train side before
+    any hybrid labels exist, while frozen bundle export sees the same test
+    side once those labels are available.
+    """
+    if not 0.0 < test_group_fraction < 1.0:
+        raise ValueError("test_group_fraction must be in (0, 1)")
+    if len(set(prompt_ids)) != len(prompt_ids):
+        raise ValueError("prompt_ids must be unique")
+    train: list[str] = []
+    test: list[str] = []
+    for prompt_id in prompt_ids:
+        row = {"model": model, "task": task, "prompt_id": prompt_id}
+        if _is_test_group(row, seed, test_group_fraction):
+            test.append(prompt_id)
+        else:
+            train.append(prompt_id)
+    return train, test
+
+
 def leave_one_compressor_splits(
     rows: Sequence[dict[str, Any]],
     *,
@@ -1058,9 +1088,13 @@ def _required_float(value: object) -> float:
 
 def _as_float(value: object) -> float | None:
     """Return a finite float when conversion is possible."""
+    if isinstance(value, np.generic):
+        value = value.item()
+    if not isinstance(value, str | int | float):
+        return None
     try:
-        out = float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+        out = float(value)
+    except ValueError:
         return None
     if not math.isfinite(out):
         return None

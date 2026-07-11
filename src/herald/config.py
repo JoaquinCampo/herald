@@ -8,7 +8,7 @@ overrides to construct a slice.
 
 from pathlib import Path
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Base models: two distinct families (different tokenizer + pretraining)
 # so the cross-family transfer claim is non-trivial.
@@ -105,6 +105,28 @@ class Config(BaseModel):
     # reproducible. Empty tap_layer_indices means quarter-depth.
     tap_attention: bool = False
     tap_layer_indices: tuple[int, ...] = ()
+    # Required only for ExpectedAttentionStatsPress. The artifact stores
+    # train-only prompt provenance and must be reused for all paired runs.
+    expected_attention_stats_path: Path | None = None
+    expected_attention_stats_sha256: str | None = None
+
+    @model_validator(mode="after")
+    def _require_frozen_statistics(self) -> "Config":
+        needs_statistics = "expected_attention_stats" in self.compressors
+        if needs_statistics and self.expected_attention_stats_path is None:
+            raise ValueError(
+                "expected_attention_stats requires "
+                "expected_attention_stats_path"
+            )
+        if (
+            not needs_statistics
+            and self.expected_attention_stats_path is not None
+        ):
+            raise ValueError(
+                "expected_attention_stats_path requires "
+                "expected_attention_stats"
+            )
+        return self
 
     @field_validator("ratios")
     @classmethod

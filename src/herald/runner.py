@@ -1,3 +1,5 @@
+# pyright: reportMissingImports=false
+
 """Sweep orchestration: generate references and hybrids, score, store.
 
 Resumable and idempotent. References are generated once per (model,
@@ -22,6 +24,7 @@ import numpy as np
 from herald import storage
 from herald.attention_features import AttentionTap
 from herald.config import TASKS, Config
+from herald.expected_attention_stats import StatisticsArtifact
 from herald.generate import (
     LoadedModel,
     ReferenceRun,
@@ -58,12 +61,40 @@ def run_sweep(config: Config, *, device: str = "cuda") -> None:
             device=device,
             attn_implementation=config.attn_implementation,
         )
+        statistics = _load_statistics(config, lm)
         for task in config.tasks:
             records = load_prompts(task, config.prompts_per_task, TASKS[task])
             _run_references(lm, task, records, config)
-            _run_hybrids(lm, task, records, config)
+            _run_hybrids(lm, task, records, config, statistics)
             _log("task_done", model=model_key, task=task)
     _log("sweep_done")
+
+
+def _load_statistics(
+    config: Config, lm: LoadedModel
+) -> StatisticsArtifact | None:
+    """Load once per model so stats I/O is not part of hybrid timing."""
+    if "expected_attention_stats" not in config.compressors:
+        return None
+    if config.expected_attention_stats_path is None:
+        raise RuntimeError("missing frozen expected-attention statistics")
+    artifact = StatisticsArtifact.load(config.expected_attention_stats_path)
+    if (
+        config.expected_attention_stats_sha256 is not None
+        and config.expected_attention_stats_sha256 != artifact.digest
+    ):
+        raise RuntimeError(
+            "frozen expected-attention statistics digest does not match "
+            "config"
+        )
+    artifact.validate_model(lm.model)
+    _log(
+        "expected_attention_stats_loaded",
+        model=lm.key,
+        artifact_sha256=artifact.digest,
+        path=str(config.expected_attention_stats_path),
+    )
+    return artifact
 
 
 def _run_references(
@@ -141,6 +172,7 @@ def _run_hybrids(
     task: str,
     records: list[PromptRecord],
     config: Config,
+    statistics: StatisticsArtifact | None = None,
 ) -> None:
     m = TASKS[task].max_new_tokens
     done_refs = storage.reference_done(config.results_dir, lm.key, task)
@@ -196,7 +228,12 @@ def _run_hybrids(
             for s in sorted(by_s):
                 for batch in _chunks(by_s[s], config.hybrid_batch_size):
                     try:
-                        press = get_press(compressor, ratio)
+                        press = get_press(
+                            compressor,
+                            ratio,
+                            model=lm.model,
+                            statistics=statistics,
+                        )
                         # Score features need one press per item to
                         # attribute layers; hybrids run batch 1.
                         recorder = (
