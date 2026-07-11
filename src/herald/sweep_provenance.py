@@ -2,11 +2,13 @@
 
 """Bind switch data to the frozen generation-sweep configuration."""
 
+from collections.abc import Sequence
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
 from herald.config import Config
+from herald.storage import hybrid_done, load_reference, reference_done
 
 SWEEP_CONFIG_SHA256_METADATA_KEY = b"herald.sweep_config_sha256"
 
@@ -34,6 +36,75 @@ def initialize_sweep_config(results_dir: Path, config: Config) -> Path:
     results_dir.mkdir(parents=True, exist_ok=True)
     config_path.write_text(expected)
     return config_path
+
+
+def validate_sweep_completeness(
+    results_dir: Path,
+    config: Config,
+    *,
+    models: Sequence[str] | None = None,
+    tasks: Sequence[str] | None = None,
+) -> None:
+    """Reject missing references or expected hybrid cells before training."""
+    selected_models = list(models) if models is not None else config.models
+    selected_tasks = list(tasks) if tasks is not None else config.tasks
+    errors: list[str] = []
+    for model in selected_models:
+        for task in selected_tasks:
+            prompt_ids = reference_done(results_dir, model, task)
+            if len(prompt_ids) != config.prompts_per_task:
+                errors.append(
+                    f"{model}/{task}: expected {config.prompts_per_task} "
+                    f"references, found {len(prompt_ids)}"
+                )
+                continue
+            expected_by_prompt: dict[str, set[int]] = {}
+            for prompt_id in prompt_ids:
+                try:
+                    reference = load_reference(
+                        results_dir,
+                        model,
+                        task,
+                        prompt_id,
+                    )
+                    gen_ids = reference["gen_ids"]
+                except (FileNotFoundError, KeyError) as error:
+                    errors.append(f"{model}/{task}/{prompt_id}: {error}")
+                    continue
+                if not isinstance(gen_ids, list) or not gen_ids:
+                    errors.append(
+                        f"{model}/{task}/{prompt_id}: "
+                        "invalid reference gen_ids"
+                    )
+                    continue
+                expected_by_prompt[prompt_id] = set(
+                    range(0, len(gen_ids), config.switch_stride)
+                )
+            for compressor in config.compressors:
+                for ratio in config.ratios:
+                    actual = hybrid_done(
+                        results_dir,
+                        model,
+                        task,
+                        compressor,
+                        ratio,
+                        require_features=True,
+                    )
+                    expected = {
+                        (prompt_id, switch_s)
+                        for prompt_id, switch_positions in (
+                            expected_by_prompt.items()
+                        )
+                        for switch_s in switch_positions
+                    }
+                    missing = expected - actual
+                    if missing:
+                        errors.append(
+                            f"{model}/{task}/{compressor}/{ratio}: "
+                            f"missing {len(missing)} hybrid cells"
+                        )
+    if errors:
+        raise ValueError("incomplete hybrid sweep: " + "; ".join(errors))
 
 
 def sha256_file(path: Path) -> str:
@@ -84,6 +155,11 @@ def validate_parquet_sweep_config(
     if expected_statistics_sha256 is not None and not statistics_match:
         raise ValueError("sweep config statistics digest does not match")
     return config
+
+
+def load_sweep_config(path: Path) -> Config:
+    """Load and validate a serialized sweep configuration."""
+    return _load_config(path)
 
 
 def _load_config(path: Path) -> Config:

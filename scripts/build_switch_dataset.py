@@ -14,7 +14,11 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-from herald.sweep_provenance import bind_table_to_sweep_config
+from herald.sweep_provenance import (
+    bind_table_to_sweep_config,
+    load_sweep_config,
+    validate_sweep_completeness,
+)
 from herald.switch_dataset import build_switch_dataset, rows_to_table
 
 
@@ -34,6 +38,13 @@ def main() -> None:
     args = ap.parse_args()
     sweep_config = args.results_dir / "config.json"
 
+    sweep = load_sweep_config(sweep_config)
+    validate_sweep_completeness(
+        args.results_dir,
+        sweep,
+        models=args.models,
+        tasks=args.tasks,
+    )
     rows, summary = build_switch_dataset(
         args.results_dir,
         models=args.models,
