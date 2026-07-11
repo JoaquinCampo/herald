@@ -16,6 +16,7 @@ from herald.hybrid_streams import (  # noqa: E402
     extract_hybrid_streams,
     save_hybrid_streams,
 )
+from herald.sweep_provenance import sha256_file  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
@@ -48,6 +49,7 @@ def main() -> None:
     streams = extract_hybrid_streams(
         rows,
         args.results_dir,
+        source_parquet_sha256=sha256_file(args.parquet),
         max_block_tokens=args.max_block_tokens,
     )
     save_hybrid_streams(args.out, streams)

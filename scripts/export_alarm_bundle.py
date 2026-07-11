@@ -34,6 +34,10 @@ from herald.grace_replay import (  # noqa: E402
 )
 from herald.grace_window import AlarmBundle, hyb_feature_names  # noqa: E402
 from herald.hybrid_streams import validate_stream_alignment  # noqa: E402
+from herald.sweep_provenance import (  # noqa: E402
+    sha256_file,
+    validate_parquet_sweep_config,
+)
 from herald.switch_baselines import split_prompt_ids  # noqa: E402
 from herald.switch_risk import featurize  # noqa: E402
 
@@ -75,6 +79,7 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path("results/predictor/hybrid_streams_ifeval.npz"),
     )
+    parser.add_argument("--sweep-config", type=Path, required=True)
     parser.add_argument(
         "--out-dir",
         type=Path,
@@ -125,7 +130,7 @@ def _required_int(value: object, *, source: str) -> int:
 
 def _load_streams(
     path: Path,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, str]:
     """Load numeric stream arrays only, never pickle-backed object arrays."""
     try:
         with np.load(path, allow_pickle=False) as data:
@@ -133,10 +138,15 @@ def _load_streams(
             lengths = np.array(data["lengths"], copy=True)
             trailing = np.array(data["trailing"], copy=True)
             keys = np.array(data["keys"], copy=True)
+            source_parquet_sha256 = str(data["source_parquet_sha256"].item())
     except (KeyError, OSError, ValueError) as error:
         raise ValueError(
             f"could not load hybrid streams from {path}"
         ) from error
+    if len(source_parquet_sha256) != 64 or any(
+        char not in "0123456789abcdef" for char in source_parquet_sha256
+    ):
+        raise ValueError("hybrid streams have invalid source parquet sha256")
     if (
         blocks.ndim != 3
         or lengths.ndim != 1
@@ -151,7 +161,7 @@ def _load_streams(
         or blocks.shape[0] != keys.shape[0]
     ):
         raise ValueError("hybrid stream arrays disagree on row count")
-    return blocks, lengths, trailing, keys
+    return blocks, lengths, trailing, keys, source_parquet_sha256
 
 
 def _statistics_digest(
@@ -208,6 +218,29 @@ def hyb_summaries(
 def main() -> None:
     args = parse_args()
     compressors = cast(tuple[str, ...], args.compressors)
+    needs_statistics = "expected_attention_stats" in compressors
+    if needs_statistics and args.expected_attention_stats is None:
+        raise ValueError(
+            "expected_attention_stats requires --expected-attention-stats"
+        )
+    expected_statistics_sha256 = (
+        StatisticsArtifact.load(args.expected_attention_stats).digest
+        if needs_statistics
+        else None
+    )
+    sweep_config = validate_parquet_sweep_config(
+        args.parquet,
+        args.sweep_config,
+        expected_statistics_sha256=expected_statistics_sha256,
+    )
+    missing_config_compressors = sorted(
+        set(compressors) - set(sweep_config.compressors)
+    )
+    if missing_config_compressors:
+        raise ValueError(
+            "sweep config lacks requested compressors: "
+            f"{missing_config_compressors}"
+        )
     try:
         df = pd.read_parquet(args.parquet)
     except (OSError, ValueError) as error:
@@ -215,7 +248,13 @@ def main() -> None:
             f"could not read switch parquet {args.parquet}"
         ) from error
     df = df[df["task"] == "ifeval"].reset_index(drop=True)
-    blocks, lengths, trailing, stream_keys = _load_streams(args.streams_npz)
+    blocks, lengths, trailing, stream_keys, stream_parquet_sha256 = (
+        _load_streams(args.streams_npz)
+    )
+    if stream_parquet_sha256 != sha256_file(args.parquet):
+        raise ValueError(
+            "hybrid streams were extracted from a different parquet"
+        )
     if len(df) != len(blocks):
         raise ValueError(
             "parquet and stream row counts differ, regenerate aligned streams"
@@ -277,6 +316,7 @@ def main() -> None:
         "variant": "feat_plus_alarm",
         "parquet": str(args.parquet),
         "streams_npz": str(args.streams_npz),
+        "sweep_config_sha256": sha256_file(args.sweep_config),
         "compressors": {},
     }
 

@@ -21,6 +21,7 @@ class HybridStreams:
     lengths: np.ndarray
     trailing: np.ndarray
     keys: np.ndarray
+    source_parquet_sha256: str
 
 
 def row_key(row: dict[str, Any]) -> str:
@@ -42,6 +43,7 @@ def extract_hybrid_streams(
     rows: Sequence[dict[str, Any]],
     results_dir: Path,
     *,
+    source_parquet_sha256: str,
     max_block_tokens: int = 16,
     trailing_tokens: int = 8,
 ) -> HybridStreams:
@@ -50,6 +52,12 @@ def extract_hybrid_streams(
         raise ValueError("max_block_tokens must be positive")
     if trailing_tokens < 1:
         raise ValueError("trailing_tokens must be positive")
+    if len(source_parquet_sha256) != 64 or any(
+        char not in "0123456789abcdef" for char in source_parquet_sha256
+    ):
+        raise ValueError(
+            "source_parquet_sha256 must be 64 hexadecimal characters"
+        )
     n_rows = len(rows)
     n_features = len(FEATURE_NAMES)
     blocks = np.full(
@@ -113,6 +121,7 @@ def extract_hybrid_streams(
         lengths=lengths,
         trailing=trailing,
         keys=np.asarray(keys),
+        source_parquet_sha256=source_parquet_sha256,
     )
 
 
@@ -125,6 +134,7 @@ def save_hybrid_streams(path: Path, streams: HybridStreams) -> None:
         lengths=streams.lengths,
         trailing=streams.trailing,
         keys=streams.keys,
+        source_parquet_sha256=np.asarray(streams.source_parquet_sha256),
     )
 
 

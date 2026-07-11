@@ -70,6 +70,7 @@ def test_extracts_aligned_quantized_blocks_and_trailing_window(
     streams = extract_hybrid_streams(
         [row],
         tmp_path,
+        source_parquet_sha256="a" * 64,
         max_block_tokens=3,
     )
 
@@ -87,6 +88,7 @@ def test_extracts_aligned_quantized_blocks_and_trailing_window(
     save_hybrid_streams(out, streams)
     with np.load(out, allow_pickle=False) as data:
         assert data["keys"].tolist() == [row_key(row)]
+        assert data["source_parquet_sha256"].item() == "a" * 64
 
 
 def test_rejects_misaligned_stream_keys() -> None:

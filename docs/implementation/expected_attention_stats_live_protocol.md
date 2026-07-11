@@ -13,7 +13,11 @@ It produces a fresh frozen alarm bundle. Do not reuse the existing
 - The alarm bundle records that digest. The live controller refuses a missing
   or mismatched digest.
 - Hybrid streams are extracted from the same switch parquet and carry a
-  row-identity key. Bundle export rejects a row-order mismatch.
+  row-identity key and source-parquet SHA-256. Bundle export rejects a
+  row-order or source mismatch.
+- The switch parquet embeds the SHA-256 of the completed sweep's
+  `config.json`. Bundle export verifies that config and its expected-stats
+  digest before training an alarm.
 - Run the live controller only on the frozen test prompt IDs from its new
   `fidelity_targets.json`.
 - Each live directory has an immutable identity manifest, including exact
@@ -50,6 +54,7 @@ HF_HUB_OFFLINE=1 uv run --no-sync python run_sweep.py \
 
 uv run --no-sync python build_switch_dataset.py "$SWEEP" \
   --tasks ifeval --models llama \
+  --sweep-config "$SWEEP/config.json" \
   --out "$PREDICTOR/switch_dataset.parquet"
 
 uv run --no-sync python extract_hybrid_streams.py "$SWEEP" \
@@ -59,6 +64,7 @@ uv run --no-sync python extract_hybrid_streams.py "$SWEEP" \
 uv run --no-sync python export_alarm_bundle.py \
   --parquet "$PREDICTOR/switch_dataset.parquet" \
   --streams-npz "$PREDICTOR/hybrid_streams_ifeval.npz" \
+  --sweep-config "$SWEEP/config.json" \
   --compressors expected_attention_stats \
   --expected-attention-stats "$STATS" --out-dir "$BUNDLE"
 
