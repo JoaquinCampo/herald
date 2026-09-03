@@ -1,90 +1,105 @@
 # What the predictor predicts, and why
 
-The predictor is an online estimator that runs alongside generation.
-At every generated token $t$ it emits a scalar $\hat{D}(t)$ estimating
-the damage that would result if the compressor activated at $t$ and
-ran to the end of the generation. Its target is the damage curve of
-the measurement section, read at position $t$.
+> **Status: current protocol.** This document supersedes the earlier
+> compressor-agnostic transfer design. The current paper trains and evaluates
+> one pre-switch magnitude forecaster per known compressor.
 
-## Why this target
+## The prediction target
 
-### Why a per-position target rather than a run-level one
+At switch position $s$, exactly $s$ generated tokens are fixed and compression
+has not yet activated. For known compressor $c$ and known removal ratio $r$,
+the predictor emits
 
-A run-level target (predict the whole-run damage label at every token)
-gives the predictor the same answer to produce at every position of a
-run. It cannot localize anything: the prediction at token 10 and at
-token 400 are estimates of the same scalar, and the only thing that
-changes along the run is the predictor's confidence. The damage curve
-already tells us that damage depends strongly on *when* compression
-activates, and a run-level target throws that structure away.
+$$
+\hat d_c(s,r),
+$$
 
-The per-position target is the question an online estimate is for:
-given everything observed so far, how harmful is compression *here*.
-It varies along the run, it is grounded in a measured quantity at
-every supervised position, and it is the value of the damage curve at
-$t$, so the predictor and the measurement share one definition of
-damage rather than two.
+an estimate of the signed final task-quality effect of activating $c$ at $s$
+and continuing under compression to completion. The measured target is the
+paired live-fork or matched-reprefill contrast defined in
+`docs/_why/6_intervention_semantics.md`.
 
-### Why not a fixed-horizon target
+This is not a post-switch reaction monitor. It uses no compressed tokens,
+grace window, probe continuation, rollback outcome, or future information.
 
-A target of the form "damage if compression activates $H$ tokens from
-now" introduces a horizon hyperparameter with no natural value, and it
-answers an indirect question: the decision a serving system faces at
-token $t$ concerns activating compression at $t$, not at $t + H$. The
-activation-at-$t$ target is the direct form of the question and has
-labels measured at exactly that operationalisation.
+## Why the target varies by switch position
 
-## Why the inputs are logit statistics plus ratio, and not compressor identity
+A run-level target would ask the predictor for the same value at every
+position and could not localize when the generation is vulnerable. Switching
+at $s$ and switching sixteen tokens later are distinct interventions with
+distinct paired continuations. The measured switch curve supplies one
+supervised magnitude at each sampled decision boundary.
 
-At prediction time, compression has not yet activated, so the
-predictor's input comes entirely from the uncompressed stream. That
-input is identical no matter which compressor is about to switch on.
-Whatever the input carries, therefore, is information about the
-*position*: how vulnerable this point of the generation is to losing
-cache content, not which compressor will exploit that vulnerability.
+The target is activation now through completion, not damage over a fixed
+number of future tokens. The serving decision is whether activating the known
+compressor now will harm the completed answer. A fixed horizon would introduce
+another policy choice and answer a different question.
 
-Conditioning on compressor identity could only add a learned
-per-compressor offset on top of that shared signal. Such an offset is
-memorized from the training compressors and is undefined for a
-compressor never seen in training, so it is precisely the component of
-the prediction that cannot transfer. Leaving identity out makes the
-compressor-agnostic claim literal: the predictor learns the shared
-vulnerability signal, and cross-compressor evaluation (training with
-entire compressors held out) tests exactly that. An identity-
-conditioned variant remains available as an ablation to quantify how
-much compressor-specific signal exists; a small gap supports the
-thesis that compression damage has a shared signature.
+## Why one model per compressor
 
-Ratio is different in kind. It is a numeric quantity, always known to
-the system applying compression, and damage at light and heavy ratios
-are genuinely different questions; a ratio-blind predictor could only
-output an average over the sweep, which answers none of them.
-Conditioning on a known numeric knob specifies the question being
-asked; it memorizes nothing.
+Different compressors remove different cache entries and produced
+compressor-dependent label distributions in the historical experiments. The
+current paper does not require one invariant mapping to transfer to an unseen
+compressor. Instead, each compressor gets its own model and must support its
+own claim on unseen prompts.
 
-## Why scalar regression rather than binary classification
+Compressor identity is therefore implicit in model selection rather than a
+feature column. A pooled or macro result cannot rescue a compressor whose
+model fails.
 
-The label is continuous (a graded quality delta), and a scalar
-prediction preserves magnitude: mild degradation and severe derailment
-get different values rather than the same bit. Any binary decision is
-recoverable downstream by thresholding the scalar, and the threshold
-can be chosen, changed, or calibrated after training without touching
-the predictor. Training a classifier instead would fix a threshold
-before we know what consumers of the prediction need, and would
-discard the magnitude information the damage measure was designed to
-provide. If the cosine label proves too noisy to regress against, that
-is an empirical finding to report, not a reason to pre-commit to a
-coarser target.
+## Why ratios are pooled
 
-## Why the streaming constraint is stated as "no additional forward pass"
+Removal ratio is a numeric intervention setting known before activation.
+Pooling a compressor's supported ratios gives its model more prompt-level
+evidence and asks it to learn dose dependence. The ratio is an explicit input,
+and every result is also reported separately by ratio so aggregate performance
+cannot hide a failed setting.
 
-The predictor's value rests on being effectively free relative to the
-generation it monitors. The constraint that guarantees this is
-architectural, not a measured latency figure: the predictor may use
-only quantities that fall out of the forward pass the model already
-performs to generate, may never look at future tokens, and must do a
-constant amount of work per token. Causal rolling statistics over past
-tokens respect all three. A second forward pass, even a partial one,
-would put the monitor's cost in the same class as the thing it
-monitors, and would undercut the premise that the signal is already
-present in the model's own next-token distribution.
+This is interpolation over ratios represented during training, not a claim
+about an unseen ratio. A separate model per ratio is an ablation only if the
+pooled model's diagnostics justify it.
+
+## Which inputs are admissible
+
+The first model may use only information available at the decision boundary:
+
+- the known removal ratio;
+- absolute generated position $s$;
+- causal reference-stream `feat__*` values observed through $s$.
+
+It may not use final reference length, relative position computed from that
+length, completed-output quality, labels, prompt identity, compressed probes,
+hybrid-stream summaries, grace-window features, or any other post-switch
+quantity. Feature timing must be checked against the exact boundary in the
+generation loop; an off-by-one row is leakage.
+
+Compressor-specific pre-switch measurements may be studied later only after a
+fixed first model fails and the missing information is identified. They must
+be available before activation and receive a separate cost and causality
+analysis.
+
+## Why signed scalar regression
+
+The primary label retains magnitude and sign. Positive values are degradation,
+zero is no measured effect, and negative values are lift. Clipping before
+training would change the estimand and allow improvements to disappear from
+the evidence.
+
+One fixed squared-error XGBoost model is the first learned candidate. It must
+beat grouped ratio-and-position baselines on held-out prompts before any broad
+model search. Mean-squared skill is primary because the target is heavily
+zero-inflated and median prediction can look strong under MAE without
+forecasting graded effects.
+
+Positive harm, any-damage risk, and major-damage risk are derived reporting
+targets. Risk prediction is a preregistered secondary endpoint with thresholds
+fixed before primary results are inspected; it is not a post-hoc replacement
+for failed magnitude regression.
+
+## Why the streaming constraint remains strict
+
+The forecaster may use quantities already produced by the uncompressed
+generation pass and a constant amount of causal aggregation per token. It may
+not run an additional model forward pass. This preserves the claim that damage
+is forecast before compression from the model state already available to the
+serving system.

@@ -60,7 +60,7 @@ heterogeneous per-layer signals to denoise an estimate.
 
 ## Scope note
 
-LSA is a *learned* compressor that needs the backbone in the
-loop, a different class from HERALD's five weight-free eviction compressors.
-It is a future generalization target for HERALD's cross-compressor claim, not
-a compressor in the current sweep.
+LSA is a *learned* compressor that needs the backbone in the loop, a
+different class from HERALD's weight-free eviction compressors. It is not in
+the current sweep. The current paper trains one model per known compressor and
+makes no cross-compressor transfer claim.

@@ -15,7 +15,11 @@ the seed is set in ifeval.py so behaviour is deterministic.
 
 import pytest
 
-from herald.ifeval import score_ifeval
+from herald.ifeval import (
+    IFEvalScores,
+    score_ifeval,
+    score_ifeval_robustness,
+)
 
 # ---------------------------------------------------------------------------
 # Test 1: single keyword:existence -- full credit and zero credit
@@ -153,7 +157,91 @@ def test_none_padded_kwargs_filtered() -> None:
     assert score_ifeval(output, gold) == pytest.approx(1.0)
 
 
+# Strict and loose scoring modes
 # ---------------------------------------------------------------------------
+
+
+def test_strict_is_lower_when_only_loose_transformation_passes() -> None:
+    """Strict rejects punctuation discarded with the first line."""
+    gold: dict[str, object] = {
+        "prompt": "Write without commas.",
+        "instruction_id_list": ["punctuation:no_comma"],
+        "kwargs": [{}],
+    }
+
+    scores = score_ifeval_robustness(
+        "Discard this,\nValid body", gold, mode="both"
+    )
+
+    assert isinstance(scores, IFEvalScores)
+    assert scores.strict == pytest.approx(0.0)
+    assert scores.loose == pytest.approx(1.0)
+    assert scores.strict <= scores.loose
+
+
+def test_strict_equals_loose_when_original_passes() -> None:
+    """Both modes agree when the original output passes."""
+    gold: dict[str, object] = {
+        "prompt": "Write about the ocean.",
+        "instruction_id_list": ["keywords:existence"],
+        "kwargs": [{"keywords": ["ocean"]}],
+    }
+
+    scores = score_ifeval_robustness("The ocean is blue.", gold, mode="both")
+
+    assert isinstance(scores, IFEvalScores)
+    assert scores.strict == pytest.approx(1.0)
+    assert scores.loose == pytest.approx(scores.strict)
+
+
+def test_both_mode_preserves_fractional_instruction_scores() -> None:
+    """Instructions contribute independently to both scores."""
+    gold: dict[str, object] = {
+        "prompt": "Mention Python without commas.",
+        "instruction_id_list": [
+            "keywords:existence",
+            "punctuation:no_comma",
+        ],
+        "kwargs": [{"keywords": ["python"]}, {}],
+    }
+
+    scores = score_ifeval_robustness("python,\nValid body", gold, mode="both")
+
+    assert isinstance(scores, IFEvalScores)
+    assert scores.strict == pytest.approx(0.5)
+    assert scores.loose == pytest.approx(1.0)
+
+
+def test_robustness_rejects_invalid_mode() -> None:
+    """The explicit mode API rejects unsupported scoring variants."""
+    gold: dict[str, object] = {
+        "prompt": "Write something.",
+        "instruction_id_list": ["keywords:existence"],
+        "kwargs": [{"keywords": ["hello"]}],
+    }
+
+    with pytest.raises(ValueError, match="invalid IFEval scoring mode"):
+        score_ifeval_robustness(
+            "hello",
+            gold,
+            mode="unsupported",  # type: ignore[arg-type]
+        )
+
+
+def test_public_loose_score_matches_explicit_loose_mode() -> None:
+    """The established score_ifeval entry point remains the loose score."""
+    gold: dict[str, object] = {
+        "prompt": "Write about the ocean.",
+        "instruction_id_list": ["keywords:existence"],
+        "kwargs": [{"keywords": ["ocean"]}],
+    }
+    output = "*ocean*"
+
+    assert score_ifeval(output, gold) == pytest.approx(
+        score_ifeval_robustness(output, gold, mode="loose")
+    )
+
+
 # Network-dependent test (skipped offline)
 # ---------------------------------------------------------------------------
 

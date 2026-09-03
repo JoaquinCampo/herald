@@ -44,6 +44,31 @@ def _decode(model: Any, ids: torch.Tensor, steps: int) -> torch.Tensor:
     return seq
 
 
+def _forced_tap_matrix(
+    model: Any,
+    tap: AttentionTap,
+    prompt_ids: torch.Tensor,
+    forced_tokens: list[int],
+) -> np.ndarray:
+    """Capture rows that precede each token in a forced continuation."""
+    from transformers import DynamicCache
+
+    tap.begin(prompt_lens=[int(prompt_ids.shape[1])])
+    cache = DynamicCache()
+    with torch.no_grad():
+        model(prompt_ids, past_key_values=cache, use_cache=True)
+        for token in forced_tokens[:-1]:
+            model(
+                torch.tensor([[token]], dtype=torch.long),
+                past_key_values=cache,
+                use_cache=True,
+            )
+    matrix, names = tap.matrix()
+    assert names == tap_feature_names()
+    assert matrix.shape == (1, len(forced_tokens), len(names))
+    return cast(np.ndarray, matrix[0])
+
+
 def test_row_matches_eager_attention() -> None:
     model = _tiny_model("eager")
     ids = torch.arange(10).unsqueeze(0) % 128
@@ -132,26 +157,34 @@ def test_column_accumulator_is_sum_of_rows() -> None:
     np.testing.assert_allclose(acc, want, rtol=1e-5, atol=1e-6)
 
 
-def test_causality_prefix_invariance() -> None:
-    """Step-t features must not change when more tokens follow."""
+def test_causality_prefix_invariance_and_reset() -> None:
+    """Row s depends on forced tokens before s, never token s or later."""
     model = _tiny_model("sdpa")
-    ids = torch.arange(9).unsqueeze(0) % 128
+    prompt_ids = torch.arange(9).unsqueeze(0) % 128
+    causal_cut = 2
+    left_tokens = [7, 11, 13, 17, 19]
+    right_tokens = [7, 11, 97, 23, 29]
 
     tap = AttentionTap(model, layer_indices=[0, 2])
-    tap.begin(prompt_lens=[9])
-    _decode(model, ids, steps=2)
-    short, _ = tap.matrix()
+    left = _forced_tap_matrix(model, tap, prompt_ids, left_tokens)
+    right = _forced_tap_matrix(model, tap, prompt_ids, right_tokens)
+    left_after_reset = _forced_tap_matrix(
+        model,
+        tap,
+        prompt_ids,
+        left_tokens,
+    )
     tap.remove()
 
-    tap2 = AttentionTap(model, layer_indices=[0, 2])
-    tap2.begin(prompt_lens=[9])
-    _decode(model, ids, steps=6)
-    long, _ = tap2.matrix()
-    tap2.remove()
-
-    np.testing.assert_allclose(
-        short[0], long[0, : short.shape[1]], rtol=1e-5, atol=1e-6
+    np.testing.assert_array_equal(
+        left[: causal_cut + 1],
+        right[: causal_cut + 1],
     )
+    assert not np.array_equal(
+        left[causal_cut + 1 :],
+        right[causal_cut + 1 :],
+    )
+    np.testing.assert_array_equal(left_after_reset, left)
 
 
 def test_padded_batch_matches_solo_run() -> None:

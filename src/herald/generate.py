@@ -227,34 +227,64 @@ def _generate(
     return trimmed, prompt_len
 
 
+def prefill_continuation(
+    lm: LoadedModel,
+    prompt_ids: torch.Tensor,
+    prefix_ids: list[int],
+    max_new_tokens: int,
+    press: BasePress | None,
+    seed: int,
+) -> list[int]:
+    """Prefill exactly ``prompt + prefix`` and greedily continue."""
+    if max_new_tokens <= 0:
+        return []
+    device = next(lm.model.parameters()).device
+    seq = torch.cat(
+        [
+            prompt_ids.to(device),
+            torch.tensor(prefix_ids, dtype=torch.long, device=device),
+        ]
+    ).unsqueeze(0)
+    torch.manual_seed(seed)
+    context = press(lm.model) if press is not None else nullcontext()
+    with torch.no_grad(), context:
+        out = lm.model.generate(  # type: ignore[operator]
+            input_ids=seq,
+            attention_mask=torch.ones_like(seq),
+            generation_config=lm.gen_config,
+            max_new_tokens=max_new_tokens,
+            return_dict_in_generate=True,
+        )
+    generated = [
+        int(value) for value in out.sequences[0, seq.shape[1] :].tolist()
+    ]
+    return _trim_at_eos(generated, lm.eos_ids)
+
+
 def generate_reference(
     lm: LoadedModel,
     records: list[PromptRecord],
     max_new_tokens: int,
     *,
     tap: "AttentionTap | None" = None,
+    decode_text: bool = True,
 ) -> list[ReferenceRun]:
-    """Generate references for a batch of prompts with inline features.
-
-    With an ``AttentionTap`` attached, its per-step cross-layer
-    moments are appended as extra feature columns and the run carries
-    explicit ``feature_names`` describing the widened matrix.
-    """
+    """Generate references for a batch of prompts with inline features."""
     prompts = [build_input_ids(lm, r) for r in records]
     collector = FeatureCollector()
     if tap is not None:
         tap.begin(prompt_lens=[int(p.shape[-1]) for p in prompts])
     gen_ids, _ = _generate(lm, prompts, max_new_tokens, collector=collector)
-    feats = collector.stacked()  # (steps, batch, n_feat)
-    argmax = collector.argmax_tokens()  # (steps, batch)
+    feats = collector.stacked()
+    argmax = collector.argmax_tokens()
     names: list[str] | None = None
     if tap is not None:
-        tap_matrix, tap_names = tap.matrix()  # (batch, steps, n_tap)
+        tap_matrix, tap_names = tap.matrix()
         if tap_matrix.shape[1] != feats.shape[0]:
             raise RuntimeError(
                 "attention tap saw a different step count than the "
-                f"feature collector: {tap_matrix.shape[1]} != "
-                f"{feats.shape[0]}"
+                "feature collector: "
+                f"{tap_matrix.shape[1]} != {feats.shape[0]}"
             )
         feats = np.concatenate([feats, tap_matrix.transpose(1, 0, 2)], axis=2)
         names = list(FEATURE_NAMES) + tap_names
@@ -263,16 +293,17 @@ def generate_reference(
     for b, record in enumerate(records):
         ids = gen_ids[b]
         length = len(ids)
-        # Self-check: greedy tokens the collector saw must match the
-        # tokens generate actually emitted, else a processor altered the
-        # decisive scores and scores != logits.
         seen = argmax[:length, b].tolist()
         if seen != ids:
             raise RuntimeError(
                 f"feature/token mismatch for {record.prompt_id}: "
                 "a logits processor altered scores"
             )
-        text = lm.tokenizer.decode(ids, skip_special_tokens=True)
+        text = (
+            lm.tokenizer.decode(ids, skip_special_tokens=True)
+            if decode_text
+            else ""
+        )
         runs.append(
             ReferenceRun(
                 prompt_id=record.prompt_id,

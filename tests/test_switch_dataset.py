@@ -326,13 +326,15 @@ def _write_ref(
     prompt_id: str,
     gen_ids: list[int],
     names: list[str] | None = None,
+    *,
+    q: float = 1.0,
 ) -> None:
     import json
 
     import numpy as np
 
     ref_dir.mkdir(parents=True, exist_ok=True)
-    data = {"prompt_id": prompt_id, "q": 1.0, "gen_ids": gen_ids}
+    data = {"prompt_id": prompt_id, "q": q, "gen_ids": gen_ids}
     if names is not None:
         data["feature_names"] = names
     (ref_dir / f"{prompt_id}.json").write_text(json.dumps(data))
@@ -354,7 +356,7 @@ def test_merge_tapped_references(tmp_path: Path) -> None:
     _write_ref(old / "references", "p0", [1, 2, 3])
     _write_ref(old / "references", "p1", [4, 5])
     _write_ref(old / "references", "p2", [6])
-    _write_ref(new / "references", "p0", [1, 2, 3], names)
+    _write_ref(new / "references", "p0", [1, 2, 3], names, q=0.5)
     _write_ref(new / "references", "p1", [4, 9], names)
     (old / "hybrids").mkdir()
     (old / "hybrids" / "knorm__0.2500.jsonl").write_text("")
@@ -367,6 +369,7 @@ def test_merge_tapped_references(tmp_path: Path) -> None:
     refs = load_references(merged)
     assert set(refs) == {"p0", "p1"}
     assert refs["p0"].feature_names == tuple(names)
+    assert refs["p0"].q == 1.0
     assert (merged / "hybrids" / "knorm__0.2500.jsonl").exists()
 
     import numpy as np

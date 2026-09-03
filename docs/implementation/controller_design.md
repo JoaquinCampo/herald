@@ -1,5 +1,10 @@
 # Controller design
 
+> **Status: historical controller workstream.** This design and its validated
+> runtime remain research evidence, but rollback, threshold calibration, and
+> post-switch alarms are outside the current pre-switch magnitude-forecasting
+> protocol in `docs/methodology.md`.
+
 What the HERALD controller is, which parts exist and are validated,
 which parts are future engineering, and the dynamic-policy
 extensions under consideration. Companion to

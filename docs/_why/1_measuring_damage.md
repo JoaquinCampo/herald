@@ -1,12 +1,13 @@
 # How we measure compression damage, and why this way
 
-> **Status: partly superseded.** The damage *measure* described in the
-> embedding/cosine subsections below was dropped. The current measure is
-> the quality delta in `docs/_why/3_measuring_quality.md`. What remains
-> valid here: the paired-counterfactual framing, the hybrid family, the
-> switch granularity $k$, and deterministic decoding. The cosine and
-> embedding subsections are retained only as a record of a rejected
-> approach.
+> **Status: historical rationale, partly superseded.** The paired,
+> task-grounded counterfactual and switch-position family remain current. The
+> embedding/cosine measure was rejected in favor of the quality delta in
+> `docs/_why/3_measuring_quality.md`. The earlier assumption that a stored
+> continuous reference and a pressed re-prefill form an exact pair is now
+> gated by the live-fork, matched-reprefill, and parity hierarchy in
+> `docs/_why/6_intervention_semantics.md`. The embedding subsections remain
+> only as a record of a rejected approach.
 
 Compression damage is defined as a paired counterfactual: the gap between
 the output a user actually receives under compression and the output they
@@ -102,12 +103,12 @@ would have received.
 
 ### Why deterministic decoding on both sides
 
-Sampling variance would introduce a second source of difference between
-reference and compressed runs that we would have to disentangle from the
-compression-induced difference. Greedy (or equivalently, temperature-
-zero) decoding makes both runs deterministic functions of the prompt and
-the compressor configuration, so any difference between the two outputs
-is attributable to compression alone.
+Sampling variance would introduce another source of difference between paired
+continuations. Greedy decoding removes that variance, but it does not by
+itself establish attribution: both branches must also begin from matched
+decoder states and use the same numerical path except for compression. The
+parity protocol verifies those conditions rather than inferring them from
+determinism.
 
 ### Why a family of hybrid runs rather than a single compressed run
 
@@ -117,13 +118,12 @@ compression caused harm, only that some amount of harm occurred by the
 end. It also cannot distinguish damage that accumulated gradually from
 damage that arrived all at once.
 
-Generating a family of hybrid runs, indexed by the position at which
-compression switches on, replaces the single damage scalar with a
-damage curve along the run. Each hybrid run shares its prefix with the
-reference exactly by construction, so the comparison at switch position
-$s$ is a clean counterfactual: the only difference between the hybrid
-and the reference is that compression activated at $s$ on the hybrid
-side. We never have to compare across diverged streams.
+Generating a family of paired interventions, indexed by switch position,
+replaces the single damage scalar with a damage curve along the run. The first
+$s$ emitted token IDs are shared by construction. Whether the underlying
+decoder states are also matched depends on the live-fork or re-prefill
+semantics and must pass the parity protocol. Only then may the resulting
+quality difference be attributed to activating compression at $s$.
 
 The curve carries information the scalar cannot:
 

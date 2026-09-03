@@ -1,6 +1,7 @@
 # Mission: maximize deployable KV-cache savings
 
-Status: active. This supersedes the archived rung-2 live-controller
+Status: superseded 2026-09-02 by the quality-risk goal spec built on
+`quality_risk_protocol.md`; retained as a record. This superseded the archived rung-2 live-controller
 mission in `archive/rung2_live_grace_window.md`.
 
 ## Goal

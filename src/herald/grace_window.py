@@ -90,8 +90,9 @@ def preswitch_features(
     """Derived reference features at the switch position s.
 
     `ref_raw` is the raw `(steps, n_raw)` reference stream; row s must
-    exist (the distribution at the switch point). Every derived column
-    is causal, so only rows <= s are used.
+    exist. It is the distribution produced from the prefix through
+    generated tokens `[:s]`, before token s is emitted. Every derived
+    column is causal, so only rows <= s are used.
     """
     if not 0 <= s < ref_raw.shape[0]:
         raise ValueError(

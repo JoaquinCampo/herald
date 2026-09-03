@@ -1,13 +1,11 @@
 # Online damage forecasting from the post-switch stream
 
-Status: ifeval pipeline settled (2026-07-06). This documents the
-reframe from "predict damage before switching, transfer to unseen
-compressors" to "forecast damage online from the model's own
-reaction to the compressed cache, per compressor family", and the
-deployable pipeline that resulted. Raw numbers and the full
-experiment sequence live in
-`results/predictor/experiments/experiment_log.md` (entries dated
-2026-07-05 night through 2026-07-06).
+> **Status: historical controller workstream (2026-07-06).** This document
+> records the reframe from pre-switch transfer to per-compressor post-switch
+> monitoring and the experiments that followed. It remains evidence about
+> earlier results but does not define the current pre-switch magnitude paper;
+> see `docs/methodology.md`. Raw numbers and the full experiment sequence were
+> stored under `results/predictor/experiments/experiment_log.md`.
 
 ## Why the reframe
 

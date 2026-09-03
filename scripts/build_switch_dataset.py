@@ -16,6 +16,7 @@ import pyarrow.parquet as pq
 
 from herald.sweep_provenance import (
     bind_table_to_sweep_config,
+    bind_table_to_validated_intervention,
     load_sweep_config,
     validate_sweep_completeness,
 )
@@ -35,7 +36,28 @@ def main() -> None:
     ap.add_argument("--tasks", nargs="+", default=None)
     ap.add_argument("--models", nargs="+", default=None)
     ap.add_argument("--max-rows-per-task", type=int, default=None)
+    ap.add_argument(
+        "--allow-missing-hybrid-features",
+        action="store_true",
+        help=(
+            "build probe-free rows when hybrid feature arrays were not "
+            "recorded"
+        ),
+    )
+    ap.add_argument(
+        "--source-manifest",
+        type=Path,
+        default=None,
+        help="bind output to a complete faithful-intervention manifest",
+    )
     args = ap.parse_args()
+    if (
+        args.source_manifest is not None
+        and args.max_rows_per_task is not None
+    ):
+        ap.error(
+            "--max-rows-per-task cannot truncate a manifest-bound dataset"
+        )
     sweep_config = args.results_dir / "config.json"
 
     sweep = load_sweep_config(sweep_config)
@@ -44,6 +66,7 @@ def main() -> None:
         sweep,
         models=args.models,
         tasks=args.tasks,
+        require_hybrid_features=not args.allow_missing_hybrid_features,
     )
     rows, summary = build_switch_dataset(
         args.results_dir,
@@ -52,7 +75,16 @@ def main() -> None:
         max_rows_per_task=args.max_rows_per_task,
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    table = bind_table_to_sweep_config(rows_to_table(rows), sweep_config)
+    table = rows_to_table(rows)
+    table = (
+        bind_table_to_validated_intervention(
+            table,
+            sweep_config,
+            args.source_manifest,
+        )
+        if args.source_manifest is not None
+        else bind_table_to_sweep_config(table, sweep_config)
+    )
     pq.write_table(table, args.out)  # type: ignore[no-untyped-call]
     summary_path = args.out.with_name(args.out.stem + "_summary.json")
     summary["output_path"] = str(args.out)

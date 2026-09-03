@@ -14,10 +14,13 @@ manifest line is only appended AFTER both renames succeed, so a half-written
 pair never appears as complete.
 """
 
+import hashlib
 import json
 import os
 import tempfile
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import cast
 from urllib.parse import quote
 
 import numpy as np
@@ -101,6 +104,35 @@ def reference_done(results_dir: Path, model: str, task: str) -> set[str]:
     return done
 
 
+def ensure_reference_done(
+    results_dir: Path,
+    model: str,
+    task: str,
+    prompt_id: str,
+) -> None:
+    """Idempotently commit an existing complete reference to its manifest."""
+    if prompt_id in reference_done(results_dir, model, task):
+        return
+    ref_dir = _ref_dir(results_dir, model, task)
+    safe_stem = safe_id(prompt_id)
+    legacy_stem = legacy_safe_id(prompt_id)
+    json_path = ref_dir / f"{safe_stem}.json"
+    npy_path = ref_dir / f"{safe_stem}.npy"
+    if not json_path.exists() and safe_stem != legacy_stem:
+        json_path = ref_dir / f"{legacy_stem}.json"
+    if not npy_path.exists() and safe_stem != legacy_stem:
+        npy_path = ref_dir / f"{legacy_stem}.npy"
+    if not json_path.exists() or not npy_path.exists():
+        raise FileNotFoundError(
+            f"cannot commit incomplete reference {prompt_id!r}"
+        )
+    manifest = ref_dir / "_done.jsonl"
+    with manifest.open("a") as stream:
+        stream.write(json.dumps({"prompt_id": prompt_id}) + "\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
 def save_reference(
     results_dir: Path,
     model: str,
@@ -113,12 +145,12 @@ def save_reference(
     q: float,
     features: npt.NDArray[np.float32],
     feature_names: list[str] | None = None,
+    q_strict: float | None = None,
 ) -> None:
     """Atomically write reference files, then record in the manifest.
 
-    Both the JSON metadata file and the NPY features file are written via
-    temp-then-rename so a crash leaves no partial state that reads as done.
-    The manifest append is the commit point.
+    ``q_strict`` is optional so references written by older sweeps remain
+    loadable and retain their original schema.
     """
     ref_dir = _ref_dir(results_dir, model, task)
     ref_dir.mkdir(parents=True, exist_ok=True)
@@ -138,6 +170,8 @@ def save_reference(
     }
     if feature_names is not None:
         record["feature_names"] = feature_names
+    if q_strict is not None:
+        record["q_strict"] = q_strict
     payload = json.dumps(record).encode()
     with tempfile.NamedTemporaryFile(delete=False, dir=ref_dir) as tf:
         tf.write(payload)
@@ -310,13 +344,14 @@ def append_hybrid(
     dq: float,
     features: npt.NDArray[np.float32] | None = None,
     press_features: dict[str, float] | None = None,
+    q_control: float | None = None,
+    q_control_strict: float | None = None,
+    q_hybrid_strict: float | None = None,
+    dq_strict: float | None = None,
+    intervention_semantics: str | None = None,
+    generation_provenance: dict[str, object] | None = None,
 ) -> None:
-    """Append one JSON line to the shard JSONL for (compressor, ratio).
-
-    Opens in append mode, writes line + newline, flushes, fsyncs.
-    If compressed-stream features are supplied, writes them atomically
-    before appending the label row; the JSONL append is the commit point.
-    """
+    """Append one JSON line to a shard, preserving legacy optional fields."""
     hyb_dir = _hybrid_dir(results_dir, model, task)
     hyb_dir.mkdir(parents=True, exist_ok=True)
 
@@ -329,6 +364,18 @@ def append_hybrid(
         "q": q,
         "dq": dq,
     }
+    if q_control is not None:
+        rec["q_control"] = q_control
+    if q_control_strict is not None:
+        rec["q_control_strict"] = q_control_strict
+    if q_hybrid_strict is not None:
+        rec["q_hybrid_strict"] = q_hybrid_strict
+    if dq_strict is not None:
+        rec["dq_strict"] = dq_strict
+    if intervention_semantics is not None:
+        rec["intervention_semantics"] = intervention_semantics
+    if generation_provenance is not None:
+        rec["generation_provenance"] = generation_provenance
     if press_features is not None:
         rec["press_features"] = press_features
     if features is not None:
@@ -348,3 +395,301 @@ def append_hybrid(
         f.write(record + "\n")
         f.flush()
         os.fsync(f.fileno())
+
+
+# Sensor replay sidecars are intentionally separate from outcome JSONL shards.
+_SENSOR_REQUIRED_KEYS = frozenset(
+    {
+        "prompt_id",
+        "compressor",
+        "ratio",
+        "s",
+        "sensors",
+        "prefix_hash",
+        "protocol_version",
+        "feature_names",
+        "evidence_sha256",
+        "lock_sha256",
+        "sensor_lock_sha256",
+        "model_key",
+        "task",
+    }
+)
+
+
+def sensor_sidecar_path(output_root: Path, model: str, task: str) -> Path:
+    """Return the isolated JSONL path used by label-free replay."""
+    return (
+        output_root
+        / "sensor_sidecars"
+        / f"{safe_id(model)}__{safe_id(task)}.jsonl"
+    )
+
+
+def sensor_manifest_path(output_root: Path, model: str, task: str) -> Path:
+    return sensor_sidecar_path(output_root, model, task).with_suffix(
+        ".manifest.json"
+    )
+
+
+def _sensor_key(
+    record: Mapping[str, object],
+) -> tuple[str, str, float, int]:
+    try:
+        prompt_id = str(record["prompt_id"])
+        compressor = str(record["compressor"])
+        ratio = float(cast(float, record["ratio"]))
+        position = int(cast(int, record["s"]))
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError("sensor record has an invalid exact key") from error
+    if (
+        not prompt_id
+        or not compressor
+        or not np.isfinite(ratio)
+        or position < 0
+    ):
+        raise ValueError("sensor record has an invalid exact key")
+    return prompt_id, compressor, ratio, position
+
+
+def read_sensor_records(
+    output_root: Path,
+    model: str,
+    task: str,
+) -> list[dict[str, object]]:
+    """Read complete records, repairing only a torn final append."""
+    path = sensor_sidecar_path(output_root, model, task)
+    if not path.exists():
+        return []
+    records: list[dict[str, object]] = []
+    keys: set[tuple[str, str, float, int]] = set()
+    with path.open("r+b") as stream:
+        data = stream.read()
+        if data and not data.endswith(b"\n"):
+            last_newline = data.rfind(b"\n")
+            end = last_newline + 1
+            stream.seek(end)
+            stream.truncate()
+            data = data[:end]
+        for line_number, line in enumerate(data.splitlines(), start=1):
+            try:
+                raw = json.loads(line)
+            except json.JSONDecodeError as error:
+                raise ValueError(
+                    f"invalid complete sensor JSON at line {line_number}"
+                ) from error
+            if not isinstance(raw, dict):
+                raise ValueError(
+                    f"sensor line {line_number} is not an object"
+                )
+            record = cast(dict[str, object], raw)
+            missing = _SENSOR_REQUIRED_KEYS.difference(record)
+            if missing:
+                raise ValueError(
+                    f"sensor line {line_number} missing fields: "
+                    f"{sorted(missing)}"
+                )
+            if record["model_key"] != model or record["task"] != task:
+                raise ValueError(
+                    f"sensor line {line_number} has wrong model/task"
+                )
+            key = _sensor_key(record)
+            if key in keys:
+                raise ValueError(f"duplicate sensor record key: {key}")
+            keys.add(key)
+            records.append(record)
+    return records
+
+
+def validate_sensor_records(
+    records: Sequence[Mapping[str, object]],
+    *,
+    model: str,
+    task: str,
+    evidence_sha256: str,
+    lock_sha256: str,
+    sensor_lock_sha256: str,
+    protocol_version: str,
+    feature_names: Sequence[str],
+) -> set[tuple[str, str, float, int]]:
+    """Validate provenance, schema, finiteness, and prefix agreement."""
+    expected_features = tuple(str(name) for name in feature_names)
+    if not expected_features or len(expected_features) != len(
+        set(expected_features)
+    ):
+        raise ValueError("sensor feature schema is empty or duplicated")
+    expected_feature_set = set(expected_features)
+    prefixes: dict[tuple[str, int], str] = {}
+    keys: set[tuple[str, str, float, int]] = set()
+    for record in records:
+        if (
+            record.get("model_key") != model
+            or record.get("task") != task
+            or record.get("evidence_sha256") != evidence_sha256
+            or record.get("lock_sha256") != lock_sha256
+            or record.get("sensor_lock_sha256") != sensor_lock_sha256
+            or record.get("protocol_version") != protocol_version
+        ):
+            raise ValueError("sensor record provenance mismatch")
+        names = record.get("feature_names")
+        if not isinstance(names, list) or tuple(map(str, names)) != (
+            expected_features
+        ):
+            raise ValueError("sensor record feature order mismatch")
+        sensors = record.get("sensors")
+        if not isinstance(sensors, Mapping) or set(sensors) != (
+            expected_feature_set
+        ):
+            raise ValueError("sensor record feature set mismatch")
+        try:
+            values = np.asarray(
+                [float(sensors[name]) for name in expected_features],
+                dtype=np.float64,
+            )
+        except (TypeError, ValueError) as error:
+            raise ValueError(
+                "sensor record contains nonnumeric values"
+            ) from error
+        if not np.isfinite(values).all():
+            raise ValueError("sensor record contains nonfinite values")
+        prefix_hash = record.get("prefix_hash")
+        if (
+            not isinstance(prefix_hash, str)
+            or len(prefix_hash) != 64
+            or any(char not in "0123456789abcdef" for char in prefix_hash)
+        ):
+            raise ValueError("sensor record prefix hash is invalid")
+        key = _sensor_key(record)
+        if key in keys:
+            raise ValueError(f"duplicate sensor record key: {key}")
+        keys.add(key)
+        boundary = (key[0], key[3])
+        previous_hash = prefixes.setdefault(boundary, prefix_hash)
+        if previous_hash != prefix_hash:
+            raise ValueError(
+                f"sensor records disagree on prefix at {boundary}"
+            )
+    return keys
+
+
+def sensor_record_keys(
+    output_root: Path,
+    model: str,
+    task: str,
+) -> set[tuple[str, str, float, int]]:
+    """Read exact committed sidecar keys, repairing a torn final append."""
+    return {
+        _sensor_key(record)
+        for record in read_sensor_records(output_root, model, task)
+    }
+
+
+def append_sensor_record(
+    output_root: Path,
+    model: str,
+    task: str,
+    record: dict[str, object],
+    *,
+    existing_keys: set[tuple[str, str, float, int]] | None = None,
+) -> None:
+    """Atomically append one exact-keyed sensor record, idempotently."""
+    missing = _SENSOR_REQUIRED_KEYS.difference(record)
+    if missing:
+        raise ValueError(f"sensor record missing fields: {sorted(missing)}")
+    if record["model_key"] != model or record["task"] != task:
+        raise ValueError("sensor record provenance does not match sidecar")
+    key = _sensor_key(record)
+    path = sensor_sidecar_path(output_root, model, task)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    known = (
+        sensor_record_keys(output_root, model, task)
+        if existing_keys is None
+        else existing_keys
+    )
+    if key in known:
+        return
+    payload = (
+        json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n"
+    ).encode()
+    with path.open("ab") as stream:
+        stream.write(payload)
+        stream.flush()
+        os.fsync(stream.fileno())
+    if existing_keys is not None:
+        existing_keys.add(key)
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def write_sensor_manifest(
+    output_root: Path,
+    model: str,
+    task: str,
+    *,
+    expected_keys: set[tuple[str, str, float, int]],
+    evidence_sha256: str,
+    lock_sha256: str,
+    sensor_lock_sha256: str,
+    protocol_version: str,
+    feature_names: Sequence[str],
+) -> Path:
+    """Commit a content-bound manifest only for exact valid coverage."""
+    records = read_sensor_records(output_root, model, task)
+    observed = validate_sensor_records(
+        records,
+        model=model,
+        task=task,
+        evidence_sha256=evidence_sha256,
+        lock_sha256=lock_sha256,
+        sensor_lock_sha256=sensor_lock_sha256,
+        protocol_version=protocol_version,
+        feature_names=feature_names,
+    )
+    if observed != expected_keys:
+        missing = sorted(expected_keys - observed)
+        extra = sorted(observed - expected_keys)
+        raise ValueError(
+            f"incomplete sensor coverage "
+            f"(missing={missing[:3]}, extra={extra[:3]})"
+        )
+    record_keys = "\n".join(
+        "\0".join(map(str, key)) for key in sorted(observed)
+    )
+    feature_payload = json.dumps(
+        list(feature_names),
+        separators=(",", ":"),
+    )
+    sidecar = sensor_sidecar_path(output_root, model, task)
+    manifest = {
+        "model": model,
+        "task": task,
+        "protocol_version": protocol_version,
+        "evidence_sha256": evidence_sha256,
+        "lock_sha256": lock_sha256,
+        "sensor_lock_sha256": sensor_lock_sha256,
+        "feature_names": list(feature_names),
+        "feature_names_sha256": hashlib.sha256(
+            feature_payload.encode()
+        ).hexdigest(),
+        "record_count": len(observed),
+        "record_keys_sha256": hashlib.sha256(
+            record_keys.encode()
+        ).hexdigest(),
+        "sidecar_sha256": _file_sha256(sidecar),
+    }
+    path = sensor_manifest_path(output_root, model, task)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.tmp")
+    temporary.write_text(
+        json.dumps(manifest, sort_keys=True, indent=2) + "\n"
+    )
+    with temporary.open("rb") as stream:
+        os.fsync(stream.fileno())
+    os.replace(temporary, path)
+    return path

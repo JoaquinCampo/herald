@@ -282,6 +282,8 @@ class IncrementalDerived:
         return delta - self._prev_delta[base]
 
     def _update_ewma(self, base: str, window: int, x: np.float64) -> float:
+        if np.isnan(x):
+            return float(np.nan)
         key = (base, window)
         if key not in self._ewma:
             acc = float(x)
@@ -410,13 +412,15 @@ def _diff(x: np.ndarray) -> np.ndarray:
 
 
 def _ewma(x: np.ndarray, window: int) -> np.ndarray:
-    """Causal exponential moving average with span `window`."""
+    """Causal exponential moving average that skips missing inputs."""
     alpha = 2.0 / (window + 1.0)
-    out = np.empty_like(x)
-    acc = float(x[0])
-    out[0] = acc
-    for t in range(1, x.shape[0]):
-        acc = alpha * float(x[t]) + (1.0 - alpha) * acc
+    out = np.full_like(x, np.nan)
+    acc: float | None = None
+    for t, raw_value in enumerate(x):
+        value = float(raw_value)
+        if np.isnan(value):
+            continue
+        acc = value if acc is None else alpha * value + (1.0 - alpha) * acc
         out[t] = acc
     return out
 

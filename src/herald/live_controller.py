@@ -129,6 +129,142 @@ def _token_ids(values: list[Any], *, source: str) -> list[int]:
         ) from error
 
 
+def split_switch_boundary(
+    reference_ids: list[int], s: int
+) -> tuple[list[int], int]:
+    """Split at the boundary after ``s`` emitted reference tokens.
+
+    ``reference_ids[s]`` is already chosen but is not yet represented in the
+    cache returned by the generation step that chose it. The direct-cache path
+    therefore carries that token separately and processes it once when
+    continuation resumes.
+    """
+    if s < 0:
+        raise ValueError("switch position s must be non-negative")
+    if s >= len(reference_ids):
+        raise ValueError(
+            f"switch position s={s} needs a pending token; "
+            f"reference has {len(reference_ids)} tokens"
+        )
+    return list(reference_ids[:s]), int(reference_ids[s])
+
+
+def clone_cache(cache: Any) -> Any:
+    """Clone a Transformers cache, including independent KV tensor storage."""
+    if not hasattr(cache, "layers"):
+        raise TypeError("cache cloning requires a Transformers Cache")
+    cloned = copy(cache)
+    cloned.layers = [copy(layer) for layer in cache.layers]
+    for source_layer, cloned_layer in zip(
+        cache.layers, cloned.layers, strict=True
+    ):
+        for name in ("keys", "values"):
+            value = getattr(source_layer, name, None)
+            if isinstance(value, torch.Tensor):
+                setattr(cloned_layer, name, value.detach().clone())
+            else:
+                setattr(cloned_layer, name, copy(value))
+    return cloned
+
+
+def cache_storage_independent(source: Any, clone: Any) -> bool:
+    """Whether corresponding cache keys/values do not share tensor storage."""
+    if not hasattr(source, "layers") or not hasattr(clone, "layers"):
+        return False
+    if len(source.layers) != len(clone.layers):
+        return False
+    for source_layer, clone_layer in zip(
+        source.layers, clone.layers, strict=True
+    ):
+        for name in ("keys", "values"):
+            source_value = getattr(source_layer, name, None)
+            clone_value = getattr(clone_layer, name, None)
+            if (
+                isinstance(source_value, torch.Tensor)
+                and isinstance(clone_value, torch.Tensor)
+                and source_value.numel()
+                and clone_value.numel()
+                and source_value.untyped_storage().data_ptr()
+                == clone_value.untyped_storage().data_ptr()
+            ):
+                return False
+    return True
+
+
+def cache_tensors_equal(left: Any, right: Any) -> bool:
+    """Whether corresponding cache key/value tensors are exactly equal."""
+    if not hasattr(left, "layers") or not hasattr(right, "layers"):
+        return False
+    if len(left.layers) != len(right.layers):
+        return False
+    for left_layer, right_layer in zip(
+        left.layers, right.layers, strict=True
+    ):
+        for name in ("keys", "values"):
+            left_value = getattr(left_layer, name, None)
+            right_value = getattr(right_layer, name, None)
+            if isinstance(left_value, torch.Tensor):
+                if not isinstance(right_value, torch.Tensor):
+                    return False
+                if not torch.equal(left_value, right_value):
+                    return False
+            elif isinstance(right_value, torch.Tensor):
+                return False
+    return True
+
+
+def continue_from_cache(
+    lm: LoadedModel,
+    prompt_ids: torch.Tensor,
+    prefix_ids: list[int],
+    pending_ids: list[int],
+    cache: Any,
+    max_new_tokens: int,
+) -> tuple[list[int], Any]:
+    """Continue from a cache whose next emitted token is still pending.
+
+    The returned IDs include ``pending_ids``. The cache represents the logical
+    sequence before those tokens; `_continue_attempt` processes them once at
+    their explicit logical positions before generating further tokens.
+    """
+    if not pending_ids:
+        raise ValueError(
+            "direct continuation needs at least one pending token"
+        )
+    continued, output_cache, _ = _continue_attempt(
+        lm,
+        prompt_ids,
+        prefix_ids,
+        pending_ids,
+        cache,
+        max_new_tokens - len(pending_ids),
+    )
+    return pending_ids + continued, output_cache
+
+
+def check_cache_mutation_isolation(source: Any, clone: Any) -> bool:
+    """Exercise clone mutation and report whether the source stayed intact."""
+    if not hasattr(source, "layers") or not hasattr(clone, "layers"):
+        return False
+    for source_layer, clone_layer in zip(
+        source.layers, clone.layers, strict=True
+    ):
+        for name in ("keys", "values"):
+            source_value = getattr(source_layer, name, None)
+            clone_value = getattr(clone_layer, name, None)
+            if not isinstance(source_value, torch.Tensor) or not isinstance(
+                clone_value, torch.Tensor
+            ):
+                continue
+            if clone_value.numel() == 0:
+                continue
+            source_before = source_value.detach().clone()
+            with torch.no_grad():
+                clone_value.reshape(-1)[0].add_(1)
+            return bool(torch.equal(source_value, source_before))
+    return True
+
+
 def _compress_score_cache_into(
     model: Any,
     source_cache: Any,
@@ -194,6 +330,20 @@ def _compress_score_cache_into(
             torch.empty(0, device=source_layer.keys.device),
             {},
         )
+        if (
+            keys.numel()
+            and source_layer.keys.numel()
+            and keys.untyped_storage().data_ptr()
+            == source_layer.keys.untyped_storage().data_ptr()
+        ):
+            keys = keys.clone()
+        if (
+            values.numel()
+            and source_layer.values.numel()
+            and values.untyped_storage().data_ptr()
+            == source_layer.values.untyped_storage().data_ptr()
+        ):
+            values = values.clone()
         transient_peak = max(
             transient_peak,
             kv_cache_nbytes(target_cache)

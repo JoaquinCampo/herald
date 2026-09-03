@@ -30,7 +30,9 @@ more than low-level tuning, so the plan is organised around reuse.
   eager-only presses. A single backend everywhere keeps the base
   model's outputs from varying by kernel in a way that would correlate
   with the compressor.
-- **Ratios.** Sweep axis, still to be decided.
+- **Ratios.** Stored as removal fractions. The current configuration lists
+  `0.25`, `0.5`, `0.75`, and `0.875`; recovered artifacts must be checked
+  against their own frozen sweep configuration before reuse.
 
 ## Compression mechanism (one-time at the switch)
 
@@ -51,16 +53,20 @@ compressed cache.
   compression, the fully compressed run). $s$ at the run length is the
   reference.
 
-## One uniform mechanism across all five presses
+## Historical uniform re-prefill mechanism
 
-All five presses use the single re-prefill path above. We do not mix
-snapshot-based cache reuse for some presses with re-prefill for others:
-the two paths differ numerically (full-prefill versus
-incremental-decode floating point), and that difference would correlate
-with the compressor, biasing the exact paired comparison the
-cross-compressor transfer claim depends on. With one mechanism, any
-prefill-versus-decode floating-point differences are constant across
-compressors and cannot confound transfer.
+The offline sweep used the same pressed-reprefill path for all five presses.
+That uniformity prevented the generation mechanism from varying by compressor,
+but it did not prove that the stored continuously decoded reference was a
+numerically matched control. Full prefill and incremental decoding can differ
+in floating point even under greedy decoding.
+
+The current paper therefore treats these hybrids as historical
+pressed-reprefill interventions. Reusing `q_reference` as their control
+requires sham re-prefill parity. Describing them as equivalent to live-cache
+activation additionally requires intervention parity for that compressor.
+The canonical classification and validation ladder are in
+`docs/_why/6_intervention_semantics.md`.
 
 ## Reuse (the unconditional win)
 

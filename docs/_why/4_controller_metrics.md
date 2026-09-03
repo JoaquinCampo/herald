@@ -1,5 +1,10 @@
 # Why these controller metrics, and why the MAE gate retired
 
+> **Status: historical controller rationale.** These metrics governed the
+> earlier cross-compressor controller mission. They are not the primary
+> metrics for the current per-compressor magnitude paper; see
+> `docs/methodology.md`.
+
 ## The problem with the first target
 
 The first predictor target was relative MAE against a locked

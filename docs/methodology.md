@@ -1,148 +1,235 @@
 # Methodology
 
-The plan for measuring compressor-induced damage and training a streaming
-predictor for it. Companion to `docs/goal.md`. Rationale for every design
-choice below is recorded in the matching entry under `docs/_why/`.
+> **Status: archived research record (2026-09-02).** This pre-switch
+> magnitude protocol produced a negative frozen result (section 10) and no
+> longer defines the paper's claim. The current protocol is
+> `docs/implementation/quality_risk_protocol.md`; the thesis is in
+> `docs/goal.md`.
 
-## 1. Damage definition
+This document specifies the paper on pre-switch magnitude forecasting for
+known compressors. Historical controller, rollback, and cross-compressor
+experiments remain research records; they do not define this protocol.
 
-Damage is defined per (prompt, compressor, ratio) triple, comparing
-generations from the same base model on the same prompt under
-deterministic decoding.
+## 1. Research question
 
-- **Reference run.** Full KV cache, no compression.
-- **Hybrid runs.** Generated tokens up to a *switch position* use the full
-  KV cache; from the switch position onwards, the chosen compressor is
-  active at the chosen ratio. The switch position is set at multiples of
-  $k$ tokens: $\{0, k, 2k, 3k, \ldots\}$. The hybrid run with switch
-  position $0$ is the fully compressed run; the hybrid run with switch
-  position equal to the run length is the reference run itself.
+For a known compressor $c$ and known removal ratio $r$, can statistics
+available from the uncompressed generation state forecast the final
+task-quality effect of activating compression at the current switch position
+$s$?
 
-We fix $k = 16$ tokens, an absolute count, independent of prompt length.
+One model is trained per compressor. A compressor's supported ratios are
+pooled and $r$ is an input. The current paper makes no claim about an unseen
+compressor or an unseen ratio.
 
-A run is *damaged* if its output is operationally worse than the
-reference output. The set of hybrid runs at varying switch positions
-gives, per prompt, a damage curve as a function of when compression
-becomes active.
+## 2. Damage estimand
 
-## 2. Measuring damage
+A switch position $s$ means that exactly $s$ generated tokens are fixed and
+the intervention occurs immediately before computing the next token. Let
+$S_s$ denote the complete decoder state at that boundary.
 
-ref: `docs/_why/3_measuring_quality.md`
+For a compressor with a valid live-state operation, the preferred target is
 
-> **Status: provisional.** The scheme below is the current working
-> plan. The dense per-position target (Section 2.2) is gated on a
-> judge-reliability pilot and may change once that pilot runs.
+$$
+d^{\mathrm{fork}}_{c,r}(s)
+=
+q\!\left(\operatorname{continue}(S_s)\right)
+-
+q\!\left(\operatorname{continue}(\mathcal C_{c,r}(S_s))\right).
+$$
 
-Damage is a quality delta between the paired runs, computed offline on
-the completed outputs:
+The branches begin from independent, identical state forks. Only one fork is
+compressed. Both use the same prompt and emitted prefix, remaining token
+budget, EOS rules, decoding configuration, attention backend, and numerical
+precision.
 
-$$\text{damage}(s) = q(\text{reference}) - q(\text{hybrid at } s)$$
+Some compressors require auxiliary state or are defined by a compressed
+re-prefill rather than a pure cache transformation. Those compressors use the
+matched target
 
-where $q$ is the task-relevant quality of a finished output. Because
-both runs are greedy and share the prefix up to $s$, the delta is
-attributable to compression. Quality is never measured mid-generation:
-every check and judge call runs on completed text.
+$$
+d^{\mathrm{refill}}_{c,r}(s)
+=
+q\!\left(\operatorname{continue}(R(S_s))\right)
+-
+q\!\left(\operatorname{continue}(\mathcal C_{c,r}(R(S_s)))\right),
+$$
 
-The same quantity plays two distinct roles, with different cost
-profiles.
+with the same no-press re-prefill path on the control arm. Compressor
+classification, state contents, clone isolation, and the parity gates are
+specified in `docs/_why/6_intervention_semantics.md`.
 
-### 2.1 The damage measure (reported)
+## 3. Intervention validation
 
-How much compression degrades output, for the headline results. One
-comparison per run (the fully compressed run against its reference),
-reported per (compressor, ratio, task).
+Before labels are recovered or generated, every intended compressor and ratio
+must pass the applicable checks:
 
-### 2.2 The predictor's training target
+1. **Fork-clone parity and isolation:** two uncompressed state forks continue
+   identically; compressing one cannot mutate the other.
+2. **Sham re-prefill parity:** compare a live full-cache continuation with a
+   no-press re-prefill from the same token prefix.
+3. **Intervention parity:** where a live operator exists, compare its
+   compressed continuation with pressed re-prefill.
 
-Damage at each switch position of each run: the per-position curve the
-streaming predictor is trained to forecast. This is training data, so
-its quality directly bounds the final model.
+Each check records exact continuation match rate, first divergence position,
+and final quality delta. Historical `q_reference` values are shortcuts for a
+no-press re-prefill only if sham parity passes. Historical hybrids may be
+described as live-cache activation only if intervention parity passes.
 
-### Measuring quality $q$
+## 4. Quality and labels
 
-Quality is composite, each component used only where it is reliable:
+Quality is measured offline on completed outputs. The initial paper uses
+IFEval instruction-level loose accuracy:
 
-- **Exact task checks**, for the correctness they verify exactly:
-  GSM8K final-answer match, HumanEval unit tests, IFEval constraint
-  satisfaction, LongBench per-subtask metric. Where these apply they
-  are ground truth, not a proxy.
-- **A self-hosted judge**, for the graded quality the checks cannot
-  see: subtle degradation, correct answers reached through broken
-  reasoning, failures that collapse into degenerate text. The judge
-  reads the full outputs and returns a graded "how much worse" score.
+$$
+q(y)
+=
+\frac{\text{instructions satisfied by }y}
+     {\text{instructions in the prompt}}.
+$$
 
-### Pilot gate on dense judging
+The primary label is signed $d$: positive is degradation, zero is no measured
+effect, and negative is lift. We retain negative values during training.
+Positive harm $d^+=\max(0,d)$, any-damage risk, and major-damage risk are
+derived reporting quantities, not replacements for the primary magnitude
+target.
 
-Using the judge for the dense per-position target (2.2) is adopted
-only if a pilot confirms its per-position signal is reliable: the
-judge's test-retest wobble on the same pair must be smaller than the
-real damage differences across switch positions within a run.
-Otherwise dense judging collapses to a noisy copy of the run-level
-number and is not worth its cost. Under greedy decoding many
-late-switch hybrids are byte-identical to their reference and are
-exact zeros that need no judge call.
+Strict instruction-level IFEval accuracy is retained as the frozen secondary
+robustness score for every reference, matched control, and treatment. Token
+mismatch, KL or JS divergence, embedding distance, and perplexity change are
+diagnostics or candidate features; none is a quality label. Detailed rationale
+is in `docs/_why/3_measuring_quality.md`.
 
-## 3. The predictor
+## 5. Dataset
 
-ref: `docs/_why/2_predictor.md`
+The final sweep contains one row per
+`(model, task, prompt, compressor, ratio, s)` with a completed-output quality
+delta and causal reference-stream features. StreamingLLM and Knorm branches
+fork and compress the live uncompressed cache with pending-token semantics.
+ExpectedAttention uses a matched sham re-prefill control and pressed re-prefill
+treatment from the exact prompt and reference prefix.
 
-At every generated token $t$, the predictor outputs a scalar
-$\hat{D}(t)$: an estimate of the damage that would result if the
-compressor activated at $t$ and ran to the end of the generation. The
-target is the per-position damage of Section 2.2, read at position $t$.
+The frozen dataset has 200 references and 59,076 switch cells across all three
+compressors and four ratios, with no skipped rows. Its manifest verifies scorer
+identity, ratio semantics, causal feature timing, exact cell keys, raw-artifact
+hashes, and complete prompt coverage. Historical quality labels were rejected;
+all labels in this dataset were regenerated under the validated protocol.
 
-- **Inputs.** Per-token statistics derived from the model's own
-  next-token distribution, observed causally up to $t$, plus the
-  compression ratio. Compressor identity is not an input.
-- **Output.** Scalar regression against the per-position damage
-  measure (Section 2.2). Binary damage calls, when needed, are
-  obtained by thresholding the scalar downstream.
-- **Streaming constraint.** No additional forward pass, full or
-  partial, beyond the one the model already performs to generate. No
-  access to future tokens. Per-token compute and memory are $O(1)$;
-  causal rolling statistics over past tokens are permitted.
-- **Supervision.** Labels come from the measured damage curve, which
-  exists at switch positions on the stride. How sparse labels become
-  per-token supervision is a training decision, deferred to the
-  training section.
+## 6. Predictor
 
-One predictor is trained across all compressors and ratios in the
-sweep. Cross-compressor transfer is evaluated by holding out entire
-compressors at training time.
+For each compressor $c$, fit one scalar regressor
 
-### Future extension: cross-layer features
+$$
+\hat d_c(s,r)=f_c(x_{\le s},r,s),
+$$
 
-Current features are read from the final next-token distribution only
-(`features.py`). A future direction is adding per-layer / cross-layer
-statistics: cheap hidden-state geometry (per-layer norms, cosine
-between consecutive layers' residual streams) as an early signature of
-compression damage. SPOT (CVPR 2026) is published evidence that
-cross-layer aggregation makes a lightweight predictor more reliable;
-see `docs/related_work.md`. This stays within the streaming constraint:
-hidden states come from the same single forward pass, so per-token cost
-is O(depth), still O(1) in sequence length. The cheap version uses
-hidden-state geometry, not attention-map moments, which would force
-eager attention and O(sequence^2) memory. Crucially this is a
-reference-only feature re-extraction and does not invalidate the damage
-labels, so it needs no resweep.
+where $x_{\le s}$ contains only information available before activation.
 
-## 4. Scope
+The first-pass input whitelist is:
 
-**Status: in progress.** Only the base models are fixed; the remaining
-sweep dimensions are still open.
+- the known removal ratio;
+- absolute generated position $s$;
+- causal pre-switch `feat__*` statistics available at the decision boundary.
 
-- **Base models.** `meta-llama/Llama-3.1-8B-Instruct` and
-  `Qwen/Qwen3-8B`: two distinct families (different tokenizer and
-  pretraining), which is what makes the cross-family transfer claim
-  non-trivial. Both are supported by the compression library and run
-  within local hardware. `Qwen/Qwen3-8B` is run in non-thinking mode,
-  to keep both models on the same direct-answer regime.
-- **Tasks.** GSM8K, HumanEval, IFEval, LongBench (as used in
-  Section 2).
-- **Compressors.** Five, chosen to span distinct selection
-  principles so that holding one out is a real transfer test:
-  StreamingLLM (positional), SnapKV (observed recent attention),
-  ExpectedAttention (predicted attention), Knorm (key-norm geometry),
-  Random (degradation floor). All are weight-free, so they behave
-  identically on both base models, and none require eager attention.
-- **Ratios, prompts per task.** To be decided.
+Forbidden inputs include final reference length, relative position computed
+from that length, reference or hybrid quality, labels or label-derived fields,
+prompt identity, probes, hybrid-stream summaries, grace-window features, and
+all other post-switch information. Exact feature timing at $s$ must be
+validated to exclude an off-by-one leak.
+
+The first learned model is one fixed XGBoost squared-error regressor per
+compressor. A linear Huber regressor is a learned baseline. Broad model and
+hyperparameter searches are out of scope until a fixed model demonstrates
+skill over non-learned baselines.
+
+## 7. Splits, weights, and baselines
+
+Splits are prompt-disjoint. Every ratio and switch position belonging to a
+prompt remains in one split. Early stopping and model selection use training
+prompts only.
+
+Each `(prompt, ratio)` trajectory receives equal total training mass. If
+trajectory $i$ has $n_i$ switch rows, each row receives weight
+
+$$
+w_{ij}=\frac{1}{n_i}.
+$$
+
+Evaluation macro-averages ratios so different trajectory lengths or missing
+rows cannot alter ratio weighting.
+
+For each compressor, establish these training-only baselines before fitting a
+learned model:
+
+1. global mean and median;
+2. mean and median by ratio;
+3. mean and median by ratio and 16-token absolute-position bucket;
+4. linear Huber regression on the same whitelisted inputs.
+
+## 8. Evaluation and decision rules
+
+Report results separately for every compressor and ratio. A pooled or macro
+average cannot rescue a failed compressor.
+
+Primary magnitude evidence:
+
+- held-out-prompt MSE and RMSE skill over the strongest grouped-mean baseline;
+- MAE skill over the strongest grouped-median baseline;
+- prompt-cluster bootstrap confidence intervals.
+
+Diagnostics:
+
+- calibration by predicted-damage bins;
+- positive, zero, and negative label prevalence;
+- error on positive and non-zero damage rows;
+- mean prediction versus mean target;
+- rank correlation.
+
+A compressor supports the magnitude claim only if its MSE-skill 95% prompt
+bootstrap interval is strictly above zero, error on positive-damage rows does
+not worsen, calibration is graded rather than collapsed near zero, and
+per-ratio results show that one setting does not create the aggregate gain.
+Otherwise the current features do not establish magnitude forecasting for
+that compressor.
+
+Any-damage and major-damage risk are preregistered secondary endpoints. Their
+thresholds and metrics must be frozen before primary results are inspected;
+they are not post-hoc fallbacks for failed magnitude regression.
+
+## 9. Initial scope
+
+The first study is Llama-3.1-8B-Instruct on IFEval, using the real compressors
+whose intervention semantics and historical provenance can be validated.
+Expansion to other tasks, models, ratios, or new pre-switch sensors requires a
+frozen IFEval result and a separately stated replication question.
+
+## 10. Frozen result
+
+The prompt-disjoint split contains 12,972 training rows, 2,088 validation rows,
+and 4,632 held-out rows per compressor. The learned regressors are compared
+with the validation-selected ratio-and-position mean or median baseline.
+Prompt-cluster intervals use 1,000 bootstrap resamples.
+
+| Compressor | Positive damage | Major damage | MSE skill (95% CI) | MAE skill | Decision |
+| --- | ---: | ---: | ---: | ---: | --- |
+| ExpectedAttention | 7.94% | 5.99% | +0.89% [-3.50%, +5.50%] | -44.39% | Stop |
+| Knorm | 27.21% | 23.35% | +4.97% [+0.006%, +9.40%] | -23.92% | Stop |
+| StreamingLLM | 24.65% | 21.16% | -2.10% [-7.96%, +3.13%] | -37.53% | Stop |
+
+ExpectedAttention improves MSE at ratios 0.25, 0.5, and 0.875, but not 0.75;
+its bootstrap interval includes zero. Knorm has a positive overall MSE-skill
+interval and improves ratios 0.5, 0.75, and 0.875, but is worse at ratio 0.25.
+StreamingLLM is worse at ratios 0.25 and 0.5 and its overall interval includes
+zero. All three models worsen MSE on positive-damage and major-damage rows and
+have negative MAE skill. Therefore none satisfies the frozen magnitude claim.
+
+This is a negative result, not a license to select a favorable compressor or
+metric post hoc. The present causal pre-switch logit features do not establish
+reliable signed final-quality forecasting under the preregistered gate. The
+regenerated dataset, fitted native model artifacts, and complete evidence
+remain useful as a reproducible benchmark for a separately preregistered
+sensor or modeling hypothesis.
+
+Frozen evidence is in
+`results/recovered/ifeval-intervention-v1/paper_evidence.json`; native XGBoost
+models and fit state are in the adjacent `magnitude_evidence_v2_models/`
+bundle.

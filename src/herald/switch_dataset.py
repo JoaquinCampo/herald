@@ -7,8 +7,9 @@ decision:
 
     (task, prompt_id, compressor, ratio, s) -> dq
 
-Feature columns are causal: row ``s`` uses only the reference logit
-features up to and including generated token position ``s``.
+Feature columns are causal: boundary ``s`` uses rows through ``s``, where
+row ``s`` is the distribution produced from the prompt plus generated
+tokens ``[:s]``, before generated token ``s`` is emitted.
 """
 
 import json
@@ -39,6 +40,7 @@ class ReferenceArtifact:
     features_path: Path
     gen_ids: tuple[int, ...] = ()
     feature_names: tuple[str, ...] | None = None
+    q_strict: float | None = None
 
 
 @dataclass(frozen=True)
@@ -51,6 +53,12 @@ class HybridRecord:
     dq: float
     new_ids: tuple[int, ...] = ()
     press_features: tuple[tuple[str, float], ...] = ()
+    q_control: float | None = None
+    q_control_strict: float | None = None
+    q_hybrid_strict: float | None = None
+    dq_strict: float | None = None
+    intervention_semantics: str | None = None
+    generation_provenance: dict[str, Any] | None = None
 
 
 def parse_hybrid_shard(path: Path) -> tuple[str, float]:
@@ -62,7 +70,6 @@ def parse_hybrid_shard(path: Path) -> tuple[str, float]:
 
 
 def load_references(task_dir: Path) -> dict[str, ReferenceArtifact]:
-    """Load reference metadata for one ``{model}/{task}`` directory."""
     ref_dir = task_dir / "references"
     if not ref_dir.is_dir():
         return {}
@@ -89,6 +96,10 @@ def load_references(task_dir: Path) -> dict[str, ReferenceArtifact]:
             if isinstance(raw_names, list)
             else None
         )
+        raw_q_strict = data.get("q_strict")
+        q_strict = (
+            _finite_float(raw_q_strict) if raw_q_strict is not None else None
+        )
         refs[prompt_id] = ReferenceArtifact(
             prompt_id=prompt_id,
             q=q,
@@ -100,6 +111,7 @@ def load_references(task_dir: Path) -> dict[str, ReferenceArtifact]:
                 else ()
             ),
             feature_names=feature_names,
+            q_strict=q_strict,
         )
     return refs
 
@@ -138,6 +150,12 @@ def iter_hybrids(task_dir: Path) -> Iterator[HybridRecord]:
                         if isinstance(raw_new, list)
                         else ()
                     )
+                    raw_provenance = data.get("generation_provenance")
+                    provenance = (
+                        dict(raw_provenance)
+                        if isinstance(raw_provenance, dict)
+                        else None
+                    )
                     records[(prompt_id, s)] = HybridRecord(
                         prompt_id=prompt_id,
                         compressor=compressor,
@@ -147,8 +165,27 @@ def iter_hybrids(task_dir: Path) -> Iterator[HybridRecord]:
                         dq=_finite_float(data["dq"]),
                         new_ids=new_ids,
                         press_features=press,
+                        q_control=_optional_finite(data.get("q_control")),
+                        q_control_strict=_optional_finite(
+                            data.get("q_control_strict")
+                        ),
+                        q_hybrid_strict=_optional_finite(
+                            data.get("q_hybrid_strict")
+                        ),
+                        dq_strict=_optional_finite(data.get("dq_strict")),
+                        intervention_semantics=(
+                            str(data["intervention_semantics"])
+                            if data.get("intervention_semantics") is not None
+                            else None
+                        ),
+                        generation_provenance=provenance,
                     )
-                except (json.JSONDecodeError, KeyError, ValueError):
+                except (
+                    json.JSONDecodeError,
+                    KeyError,
+                    ValueError,
+                    TypeError,
+                ):
                     continue
         for record in records.values():  # noqa: UP028
             yield record
@@ -196,6 +233,30 @@ def build_switch_rows(
             skipped_s_out_of_range += 1
             continue
 
+        control_q = (
+            hybrid.q_control if hybrid.q_control is not None else ref.q
+        )
+        expected_dq = control_q - hybrid.q
+        if not math.isclose(
+            hybrid.dq, expected_dq, rel_tol=0.0, abs_tol=1e-6
+        ):
+            raise ValueError(
+                f"loose delta mismatch for {(hybrid.prompt_id, hybrid.s)}: "
+                f"dq={hybrid.dq} != q_control-q_hybrid={expected_dq}"
+            )
+        feature_timing: str | None = None
+        if hybrid.generation_provenance is not None:
+            provenance_s = hybrid.generation_provenance.get("prefix_length")
+            pending_token = hybrid.generation_provenance.get("pending_token")
+            if (
+                provenance_s != hybrid.s
+                or pending_token != ref.gen_ids[hybrid.s]
+            ):
+                raise ValueError(
+                    "generation provenance does not match switch boundary "
+                    f"for {(hybrid.prompt_id, hybrid.s)}"
+                )
+            feature_timing = "herald.pre_switch_pending_logit_v1"
         row: dict[str, Any] = {
             "model": model,
             "task": task,
@@ -206,11 +267,50 @@ def build_switch_rows(
             "relative_s": _relative_position(hybrid.s, ref.ref_len),
             "ref_len": ref.ref_len,
             "q_ref": ref.q,
+            "q_control": control_q,
             "q_hybrid": hybrid.q,
             "dq": hybrid.dq,
             "damaged": _flag(hybrid.dq > 0.0),
             "major_damage": _flag(hybrid.dq >= 0.5),
+            "feature_timing": feature_timing,
         }
+        if ref.q_strict is not None:
+            row["q_ref_strict"] = ref.q_strict
+        strict_control = hybrid.q_control_strict
+        if strict_control is None and hybrid.q_hybrid_strict is not None:
+            strict_control = ref.q_strict
+        strict_hybrid = hybrid.q_hybrid_strict
+        if strict_control is not None:
+            row["q_control_strict"] = strict_control
+        if strict_hybrid is not None:
+            row["q_hybrid_strict"] = strict_hybrid
+        if strict_control is not None and strict_hybrid is not None:
+            expected_strict = strict_control - strict_hybrid
+            strict_delta = (
+                hybrid.dq_strict
+                if hybrid.dq_strict is not None
+                else expected_strict
+            )
+            if not math.isclose(
+                strict_delta, expected_strict, rel_tol=0.0, abs_tol=1e-6
+            ):
+                raise ValueError(
+                    "strict delta mismatch for "
+                    f"{(hybrid.prompt_id, hybrid.s)}: "
+                    f"dq_strict={strict_delta} != "
+                    f"q_control_strict-q_hybrid_strict={expected_strict}"
+                )
+            row["dq_strict"] = strict_delta
+            row["damaged_strict"] = _flag(strict_delta > 0.0)
+            row["major_damage_strict"] = _flag(strict_delta >= 0.5)
+        elif hybrid.dq_strict is not None:
+            raise ValueError(
+                "dq_strict requires both q_control_strict and q_hybrid_strict"
+            )
+        if hybrid.intervention_semantics is not None:
+            row["intervention_semantics"] = hybrid.intervention_semantics
+        if hybrid.generation_provenance is not None:
+            row["generation_provenance"] = hybrid.generation_provenance
         values = derived[hybrid.s]
         for name, value in zip(names, values, strict=True):
             row[f"{feature_prefix}{name}"] = _feature_float(value)
@@ -328,10 +428,15 @@ def merge_tapped_references(
         stem = safe_id(prompt_id)
         if new_ref.gen_ids == old_ref.gen_ids:
             matched += 1
-            shutil.copy2(
-                new_dir / "references" / f"{stem}.json",
-                ref_out / f"{stem}.json",
+            legacy = _read_json_object(
+                old_dir / "references" / f"{stem}.json"
             )
+            new_json = _read_json_object(
+                new_dir / "references" / f"{stem}.json"
+            )
+            if "feature_names" in new_json:
+                legacy["feature_names"] = new_json["feature_names"]
+            (ref_out / f"{stem}.json").write_text(json.dumps(legacy))
             shutil.copy2(new_ref.features_path, ref_out / f"{stem}.npy")
             continue
         # Diverging regeneration: rows at switch point s depend on
@@ -386,6 +491,11 @@ def rows_to_table(rows: Sequence[dict[str, Any]]) -> Any:
             keys.setdefault(key)
     filled = [{key: row.get(key) for key in keys} for row in rows]
     return pa.Table.from_pylist(filled)
+
+
+def _optional_finite(value: object) -> float | None:
+    """Parse an optional finite number, preserving absent legacy fields."""
+    return None if value is None else _finite_float(value)
 
 
 def _read_json_object(path: Path) -> dict[str, Any]:

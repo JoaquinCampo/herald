@@ -1,5 +1,10 @@
 # Why attention-reliance, press-score, and probe features
 
+> **Status: historical feature investigation.** This document records the
+> earlier controller workstream. Post-switch probes and controller features
+> are not inputs to the current pre-switch magnitude forecaster; see
+> `docs/_why/2_predictor.md`.
+
 The controller exhaustion report established, quantitatively, that
 per-token logit statistics of the reference stream cannot identify
 which prompts are fragile: models extract only 0.07-0.09 budget-safe
