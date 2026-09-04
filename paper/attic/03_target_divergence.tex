@@ -1,0 +1,69 @@
+% ============================================================
+% DRAFT NOTE (target)
+% Contains: A plain-language statement of the hazard target, then the formal
+% definition: paired same-prefix evaluation, the future-sum divergence family,
+% horizons, and the uncompressed-cache convention.
+% Written now: The target definition per the 2026-09-01 pivot.
+% Pending: Exact target variant chosen as primary (sum vs max, JS vs KL) and
+% the frozen horizon set, pending first modeling results.
+% Sources: pivot discussion; Jocana/herald-logits dataset card
+% ============================================================
+\section{The Forecasting Target: Near-Term Compression Damage}
+\label{sec:target}
+
+Consider a model decoding with a compressed KV cache. At each step it emits a
+token from a next-token distribution that the compressed cache may already
+have distorted. The quantity we want online is the near-term hazard: how much
+distortion, attributable to compression alone, the generation will accumulate
+over its next few tokens. Defining this requires separating compression
+damage from ordinary autoregressive divergence, since two runs of the same
+model can drift apart for reasons that have nothing to do with the cache.
+
+\paragraph{Paired same-prefix evaluation.}
+Let a compressed run under compressor \compressor{} at ratio \ratio{} emit
+the realized prefix $y_{1:t}$, and let $p^{\mathrm{c}}_{i}$ denote its
+next-token distribution at step $i$. The reference $p^{\mathrm{u}}_{i}$ is
+the \emph{uncompressed} model's next-token distribution evaluated on the same
+realized prefix $y_{1:i-1}$, by teacher forcing. Because both distributions
+condition on identical tokens, their divergence at step $i$ isolates the
+effect of the compressed cache: it asks what the full-cache model would have
+predicted right here.
+
+\paragraph{The target family.}
+The primary target is cumulative near-term divergence at horizon $k$,
+\begin{equation}
+\fsj{k}(t) \;=\; \sum_{i=t+1}^{t+k}
+\mathrm{JS}\!\left(p^{\mathrm{c}}_{i},\, p^{\mathrm{u}}_{i}\right),
+\label{eq:target}
+\end{equation}
+with Jensen--Shannon divergence chosen for boundedness and symmetry.
+Companion targets are the KL analogue and the worst single-step divergence
+$\max_{i \in (t, t+k]} \mathrm{JS}(p^{\mathrm{c}}_{i}, p^{\mathrm{u}}_{i})$,
+and horizons $k \in \{5, 10, 25, 50\}$ span immediate alarm to
+paragraph-scale drift. \todo{Freeze the primary variant and horizon set once
+first modeling results indicate which the downstream use case needs.}
+
+\paragraph{Defined at every step.}
+The target is well-defined whether or not the cache is currently compressed.
+For an uncompressed cache the two distributions coincide and the target is
+identically zero; such steps are represented with an inactive compressor and
+ratio zero. This convention anchors the low end of the scale and lets one
+forecaster run continuously across compressed and uncompressed operation. The
+target is an oracle quantity: computing it requires the paired uncompressed
+evaluation, which is available at dataset-construction time but never at
+inference time. It and every future-looking field are training targets only,
+never model inputs.
+
+\paragraph{Semantic boundary.}
+This is a current-state, actual-damage target: it quantifies the damage the
+\emph{already active} compression configuration will inflict over the
+forecast window, under fixed compression throughout that window. It is not a
+prospective target; forecasting what \emph{would} happen if compression were
+activated on a currently uncompressed cache is a separate counterfactual
+problem, out of scope here.
+
+\paragraph{Relation to task quality.}
+Divergence is measured in distribution space, not task space. We treat final
+task quality and catastrophic-failure indicators as secondary validation:
+Section~\ref{sec:setup} tests whether predicted distributional damage
+corresponds to realized quality failures, rather than assuming it.

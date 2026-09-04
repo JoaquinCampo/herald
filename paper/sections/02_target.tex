@@ -1,0 +1,93 @@
+% ============================================================
+% DRAFT NOTE (target)
+% Contains: The setting without notation; the paired damage event and its
+% three consequences; the per-step risk target; risk vs magnitude; the
+% current-state boundary; earliness defined via absolute checkpoints.
+% Written now: Complete per docs/goal.md and quality_risk_protocol.md
+% sections 1 and 4.
+% Pending: Nothing result-dependent. Task scorers are named in the corpus
+% section, not here.
+% Sources: docs/goal.md; docs/implementation/quality_risk_protocol.md
+% ============================================================
+\section{Damage and the Risk Target}
+\label{sec:target}
+
+Consider a model decoding an answer with its KV cache under a known
+compressor at a known removal ratio, and consider the answer the same model
+would have produced for the same prompt with its cache intact. If the
+compressed answer is worse at the task, compression did harm; if it is as
+good or better, it did not, whatever else changed along the way. We want to
+know, while the compressed answer is still being written, how likely the
+first outcome is. This section defines that quantity.
+
+\paragraph{The damage event.}
+Fix a prompt \prompt{} and a compression action $\action = (\press, \ratio)$, a
+compressor \press{} at removal ratio \ratio. Let \yfull{} be the reference
+run, generated for \prompt{} with the full cache, and \ycmp{} the compressed
+run, generated for \prompt{} under \action{} from the first decoded token
+onward. Let $\score(\cdot)$ be the task's own score for a completed output. The compressed run is \emph{damaged} when
+\begin{equation}
+\dmg \;=\; \ind{\, \score(\yfull) - \score(\ycmp) > 0 \,}.
+\label{eq:damage}
+\end{equation}
+where $\ind{\cdot}$ is the indicator function, equal to one when the
+condition inside holds and zero otherwise; \dmg{} is therefore a binary
+label, one per compressed run. Three consequences follow, and each is
+deliberate. A compressed run that is
+wrong when the reference run is also wrong is not damaged: the model would
+have failed anyway, and charging that failure to compression would credit the
+forecaster for predicting the model's baseline error rate. A compressed run
+that scores higher than the reference is not damaged; compression-associated
+lift exists and is not harm. And a compressed run that produces different
+tokens, a different distribution, or different wording, yet scores the same,
+is not damaged. Damage is defined in task space, against the paired
+counterfactual, and nowhere else.
+
+\paragraph{The risk target.}
+The forecast is made while \ycmp{} is being generated. At decoding
+step $t$, with $t$ tokens of the compressed run emitted, the target is
+\begin{equation}
+\risk(\step) \;=\; P\!\left(\dmg = 1 \,\middle|\, \info\right),
+\label{eq:risk}
+\end{equation}
+where \info{} is the information causally available at \step: the
+compression action, the position, and statistics of the compressed model's
+own next-token distributions up to and including step $t$. The reference
+run, its score, and anything downstream of $t$ are not in \info.
+We call $\risk$ the hazard: the current estimated risk that the run ends
+damaged. The label is one per run and does not change with \step; what changes is the
+evidence. Every token of a run is a training row carrying the run's \dmg, and
+the forecaster's job is to move $\risk(\step)$ toward the right answer as early
+as the evidence allows. When no compression is active, \dmg{} is zero by
+definition and $\risk(\step) \equiv 0$ without invoking any model; this anchors
+the scale and lets one forecaster run continuously across compressed and
+uncompressed operation.
+
+\paragraph{Risk, not magnitude.}
+We forecast the probability of damage rather than the size of
+$\score(\yfull) - \score(\ycmp)$. Operationally, a probability is
+what a downstream decision needs: whether to back off depends on comparing
+the risk against the cost of backing off, not on a point estimate of lost
+score. Statistically, a binary event on labels that arrive once per run is
+a far more learnable target than a signed magnitude on the same labels.
+
+\paragraph{Current-state boundary.}
+Equation~\ref{eq:risk} conditions on compression that is already active and
+stays active for the rest of the run. It does not answer the prospective
+question, what would happen if compression were switched on now for a run
+decoding with a full cache, nor the question of changing the ratio mid-run.
+Those are counterfactual interventions with their own label requirements and
+are out of scope.
+
+\paragraph{Early enough.}
+Because the label is per run and the forecast per token, the useful summary
+of a forecaster is not a single number but a curve: how well $\risk(\step)$
+separates damaged from undamaged runs, and how well calibrated it is, as a
+function of $t$. We evaluate at fixed absolute checkpoints
+$t \in \{8, 16, 32, 64, 128\}$. A run contributes to a checkpoint only if it
+is still generating at that position; runs that have already finished are
+excluded there rather than carried forward. Absolute positions are the only
+admissible clock. Relative progress, the fraction of the run completed, is
+computed from the final length and therefore leaks the outcome: runs that
+loop or fail to terminate are long, and a forecaster given their relative
+progress would be told, in effect, how they end.

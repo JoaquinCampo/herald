@@ -1,0 +1,41 @@
+% ============================================================
+% DRAFT NOTE (related-work)
+% Contains: Positioning against KV-cache eviction and learned retention work,
+% output-level quality monitoring, and uncertainty/logit-based prediction.
+% Written now: The conceptual distinctions per the current-state hazard
+% objective.
+% Pending: Verification of bibliography records; an uncertainty-estimation
+% and hallucination-detection paragraph once we survey that adjacent line.
+% Sources: docs/related_work.md; pivot discussion
+% ============================================================
+\section{Related Work}
+
+KV-cache methods such as StreamingLLM, H2O, SnapKV, and the implementations
+collected in kvpress reduce cache cost by retaining, evicting, or otherwise
+compressing state \citep{streamingllm,h2o,snapkv,kvpress}. These methods
+motivate the setting, but they do not answer the question studied here: while
+decoding under a chosen compressor, how much damage is compression inflicting
+on this continuation right now?
+
+Learned retention methods are adjacent but distinct. Lookahead Sparse
+Attention predicts which compressed chunks will be relevant in a future
+window and fetches them ahead of need \citep{lsa}; it is a selection policy
+over what to keep. HERALD forecasts the damage a given compression
+configuration is causing, without choosing what to retain. A damage forecast
+could eventually drive a serving policy, but this study evaluates the
+forecast itself rather than a policy.
+
+Output-level quality monitors and post-hoc failure detectors operate on
+emitted text, so they fire only after bad text is user-visible. HERALD's
+inputs are statistics of the next-token distribution, which the serving stack
+computes at every step anyway, so the forecast is available before the
+corresponding text quality change materializes.
+\todo{Add a paragraph positioning against logit-based uncertainty estimation
+and hallucination-detection work, which uses similar features for a different
+target.}
+
+Task-level measures such as IFEval instruction accuracy \citep{ifeval} and
+the corpus's catastrophic-failure indicators serve here as secondary
+validation that distributional damage corresponds to user-relevant failure,
+not as supervision. Gradient-boosted trees \citep{xgboost} appear among our
+lagged-feature baselines.

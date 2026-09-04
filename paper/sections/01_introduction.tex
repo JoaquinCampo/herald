@@ -1,0 +1,107 @@
+% ============================================================
+% DRAFT NOTE (introduction)
+% Contains: ML-framed introduction. Messages in order: compression's harm is
+% real and uneven (prevalence paragraph); the gap is temporal (after-the-fact
+% evaluation); the forecastability question; why it is hard (attribution ->
+% paired damage definition); HERALD and the mechanism hypothesis; earliness
+% as characterization; contributions. No evaluation-discipline paragraph by
+% decision (2026-09-02); that material lives in the setup section.
+% Written now: Everything except the results preview.
+% Pending: Results preview; F1 reference; prevalence numbers are catastrophe
+% rates carried from the prior draft on this same corpus (verify against the
+% corpus audit) and should be complemented or replaced by paired-damage
+% prevalence once the label audit lands; GSM8K reference-wrong fraction.
+% Sources: docs/goal.md; docs/implementation/quality_risk_protocol.md;
+% prior HERALD draft (voice, prevalence table)
+% ============================================================
+\section{Introduction}
+
+KV-cache compression has become a load-bearing optimization for long-context
+language-model inference. Memory and decode latency both scale with cache
+size, and a growing family of compressors trades cache fidelity for
+throughput. At moderate removal ratios these methods largely preserve task
+accuracy; at heavier ratios they do not, and the resulting failures are
+user-facing and hard to roll back once bad text has been emitted.
+
+The harm is real, and it is uneven. In the corpus we study, generations of
+Qwen2.5-7B-Instruct under six compressors and seven ratios, the share of
+GSM8K generations that collapse into looping or fail to terminate ranges from
+\todo{4.8\%} under ExpectedAttention to \todo{71\%} under KNorm on the same
+prompts and ratios, against a \todo{1.2\%} floor with no compression, and it
+grows roughly linearly with the ratio, adding about \todo{ten} points per
+0.125 step \todo{verify all four against the corpus audit; add paired-damage
+prevalence from the label audit}. Averaged over a benchmark these are tail
+events; at heavy ratios under a fragile compressor they are the modal
+outcome. A serving system cannot trust a single per-compressor accuracy
+number, because the variance sits exactly where it hurts.
+
+Today that harm is measured after the fact. Benchmarks average task accuracy
+over completed outputs, which smooths over both which generations were
+harmed and when the harm began. Output-level monitors fire only once bad text
+is visible. The question this paper asks is whether the damage can instead be
+forecast while it is happening: during a generation decoding under
+compression, from nothing more than the model's own next-token distributions,
+can we estimate whether this generation is going to come out worse than it
+would have with the full cache?
+
+Two things make the question harder than it looks. The first is attribution.
+Language models are often wrong with a full cache; on GSM8K the model we
+study produces a wrong final answer on roughly a fifth of prompts with no
+compression at all \todo{verify fraction against the corpus label audit}. A
+wrong answer is therefore not evidence of compression damage. Damage has to
+be defined against the paired counterfactual, the same prompt decoded by the
+same model with an uncompressed cache, and this paper does so: a generation
+is damaged when its final task quality is strictly lower than its
+uncompressed counterpart's, so wrong-anyway answers and compression-induced
+lift do not count. The second is the granularity mismatch. The label arrives
+once per generation, at the end; the forecast is wanted at every token, from
+the start. A detector that is confident only at the final token is a grader,
+not a forecast.
+
+HERALD (Hazard Estimation via Real-time Analysis of Logit Distributions) is
+built on one hypothesis: that compression harm is visible in the model's own
+next-token distributions, in their uncertainty, their instability from step
+to step, and the churn among their leading alternatives, before it is visible
+in the text. If that holds, a cheap causal model over those statistics,
+together with the compression action and the position, can estimate at every
+decoding step the probability that the generation ends damaged. The target is
+risk rather than magnitude: a probability is what a downstream decision needs
+to weigh against the cost of backing off, and a binary outcome is a far
+kinder learning problem than signed magnitude on labels that arrive once per
+generation. The claim is a current-state one. Compression is already active
+and stays active; forecasting what would happen if it were switched on now is
+a separate, prospective problem that we do not address.
+Figure~\todo{F1 reference} illustrates the setting.
+
+Because the forecast is per token and the label per generation, we
+characterize the forecaster by its earliness: at fixed checkpoints into the
+generation, how well the risk estimate separates generations that will end
+damaged from those that will not, and how well calibrated it is. We report
+that curve as the operational description of the method rather than
+promising a detection horizon in advance; where the estimate becomes useful,
+and where it degrades by task, compressor, and ratio, is part of the result.
+
+\todo{One or two sentences previewing the confirmation result: whether the
+hypothesis survives the preregistered gates, at which checkpoint the risk
+estimate becomes useful, and where it degrades.}
+
+This paper makes four contributions:
+
+\begin{enumerate}
+  \item \texttt{herald-logits}, a public corpus of \todo{32{,}852} compressed
+  and uncompressed generations over \todo{764} prompts from four tasks, six
+  compressors, and seven ratios, with per-token logit statistics,
+  matched-prefix divergence oracles against the paired uncompressed run, and
+  final task-quality and failure annotations. Any compression-damage target,
+  including ours, can be defined on it without rerunning a model.
+  \item A current-state, compression-attributable operational definition of
+  quality damage, with a per-step risk target that is well-defined
+  throughout a compressed generation and identically zero without
+  compression.
+  \item A test of the hypothesis that compression damage is forecastable
+  online from zero-cost logit statistics, against a comparator that knows
+  the compression action and position but not the stream.
+  \item An earliness analysis of the resulting forecaster: how many tokens
+  into a generation it becomes reliable, overall and for catastrophic versus
+  graceful damage, and where it degrades by task, compressor, and ratio.
+\end{enumerate}

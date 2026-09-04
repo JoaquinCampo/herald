@@ -1,0 +1,48 @@
+% ============================================================
+% DRAFT NOTE (setup)
+% Contains: Prompt-disjoint evaluation, trajectory weighting, baselines,
+% metrics, decision gates, and preregistered secondary endpoints.
+% Written now: The complete preregistered analysis rules.
+% Pending: Final split row counts, frozen secondary thresholds, and outcome
+% values.
+% Sources: docs/methodology.md; docs/goal.md
+% ============================================================
+\section{Experimental Setup and Decision Rules}
+
+Splits are prompt disjoint: every ratio and switch position from a prompt
+belongs to one split, and early stopping and model selection use training
+prompts only. The final row counts are \todo{training rows},
+\todo{validation rows}, and \todo{held-out rows} per compressor. This split
+prevents correlated positions from a single prompt from appearing on both
+sides of the held-out evaluation.
+
+Each $(\text{prompt}, \text{ratio})$ trajectory receives equal total training
+mass. If trajectory $i$ has $n_i$ switch rows, its row $j$ has weight
+\begin{equation}
+w_{ij}=\frac{1}{n_i}.
+\end{equation}
+Evaluation macro-averages ratios, so unequal trajectory lengths or coverage
+cannot change the influence of a ratio.
+
+Primary evidence is held-out-prompt MSE and RMSE skill over the strongest
+grouped-mean baseline, MAE skill over the strongest grouped-median baseline,
+and prompt-cluster bootstrap confidence intervals. Diagnostics report
+calibration by predicted-damage bins; positive, zero, and negative label
+prevalence; error on positive and non-zero rows; mean prediction versus mean
+target; and rank correlation. Results are reported separately by compressor
+and ratio, because a pooled result cannot rescue a failed compressor.
+
+A compressor supports the magnitude claim only when all of the following
+preregistered conditions hold:
+\begin{enumerate}
+  \item its 95\% prompt-bootstrap interval for MSE skill is strictly above
+  zero;
+  \item error on positive-damage rows does not worsen;
+  \item calibration is graded rather than collapsed near zero; and
+  \item per-ratio results show that one setting does not create the aggregate
+  gain.
+\end{enumerate}
+Otherwise, the current features do not establish magnitude forecasting for
+that compressor. Any-damage and major-damage risk are preregistered secondary
+endpoints. Their thresholds and metrics must be frozen before primary results
+are inspected; \todo{state the frozen secondary definitions and thresholds.}

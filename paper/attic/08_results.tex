@@ -1,0 +1,69 @@
+% ============================================================
+% DRAFT NOTE (results)
+% Contains: Per-compressor primary outcomes, ratio-level outcomes, calibration,
+% and diagnostic evidence.
+% Written now: Table and figure scaffolding only.
+% Pending: All results, numeric values, interpretations, and decisions.
+% Sources: docs/methodology.md
+% ============================================================
+\section{Results}
+
+% DRAFT NOTE (primary per-compressor outcomes): Report held-out metrics and
+% the decision gate for each compressor without pooling their decisions.
+\subsection{Primary per-compressor outcomes}
+
+\begin{table}[t]
+\centering
+\caption{Held-out primary outcomes. Every value and decision awaits the new
+training run.}
+\label{tab:main-results}
+\begin{tabular}{lccccc}
+\toprule
+Compressor & Positive damage & Major damage & MSE skill 95\% CI & MAE skill & Decision \\
+\midrule
+\todo{compressor} & \todo{value} & \todo{value} & \todo{value} & \todo{value} & \todo{value} \\
+\todo{compressor} & \todo{value} & \todo{value} & \todo{value} & \todo{value} & \todo{value} \\
+\todo{compressor} & \todo{value} & \todo{value} & \todo{value} & \todo{value} & \todo{value} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% DRAFT NOTE (per-ratio outcomes): Show the four supported ratios separately
+% for each compressor and identify any ratio that determines the decision.
+\subsection{Outcomes by removal ratio}
+
+\begin{table}[t]
+\centering
+\caption{Per-ratio held-out breakdown.}
+\label{tab:ratio-results}
+\begin{tabular}{lccccc}
+\toprule
+Compressor & Ratio & MSE skill & MAE skill & Positive-row error & \todo{diagnostic} \\
+\midrule
+\todo{compressor} & \todo{ratio} & \todo{value} & \todo{value} & \todo{value} & \todo{value} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% DRAFT NOTE (calibration): Plot observed against predicted damage bins, with
+% prompt-cluster uncertainty, separately for each compressor.
+\subsection{Calibration}
+\begin{figure}[t]
+\centering
+\figplaceholder{observed versus predicted damage by predicted-damage bin, one
+panel per compressor, with prompt-cluster uncertainty}{results/recovered/ifeval-intervention-v1/}
+\caption{\todo{Calibration caption and held-out interpretation.}}
+\label{fig:calibration}
+\end{figure}
+
+% DRAFT NOTE (diagnostics): Report label prevalence, error slices, prediction
+% means, and rank correlation without substituting diagnostics for the gate.
+\subsection{Diagnostic slices}
+\begin{figure}[t]
+\centering
+\figplaceholder{label prevalence, error on positive- and non-zero-damage
+rows, mean prediction versus mean target, and rank correlation, per
+compressor}{results/recovered/ifeval-intervention-v1/}
+\caption{\todo{Diagnostic caption and held-out interpretation.}}
+\label{fig:diagnostics}
+\end{figure}

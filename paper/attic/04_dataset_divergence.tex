@@ -1,0 +1,45 @@
+% ============================================================
+% DRAFT NOTE (dataset)
+% Contains: The primary supervision corpus (public herald-logits per-token
+% traces) and the second-family transfer traces, with grouping structure.
+% Written now: Corpus role and structure. Corpus statistics are carried from
+% the prior draft describing the same release and must be re-verified against
+% the published dataset card before submission.
+% Pending: Verified corpus statistics; final description of the transfer
+% traces once their collection completes.
+% Sources: pivot discussion; Jocana/herald-logits dataset card; prior draft
+% ============================================================
+\section{Datasets}
+
+\todo{STALE SECTION: written for the divergence objective; to be rewritten for the quality-risk target. Do not review yet.}
+\label{sec:dataset}
+
+\paragraph{Primary supervision: public per-token traces.}
+Model development uses \texttt{herald-logits}, a public corpus of per-token
+records from compressed generations of Qwen2.5-7B-Instruct across six
+KV-cache compressors (ExpectedAttention, KNorm, Random, SnapKV, StreamingLLM,
+TOVA) and seven compression ratios on four tasks (GSM8K, HumanEval, IFEval,
+LongBench). Each record carries
+zero-cost statistics of the next-token distribution at that step together
+with the oracle divergence fields of Section~\ref{sec:target}, computed
+against the uncompressed model on the same realized prefix. The corpus
+comprises approximately \todo{6.9M tokens across 29{,}240 runs; re-verify
+against the dataset card}. Uncompressed baseline runs appear with an inactive
+compressor and ratio zero, giving the forecaster genuine zero-target support.
+
+\paragraph{Grouping structure.}
+Token rows are not independent samples: rows within one generation share a
+trajectory, and generations from one prompt share content. All splitting and
+resampling keeps every run and every token of a prompt in a single fold, and
+prompts receive equal total weight regardless of how many tokens they
+contribute.
+
+\paragraph{Transfer traces: a second model family.}
+To test that the forecaster is not an artifact of one model family, we
+collect matched per-token traces from
+\todo{Llama-3.1-8B-Instruct; verify exact model string} under the same
+recording protocol. These traces are reserved for domain-transfer validation
+and lightweight adaptation, never for primary supervision.
+\todo{Describe the transfer-trace collection (tasks, compressors, ratios,
+scale) once the H5 recording campaign completes; the pilot passed exact
+continuation and feature parity with 1.066x tapped/control runtime.}

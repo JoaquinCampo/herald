@@ -1,0 +1,47 @@
+% ============================================================
+% DRAFT NOTE (setup)
+% Contains: Grouped splits, prompt weighting, stratified reporting, metrics,
+% the secondary quality-failure validation, and the transfer protocol.
+% Written now: The evaluation design per the pivot discussion.
+% Pending: Frozen split sizes, metric list finalization, and the
+% quality-failure validation thresholds, to be preregistered before results
+% are inspected.
+% Sources: pivot discussion; prior draft (evaluation discipline)
+% ============================================================
+\section{Experimental Setup}
+
+\todo{STALE SECTION: written for the divergence objective; to be rewritten for the quality-risk target. Do not review yet.}
+\label{sec:setup}
+
+\paragraph{Splits and weighting.}
+All evaluation is grouped by prompt: every run and every token row of a
+prompt lives in exactly one group, so millions of token rows are never
+treated as millions of independent samples. Prompts receive equal total
+weight. The corpus is split into 508 development and 256 confirmation prompt
+groups; every modeling decision, including architecture selection and the
+comparator, was frozen on development data, and the confirmation set was
+opened and scored exactly once. \todo{Cite \texttt{protocol\_lock.json} and
+\texttt{confirmation\_prefit\_lock.json} for the frozen quarantine.}
+
+\paragraph{Stratified reporting.}
+Results are reported separately by task, compressor, ratio, horizon, and
+early versus late position; a pooled average cannot rescue a stratum that
+fails. Primary metrics are rank correlation and regression error of predicted
+against realized divergence at each horizon, with prompt-cluster bootstrap
+intervals. \todo{Preregister the exact metric list and the decision rule per
+stratum before inspecting held-out results.}
+
+\paragraph{Secondary validation: from divergence to quality.}
+Divergence is only a useful hazard signal if it corresponds to outcomes a
+user cares about. As a preregistered secondary analysis, we test whether
+per-run aggregates of predicted damage separate runs with realized
+task-quality failures (wrong or degraded final answers, and catastrophic
+failure indicators recorded in the corpus) from clean runs. Quality fields
+are used only in this validation, never as supervision for the forecaster.
+\todo{Freeze the aggregation statistic and separation metric.}
+
+\paragraph{Transfer protocol.}
+The forecaster is trained on the primary corpus and evaluated on the
+second-family traces in two modes: zero-shot, and after lightweight
+adaptation on a small grouped subset. \todo{Specify the adaptation budget and
+report both modes once the transfer traces are collected.}

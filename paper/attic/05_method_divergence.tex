@@ -1,0 +1,69 @@
+% ============================================================
+% DRAFT NOTE (method)
+% Contains: The forecaster's causal inputs, the rate-based multi-horizon
+% architecture, and the comparators.
+% Written now: The selected model per the frozen current-state-damage-v1
+% confirmation (2026-09-01): four XGBoost segment-rate regressors.
+% Pending: Exact hyperparameters and feature-inventory hash from
+% results/recovered/current-state-damage-v1/protocol_lock.json; precise
+% definition of the action-clock comparator (verify against the lock).
+% Sources: current-state-damage-v1 result; pivot discussion
+% ============================================================
+\section{HERALD: A Causal Multi-Horizon Forecaster}
+
+\todo{STALE SECTION: written for the divergence objective; to be rewritten for the quality-risk target. Do not review yet.}
+\label{sec:method}
+
+\paragraph{Inputs.}
+At step $t$ the forecaster sees only causally available, zero-cost signals,
+in four groups. First, the active compression action: the compressor
+identity, the removal ratio, and their combination, which set the baseline
+risk of the current configuration. Second, generation position, as
+$\log(1 + t)$, since compression behavior can change as the generated cache
+grows. Third, the current state of the compressed model's next-token
+distribution: entropy, top-1 and top-5 probability, effective vocabulary
+size, alternative-token uncertainty, average log-probability, tail
+probability mass, and logit range. Fourth, recent causal dynamics of that
+distribution: entropy change, step-to-step KL divergence, top-10 overlap
+between successive steps, and, for six principal sensors, trailing means and
+standard deviations over 8- and 32-token windows and exponential moving
+averages at half-lives 8 and 32, all computed from rows up through $t$ only.
+The uncompressed model's logits and every oracle divergence field are
+excluded from the input space by construction.
+\todo{Cite the frozen feature-inventory hash from the protocol lock.}
+
+\paragraph{Rate-based multi-horizon architecture.}
+Predicting the four cumulative targets independently could produce
+incoherent forecasts, such as less predicted damage at 50 tokens than at 25.
+HERALD instead predicts four nonnegative average damage \emph{rates} over the
+disjoint segments $1{:}5$, $6{:}10$, $11{:}25$, and $26{:}50$ of the forecast
+window, one XGBoost regressor per segment, and reconstructs the cumulative
+forecasts as
+\begin{equation}
+\hat Y_5 = 5R_1, \quad
+\hat Y_{10} = \hat Y_5 + 5R_2, \quad
+\hat Y_{25} = \hat Y_{10} + 15R_3, \quad
+\hat Y_{50} = \hat Y_{25} + 25R_4.
+\label{eq:rates}
+\end{equation}
+Because the rates are clamped nonnegative, the horizon forecasts are monotone
+by construction. When no compression is active, the target is identically
+zero by definition and the system returns zero without invoking the learned
+model.
+
+\paragraph{Model selection.}
+A causal temporal convolutional network was trained as the sequence-model
+alternative under the same protocol. The selection rule, frozen before the
+confirmation set was opened, chose by development macro MSE: XGBoost at
+\todo{0.003736; verify against protocol lock} against the TCN at
+\todo{0.003801}, with the TCN worse at every horizon. The snapshot model won;
+sequence modeling added no measurable value over causally aggregated history
+features at this scale.
+
+\paragraph{Comparators.}
+The primary comparator is an action-clock predictor: the strongest
+non-causal reference that knows the compression action and the generation
+position but nothing about the running distribution.
+\todo{State its exact construction from the protocol lock.} Improvement over
+this comparator isolates the value of the online logit signal, since action
+and position are available to any scheduler without observing the stream.

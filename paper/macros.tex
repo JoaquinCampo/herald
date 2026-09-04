@@ -1,0 +1,28 @@
+% Shared notation for the HERALD paper. Every symbol is defined once here.
+% Objects
+\newcommand{\prompt}{\ensuremath{x}}                 % prompt
+\newcommand{\press}{\ensuremath{c}}                  % compressor
+\newcommand{\ratio}{\ensuremath{r}}                  % removal ratio
+\newcommand{\action}{\ensuremath{a}}                 % compression action a=(c,r)
+\newcommand{\yfull}{\ensuremath{y^{\mathrm{full}}}}  % full-cache (reference) run
+\newcommand{\ycmp}{\ensuremath{y^{\mathrm{cmp}}}}    % compressed run
+\newcommand{\score}{\ensuremath{q}}                  % task quality score
+\newcommand{\dmg}{\ensuremath{D}}                    % damage event
+\newcommand{\step}{\ensuremath{t}}                   % decoding step
+\newcommand{\info}{\ensuremath{\mathcal{I}_t}}       % information available at t
+\newcommand{\risk}{\ensuremath{h}}                   % risk (hazard) of damage
+\newcommand{\ind}[1]{\ensuremath{\mathbf{1}\!\left[#1\right]}}
+% Legacy symbols kept for attic/ material only
+\newcommand{\compressor}{\ensuremath{c}}
+\newcommand{\switchpos}{\ensuremath{s}}
+\newcommand{\decoderstate}{\ensuremath{S_s}}
+\newcommand{\fsj}[1]{\ensuremath{D^{\mathrm{JS}}_{#1}}}
+\newcommand{\dfork}{\ensuremath{d^{\mathrm{fork}}_{c,r}(s)}}
+\newcommand{\drefill}{\ensuremath{d^{\mathrm{refill}}_{c,r}(s)}}
+\newcommand{\quality}{\ensuremath{q}}
+\newcommand{\damage}{\ensuremath{d}}
+% Drafting
+\newcommand{\todo}[1]{\textcolor{orange!85!black}{\textbf{[TODO: #1]}}}
+\newcommand{\figplaceholder}[2]{%
+  \fbox{\parbox[c][1.5in][c]{0.85\linewidth}{\centering\itshape
+  [Figure placeholder: #1]\\[4pt]\normalfont\small To be drawn from \texttt{#2}.}}}

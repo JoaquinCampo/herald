@@ -1,0 +1,81 @@
+% ============================================================
+% DRAFT NOTE (problem)
+% Contains: A plain-language statement of the forecasting target, then the
+% formal estimand in three steps: the switch position, the paired
+% continuations (fork and re-prefill variants), and the quality function.
+% Written now: The complete settled estimand and label definition.
+% Pending: None, apart from notation changes required by a venue template.
+% Sources: docs/methodology.md; docs/goal.md; docs/_why/6_intervention_semantics.md;
+% docs/_why/3_measuring_quality.md
+% ============================================================
+\section{Problem: Damage at a Switch Position}
+
+Consider a model partway through generating an answer. The serving system
+could activate KV-cache compression now and save memory for the rest of the
+generation, but the finished answer might lose task quality as a result. The
+quantity we study is exactly that cost: how much final quality the completed
+answer loses if compression is activated at this moment, compared with
+leaving the cache untouched. Defining this quantity requires three
+ingredients: where the intervention happens, which two continuations are
+compared, and how their quality is scored.
+
+\paragraph{Where: the switch position.}
+A switch position \switchpos{} means that exactly \switchpos{} generated
+tokens are fixed and the intervention occurs immediately before the next
+token is computed. We write \decoderstate{} for the complete decoder state at
+this boundary: the KV cache together with everything else required to
+continue generation exactly, such as pending input, position indices, and the
+decoding, stopping, and numerical configuration. The full state matters
+because at this boundary the most recent token may not yet be incorporated
+into the cache.
+
+\paragraph{What is compared: two paired continuations.}
+From \decoderstate{} we create two independent, identical forks and compress
+exactly one of them with compressor \compressor{} at removal ratio \ratio{}.
+Both forks then generate to completion under the same prompt, emitted prefix,
+token budget, EOS rules, decoding configuration, attention backend, and
+numerical precision. Call the two completed outputs
+\begin{equation}
+y^{\mathrm{keep}} = \operatorname{continue}(\decoderstate),
+\qquad
+y^{\mathrm{comp}} = \operatorname{continue}\!\left(\mathcal{C}_{c,r}(\decoderstate)\right).
+\label{eq:fork-arms}
+\end{equation}
+Damage is the signed difference in their final quality,
+\begin{equation}
+\dfork = q\!\left(y^{\mathrm{keep}}\right) - q\!\left(y^{\mathrm{comp}}\right).
+\label{eq:fork-damage}
+\end{equation}
+Because compression is the only difference between the branches, the score
+difference is attributable to activating compression at \switchpos.
+
+Some compressors are not defined as a transformation of a live cache; their
+faithful execution semantics is a compressed re-prefill of the prompt and
+prefix. For those compressors both arms are rebuilt through the same no-press
+re-prefill path $R$, so the control arm matches the treatment arm's execution
+route, and the target is
+\begin{equation}
+\drefill = q\!\left(y_R^{\mathrm{keep}}\right) - q\!\left(y_R^{\mathrm{comp}}\right),
+\label{eq:refill-damage}
+\end{equation}
+where $y_R^{\mathrm{keep}}$ and $y_R^{\mathrm{comp}}$ are built exactly as in
+Equation~\ref{eq:fork-arms}, but from the re-prefilled state
+$R(\decoderstate)$ instead of \decoderstate{} itself.
+Section~\ref{sec:intervention} specifies which compressors receive which
+target and how both are validated.
+
+\paragraph{How it is scored: task-grounded quality.}
+The initial task is IFEval. For a completed output $y$, quality is its
+instruction-level loose accuracy,
+\begin{equation}
+q(y) = \frac{\text{instructions satisfied by } y}
+{\text{instructions in the prompt}}.
+\label{eq:quality}
+\end{equation}
+Damage is task grounded: different tokens or wording do not count as damage
+unless the final score is lower. The label \damage{} is signed, with positive
+values meaning degradation and negative values meaning compression-associated
+lift, and we keep negative values during training. Positive harm
+$\max(0,\damage)$ and any-damage and major-damage risks are derived reporting
+quantities, not substitutes for the signed magnitude target. Strict IFEval
+accuracy is retained as a secondary robustness score.

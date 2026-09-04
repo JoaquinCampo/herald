@@ -1,0 +1,57 @@
+% ============================================================
+% DRAFT NOTE (setup)
+% Contains: Everything that makes the results trustworthy before the reader
+% sees them. Almost entirely protocol-locked; write from
+% docs/implementation/quality_risk_protocol.md sections 3, 4, 6, 8, 9.
+% Written now: Outline only.
+% Pending: Prose for each paragraph below; the frozen numbers are in the
+% protocol and must be cited, not paraphrased.
+% Sources: docs/implementation/quality_risk_protocol.md
+% ============================================================
+\section{Experimental Setup}
+\label{sec:setup}
+
+\paragraph{Quarantine and splits.}
+\todo{Prompt is the independent unit. 508 development / 256 confirmation
+prompt groups, hashed assignment, five development folds; every run and
+token of a prompt in one place. Confirmation opened once, fit once, scored
+once, after a prefit lock froze features, model, calibration, comparators,
+and gates.}
+
+\paragraph{Weighting.}
+\todo{Prompt-equal, then action-equal, then token-equal weights, so long runs
+and heavily sampled prompts do not dominate; millions of token rows are not
+millions of samples.}
+
+\paragraph{Checkpoints and eligibility.}
+\todo{t in {8, 16, 32, 64, 128}; a run contributes at t only if still
+generating; no carry-forward; absolute clock only (back-reference to
+Section~\ref{sec:target}).}
+
+\paragraph{Comparators.}
+\todo{prevalence; action-only (per compressor x ratio damage rate);
+action-clock (same model class, action + position, no sensors); the hard
+comparator is the best of the three per checkpoint on development OOF loss.
+Why action-clock is the honest null: any scheduler has action and position
+without reading a logit, so the increment over it is the value of the
+stream.}
+
+\paragraph{Metrics.}
+\todo{Per checkpoint: log loss, AUROC, Brier skill over the hard comparator;
+calibration slope and ECE (10 quantile bins). Earliness = these as a
+function of t, overall and split by catastrophe flag. Task-stratified
+prompt-cluster bootstrap, 10,000 resamples, simultaneous bounds, 95\%.}
+
+\paragraph{Preregistered gates.}
+\todo{Development gates and the confirmation pass rule, stated as decision
+rules, not as results: beat action-clock and hard comparator at every t >= 16
+on log loss and AUROC; AUROC lower bound >= 0.70 at t = 32; no subgroup
+harmed at t = 32; calibration slope interval contains 1 and ECE upper bound
+<= 0.05; leave-one-task-out (development only). Retirement rule on any valid
+confirmation failure; no rescue.}
+
+\paragraph{Stratified reporting.}
+\todo{Every headline is also reported by task, compressor, and ratio; a
+pooled number cannot rescue a failed stratum. Secondary endpoints (major
+damage with frozen theta, catastrophe risk, magnitude given damage) opened
+only after the primary decision.}

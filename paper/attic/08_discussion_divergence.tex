@@ -1,0 +1,38 @@
+% ============================================================
+% DRAFT NOTE (discussion)
+% Contains: Interpretation of where forecasting works, settled limitations,
+% and a short conclusion.
+% Written now: The limitations that are settled by design; interpretation
+% awaits results.
+% Pending: All result-dependent interpretation.
+% Sources: pivot discussion; docs/_why/3_measuring_quality.md (quality vs
+% divergence rationale)
+% ============================================================
+\section{Discussion and Limitations}
+
+\todo{STALE SECTION: written for the divergence objective; to be rewritten for the quality-risk target. Do not review yet.}
+\label{sec:discussion}
+
+\todo{Interpret the held-out and transfer results: which horizons, tasks,
+compressors, and ratios carry signal; where it degrades; what the baselines
+already capture.}
+
+Several limitations are settled by design. The target measures damage in
+distribution space; the link to task quality is validated empirically in
+Section~\ref{sec:setup} rather than guaranteed, and a run can diverge in
+distribution while still completing its task. The claim is scoped to the
+observed configuration grid, with compression fixed and active over each
+forecast window: unseen compressors, unseen ratios, mid-window switches, and
+prospective activation from an uncompressed state are all outside the
+established result. The oracle label requires a paired uncompressed
+evaluation on the same realized prefix, so supervision is only available
+where such traces have been recorded. Primary supervision comes from one
+model family; the transfer analysis tests, but does not guarantee, generality
+beyond it. Finally, HERALD forecasts damage; it does not decide
+interventions. Acting on the forecast, by adjusting ratio, disabling
+compression, or re-prefilling, is downstream serving policy and out of scope
+here.
+
+\subsection*{Conclusion}
+\todo{Two- or three-sentence conclusion once results are in: the question,
+the evidence, and the deployment claim.}

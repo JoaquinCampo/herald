@@ -1,0 +1,155 @@
+% ============================================================
+% DRAFT NOTE (corpus)
+% Contains: Why the corpus exists (to instantiate eq. 1-2 at scale, once);
+% construction; per-token signals; oracles and annotations (divergence,
+% task scorers, catastrophe detectors); prevalence of damage and catastrophe
+% by compressor and ratio; release.
+% Written now: Structure and all settled facts from the dataset card and the
+% v1 protocol lock (model, tasks, compressors, ratios, decoding, counts,
+% signals, license).
+% Pending: per-task prompt counts; per-task quality scorers (agent label
+% audit); all prevalence numbers (compute from the summaries config and the
+% label audit; the prior draft's tables were from an earlier 5-ratio GSM8K
+% sweep and do not describe this release: KNorm 71.0%, SnapKV 68.7%, Random
+% 35.9%, TOVA 15.4%, StreamingLLM 13.7%, ExpectedAttention 4.8%, none 1.2%;
+% ~10 points per 0.125 ratio step); wrong-anyway fraction per task.
+% Sources: Jocana/herald-logits dataset card; current-state-damage-v1
+% protocol_lock.json; prior draft section 2 (detector definitions)
+% ============================================================
+\section{The \texttt{herald-logits} Corpus}
+\label{sec:corpus}
+
+Equations~\ref{eq:damage} and~\ref{eq:risk} ask for three things at scale:
+for every prompt, a full-cache run and a compressed run scored on the same
+task; for every step of every compressed run, the causal statistics that
+form \info; and, to test the mechanism hypothesis rather than assume it, a
+measurement of how far the compressed model's distributions have actually
+drifted from the full-cache model's at each step. Producing these requires
+decoding every prompt once uncompressed and once per compression action,
+with the uncompressed model re-evaluated along every compressed trajectory.
+That is expensive to do once and pointless to do twice, so we did it once and
+released the result. \texttt{herald-logits} is a public corpus from which any
+compression-damage target, including ours, can be defined without rerunning a
+model.
+
+\paragraph{Construction.}
+All generations use Qwen2.5-7B-Instruct with greedy decoding and a
+task-dependent token budget. Prompts come from four tasks that span
+arithmetic reasoning, code, instruction following, and long-context reading:
+GSM8K, HumanEval, IFEval, and the single-document subset of LongBench
+(\todo{per-task prompt counts}; 764 prompts in total). Each prompt is decoded
+43 times: once with the full cache, and once under each of six KV-cache
+compressors at each of seven removal ratios,
+$r \in \{0.25, 0.375, 0.5, 0.75, 0.875, 0.9375, 0.96875\}$. The compressors
+are StreamingLLM, SnapKV, ExpectedAttention, KNorm, TOVA, and random
+eviction, all through the kvpress implementations, so that differences
+between them are differences in eviction policy and not in harness. This
+yields 32{,}852 sequences and 7{,}738{,}974 compressed token rows.
+
+\paragraph{Per-token signals.}
+Every compressed token row carries twelve statistics of the model's
+next-token distribution at that step, each computable from the logits the
+decoder has already produced: entropy, top-1 and top-5 probability, the
+number of plausible alternatives, average log-probability, entropy change
+from the previous step, KL divergence from the previous step's distribution,
+top-10 overlap with the previous step, effective vocabulary size, tail
+probability mass, and logit range. These are the raw material for \info; we
+call them zero-cost because a serving stack computes the logits regardless,
+and every statistic is a constant-time reduction over them. The release also
+ships rolling means over 8- and 32-token windows and exponential moving
+averages at the same half-lives. Position fields record the absolute token
+index; the release additionally stores relative progress, which we treat as
+forbidden for the reason given in Section~\ref{sec:target}.
+
+\paragraph{Oracles.}
+For every compressed step the corpus stores the divergence between the
+compressed model's next-token distribution and the full-cache model's
+distribution evaluated on the same prefix by teacher forcing. Conditioning
+both on identical tokens isolates the effect of the compressed cache from
+ordinary autoregressive drift: it asks what the intact model would have
+predicted right here. Jensen--Shannon and KL variants are stored per step,
+together with forward-looking sums and maxima over horizons of 5, 10, 25, and
+50 tokens. These oracles require the full-cache model and are therefore never
+available at inference time; in this paper they are measurement, never input.
+
+\paragraph{Task scores and the damage label.}
+Each sequence carries the task's own score for its completed output:
+\todo{exact-match final answer for GSM8K, functional pass for HumanEval,
+instruction-level accuracy for IFEval, and the LongBench reference metric;
+verify each against the label audit}. The full-cache run's score and the
+compressed run's score together give \dmg{} by Equation~\ref{eq:damage}. The
+corpus also records, per compressed run, two catastrophe detectors that need
+no reference: \emph{looping}, when any window of 20 contiguous tokens
+recurs at least three times in the output, with onset at the second
+occurrence; and \emph{non-termination}, when decoding ended by exhausting the
+token budget rather than by an end-of-sequence token. Looping almost always
+escalates into non-termination, since a model committed to a loop has no
+mechanism to break out. We use the flags to split damaged runs into
+catastrophic and graceful for the earliness analysis; they are not inputs and
+not the label.
+
+\paragraph{How much damage there is, and where.}
+Table~\ref{tab:prevalence} reports the damage rate under
+Equation~\ref{eq:damage} by compressor and by ratio, alongside the
+catastrophe rate. Two features of the distribution shape everything
+downstream. First, damage is highly compressor-specific on identical prompts
+and ratios: the spread between the most fragile and the most robust
+compressor is \todo{about an order of magnitude}, and \todo{two} of the
+principled compressors are worse than random eviction. Second, damage grows
+steadily with the ratio, roughly \todo{ten points per 0.125 step} pooled
+across compressors, so that at the heaviest ratios damage is the modal
+outcome rather than a tail event. Averaged over a benchmark, these are
+percentages; for a serving system, they say that neither the compressor nor
+the ratio alone tells you whether \emph{this} generation is at risk, which is
+the gap the forecaster fills. The full-cache model's own error sets the floor
+the label is defined against: on GSM8K it produces a wrong final answer on
+\todo{22.4\%} of prompts with no compression, and those prompts can only be
+damaged if the compressed run does strictly worse.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Prevalence of damage (Eq.~\ref{eq:damage}) and catastrophe
+(looping or non-termination) in the corpus. Left: by compressor, pooled over
+ratios and tasks. Right: by ratio, pooled over compressors and tasks. The
+uncompressed row gives the model's intrinsic catastrophe rate; damage is
+undefined without compression. \todo{Fill from the summaries config and the
+label audit.}}
+\label{tab:prevalence}
+\begin{tabular}{lrr}
+\toprule
+Compressor & Damage & Catastrophe \\
+\midrule
+KNorm             & \todo{v} & \todo{v} \\
+SnapKV            & \todo{v} & \todo{v} \\
+Random            & \todo{v} & \todo{v} \\
+TOVA              & \todo{v} & \todo{v} \\
+StreamingLLM      & \todo{v} & \todo{v} \\
+ExpectedAttention & \todo{v} & \todo{v} \\
+\midrule
+\textit{None}     & ---      & \todo{v} \\
+\bottomrule
+\end{tabular}
+\hspace{2em}
+\begin{tabular}{rrr}
+\toprule
+Ratio & Damage & Catastrophe \\
+\midrule
+0.25    & \todo{v} & \todo{v} \\
+0.375   & \todo{v} & \todo{v} \\
+0.5     & \todo{v} & \todo{v} \\
+0.75    & \todo{v} & \todo{v} \\
+0.875   & \todo{v} & \todo{v} \\
+0.9375  & \todo{v} & \todo{v} \\
+0.96875 & \todo{v} & \todo{v} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Release.}
+The corpus is released under the MIT license in three configurations:
+\texttt{tokens} (one row per compressed token), \texttt{sequences} (one row
+per run with prompt, output, prediction, ground truth, stop reason, scores,
+and catastrophe flags), and \texttt{summaries} (one row per compressor,
+ratio, and task with aggregate metrics). Benchmark prompts are redistributed
+under their original licenses.

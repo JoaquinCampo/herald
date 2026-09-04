@@ -1,0 +1,416 @@
+\documentclass[11pt,a4paper]{article}
+
+%=============================================================================
+% ENCODING AND FONTS
+%=============================================================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{newtxtext}
+\usepackage{newtxmath}
+\usepackage{helvet}
+
+%=============================================================================
+% PAGE GEOMETRY
+%=============================================================================
+\usepackage[a4paper,
+            left=1.1in, right=1.1in,
+            top=1.2in, bottom=1in,
+            headheight=14pt, headsep=0.25in]{geometry}
+
+%=============================================================================
+% RUNNING HEADER (top rule + short title)
+%=============================================================================
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\sffamily HERALD: Hazard Estimation via Real-time Analysis of Logit Distributions}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+% First page: same header style
+\fancypagestyle{plain}{%
+  \fancyhf{}
+  \fancyhead[L]{\small\sffamily HERALD: Hazard Estimation via Real-time Analysis of Logit Distributions}
+  \fancyfoot[C]{\thepage}
+  \renewcommand{\headrulewidth}{0.4pt}
+  \renewcommand{\footrulewidth}{0pt}
+}
+
+%=============================================================================
+% MATH
+%=============================================================================
+\usepackage{amsmath}
+\let\Bbbk\relax
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{mathtools}
+
+%=============================================================================
+% GRAPHICS, TABLES, LISTS, CAPTIONS
+%=============================================================================
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{subcaption}
+
+%=============================================================================
+% ALGORITHMS, UNITS, COLORS, MICROTYPE
+%=============================================================================
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{siunitx}
+\sisetup{detect-all}
+\usepackage{xcolor}
+\usepackage{microtype}
+
+%=============================================================================
+% SECTION HEADINGS (sans-serif bold, NeurIPS-like)
+%=============================================================================
+\usepackage[compact]{titlesec}
+\titleformat{\section}{\large\sffamily\bfseries}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\normalsize\sffamily\bfseries}{\thesubsection}{0.5em}{}
+\titleformat{\subsubsection}{\normalsize\sffamily\bfseries\itshape}{\thesubsubsection}{0.5em}{}
+\titlespacing*{\section}{0pt}{1.2em}{0.4em}
+\titlespacing*{\subsection}{0pt}{1.0em}{0.3em}
+
+%=============================================================================
+% HYPERLINKS
+%=============================================================================
+\usepackage[colorlinks=true,
+            linkcolor=black,
+            citecolor=blue!60!black,
+            urlcolor=blue!60!black]{hyperref}
+\hypersetup{
+    pdfauthor={Joaquin Campo, Ernesto Dufrechou, Guillermo Moncecchi},
+    pdftitle={HERALD: Hazard Estimation via Real-time Analysis of Logit Distributions},
+    pdfsubject={Machine Learning},
+    pdfkeywords={KV-cache compression, large language models, hazard prediction, logits, generation failures}
+}
+
+%=============================================================================
+% SMART CROSS-REFERENCES (must load after hyperref)
+%=============================================================================
+\usepackage{cleveref}
+\crefname{equation}{Eq.}{Eqs.}
+\crefname{figure}{Fig.}{Figs.}
+\crefname{table}{Table}{Tables}
+\crefname{section}{Sec.}{Secs.}
+\crefname{algorithm}{Algorithm}{Algorithms}
+
+%=============================================================================
+% CUSTOM MATH COMMANDS
+%=============================================================================
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+%=============================================================================
+% ABSTRACT REDEFINITION (NeurIPS-style: centered title, indented column)
+%=============================================================================
+\renewenvironment{abstract}{%
+  \begin{center}
+    {\large\bfseries Abstract}
+  \end{center}
+  \vspace{-0.4em}
+  \begin{list}{}{%
+    \setlength{\leftmargin}{0.55in}%
+    \setlength{\rightmargin}{0.55in}%
+    \setlength{\topsep}{0pt}%
+  }\item[]\ignorespaces
+}{%
+  \unskip\end{list}\vspace{0.6em}
+}
+
+\begin{document}
+
+%=============================================================================
+% TITLE BLOCK
+%=============================================================================
+\begin{flushleft}
+  {\fontsize{20pt}{24pt}\selectfont\bfseries HERALD: Hazard Estimation via Real-time Analysis of Logit Distributions\par}
+  \vspace{1em}
+  {\large
+    \textbf{Joaquin Campo}\textsuperscript{1} \quad
+    \textbf{Ernesto Dufrechou}\textsuperscript{1} \quad
+    \textbf{Guillermo Moncecchi}\textsuperscript{1}\par
+  }
+  \vspace{0.4em}
+  \textsuperscript{1}Instituto de Computaci\'on, Facultad de Ingenier\'ia, Universidad de la Rep\'ublica, Montevideo, Uruguay\par
+  \vspace{0.4em}
+  \texttt{\{joaquin.campo, edufrechou, gmonce\}@fing.edu.uy}\par
+  \vspace{0.4em}
+  \url{https://github.com/joaquinCampo/HERALD}\par
+  \vspace{0.2em}
+  \url{https://huggingface.co/datasets/Jocana/herald-logits}
+\end{flushleft}
+
+\vspace{1.2em}
+
+%=============================================================================
+% ABSTRACT
+%=============================================================================
+\begin{abstract}
+\noindent
+As language models are deployed in longer-context and lower-latency settings, inference-time approximations increasingly determine not only cost but reliability. KV-cache compression makes long-context inference cheaper, but today it is mostly evaluated after generation, by averaging task scores over completed outputs. This misses the question a deployed system actually needs to answer: while decoding, is compression already damaging the continuation? We introduce HERALD, an online predictor of compression harm from the model's own logits. HERALD uses paired counterfactual replay to define token-level targets: how much the next window of compressed generation diverges from the uncompressed reference. At inference time, it requires only causal, zero-cost statistics of the next-token distribution and runs in $O(1)$ per token. Across compressed generations from large instruction-tuned language models, multiple KV-cache compressors, compression ratios, and tasks, HERALD predicts future token-level damage and aggregates into a calibrated run-level damage score. The signal transfers strongly to held-out compressors, showing that compression harm has a shared online signature rather than being only a compressor-specific artifact. HERALD reframes KV-cache compression as a monitored process: not just a static memory-quality tradeoff measured after the fact, but a generation-time system whose damage can be estimated as it unfolds.
+\end{abstract}
+
+%=============================================================================
+% TEASER FIGURE
+%=============================================================================
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.49\textwidth]{img_1.png}\hfill
+  \includegraphics[width=0.49\textwidth]{img_2.png}
+  \caption{\textbf{Compression damage is forecastable from logits.} \emph{Left:} a real GSM8K generation under heavy KV-cache compression (random press, ratio 0.75). The model first answers correctly, drifts into spurious self-correction, and finally collapses into a non-terminating loop. \emph{Right:} on the same sequence, HERALD's per-token predicted damage rises tens of tokens before any failure is visible in the output, while a rolling-entropy reference trace stays flat. Both panels are diagnostic, drawn from a single qualitative example; the quantitative scorecard appears in \cref{sec:results}.}
+  \label{fig:teaser}
+\end{figure}
+
+%=============================================================================
+% INTRODUCTION
+%=============================================================================
+\section{Introduction}
+\label{sec:introduction}
+
+KV-cache compression has become a load-bearing optimization for long-context language-model inference. Memory and decode latency both scale linearly in cache size, and a growing family of compressors (StreamingLLM, SnapKV, ExpectedAttention, KNorm, TOVA, and others) trades cache fidelity for throughput. At moderate ratios they preserve task accuracy well; at heavy ratios they do not. Compressed generations drift from their uncompressed counterparts, loop on short phrases, or run past the stop token without ever producing one. These failures are user-facing, hard to roll back, and concentrated in the tails of the distributions that the KV-press literature tends to report.
+
+Today these problems are evaluated after the fact. Benchmarks average task accuracy across completed outputs, which smooths over both the magnitude and the timing of compression damage. Output-level quality monitors and post-hoc detectors only fire once bad text has already been emitted. The question a deployed system actually needs to answer is different: while decoding, is compression already damaging the continuation, and by how much? To our knowledge, no prior work treats compression damage as something to be \emph{forecast online} from the model's own next-token distribution, even though that distribution is computed at every step and is therefore free.
+
+We propose to do so by defining a continuous, per-token compression-damage target through paired counterfactual replay. For each prompt we generate twice, once with full cache and once under a chosen compressor and ratio, and we measure how much the next $H$ tokens of the compressed generation diverge in distribution from the uncompressed reference. The resulting label, $\text{future\_sum\_js}_H$, is well defined at every decoding step, is independent of any binary failure detector, and is dense in time. It makes compression damage a regression target rather than a rare-event classification.
+
+On top of this label we train HERALD, a lightweight gradient-boosted regressor over $24$ zero-cost statistics of the next-token distribution (entropy, top-$k$ probability mass, rank-based features, short rolling and exponentially-weighted summaries, position, and compression ratio). A second, per-run, trajectory-shape wrapper aggregates the predicted damage trace over the run, producing a calibrated overall-damage score. Both layers are trained with $5$-fold cross-validation grouped by prompt; the per-run wrapper uses no metadata features, so any signal it carries is a property of the predicted-damage trajectory itself, not of the compressor identity, the ratio, or the run length. The full predictor runs in $O(1)$ per token through a streaming implementation that we certify against the batched predictions to machine precision.
+
+We evaluate HERALD across six KV-cache compressors and seven compression ratios applied to Qwen$2.5$-$7$B-Instruct on four tasks (GSM8K, HumanEval, IFEval, LongBench). Per-token predicted damage attains a Spearman correlation of $\rho = 0.754$ with $\text{future\_sum\_js}_{25}$ and $\rho = 0.766$ at horizon $H=50$, indicating that the regressor's signal carries across horizons rather than tracking only the $H$ it was trained on. The per-run damage score, produced by a trajectory-shape wrapper that operates on predicted-damage statistics alone (no compressor, ratio, task, or run-length features), attains $\rho = 0.864$ against the integrated compressed-vs-uncompressed divergence, with an expected-calibration error of $0.036$. Critically, the same score also recovers \emph{text-level} drift: it correlates at $\rho = 0.829$ with the ROUGE-L drop and at $\rho = 0.819$ with the character edit ratio between the compressed and uncompressed generations. A predictor trained on logit-space divergence therefore reproduces the drift of the produced text itself, not only a property of the distributions. Holding out individual compressors keeps the per-run correlation within $99.8\%$ of the in-distribution value, so the predictor is not memorising compressor identity. The streaming implementation matches the batched regressor exactly.
+
+This matters for two reasons. Scientifically, a single cheap predictor that transfers across compressors and ratios indicates that compression-induced damage has a shared online signature in next-token distributions rather than being only a method-specific artifact. Practically, HERALD reframes KV-cache compression as a monitored process: the predictor sits in the decode loop with no measurable wall-clock overhead, producing a damage score that any downstream controller can act on while generation is still in flight.
+
+\paragraph{Contributions.}
+\begin{enumerate}[leftmargin=*,itemsep=2pt,topsep=2pt]
+  \item We characterize the failure regime of heavy KV-cache compression (looping, non-termination, and continuous distributional drift) and quantify its prevalence across six compressors and seven compression ratios on Qwen$2.5$-$7$B-Instruct.
+  \item We define $\text{future\_sum\_js}_H$, a paired-counterfactual, per-token, continuous compression-damage target that admits both fine-grained regression and per-run aggregation, and we release the resulting per-token logit dataset ($\sim 6.9$M tokens, $29{,}240$ runs).
+  \item We introduce HERALD, a streaming $O(1)$ per-token gradient-boosted regressor over zero-cost logit features, plus a trajectory-shape per-run wrapper that operates on predicted-damage statistics alone, with no metadata leakage.
+  \item We report per-token and per-run correlations, leave-one-compressor / leave-one-ratio / leave-one-task generalization, calibration, and the regimes where the signal degrades (heavy-compression saturation, constrained-format tasks, secondary lexical targets with low substrate ceilings).
+  \item We provide a streaming reference implementation certified to match the batched regressor exactly, positioning HERALD as a runtime substrate that downstream controllers can use to intervene mid-generation.
+\end{enumerate}
+
+%=============================================================================
+% SECTION 2: CATASTROPHIC FAILURES UNDER KV-CACHE COMPRESSION
+%=============================================================================
+\section{Catastrophic failures under KV-cache compression}
+\label{sec:failures}
+
+\subsection{What we mean by \emph{catastrophic}}
+\label{sec:failures:definition}
+
+We distinguish two regimes of LLM failure under KV-cache compression. The first is graceful accuracy degradation: the model finishes generating, returns a parseable answer, and is simply wrong. This regime is captured by standard task-accuracy benchmarks and tracked by every published evaluation of KV-cache compression. The second regime is qualitatively different. The generation itself goes wrong: the model emits the same fragment over and over, runs to the token budget without ever producing a stop token, or both. We call this regime \emph{catastrophic}. It is not a measure of how good the answer is; it is a measure of whether the model produced a usable answer at all.
+
+We formalize two catastrophic failure modes:
+\begin{itemize}[leftmargin=*,itemsep=2pt,topsep=2pt]
+  \item \textbf{Looping}: the model emits a chunk of tokens, then re-emits the same chunk, then re-emits it again, with no new content in between.
+  \item \textbf{Non-termination}: the model never produces an end-of-sequence token within the generation budget.
+\end{itemize}
+
+We do not include three plausible candidates: \emph{wrong-answer} (a normal mode of LLM failure even on uncompressed inference, see~\cref{sec:failures:per-press}), \emph{instruction amnesia} (the model solves a different problem than asked), and \emph{coherence collapse} (the output becomes ungrammatical mid-stream). Each is real and occasionally observed in our data, but none admits a robust automatic detector at our scale, and we leave them as future work.
+
+Looping and non-termination earn their place because they are (i) detectable from the token stream alone, with no judge model required; (ii) demonstrably caused by compression, since their rates rise sharply with compression aggressiveness and are near zero on uncompressed runs (\cref{sec:failures:per-press}); and (iii) operationally severe, since both produce unusable outputs and both run the model to its full token budget.
+
+\subsection{Detection rules}
+\label{sec:failures:detection}
+
+\paragraph{Non-termination.} We mark a generation as non-terminating if the decoding loop exited because it hit the token budget rather than because the model produced an end-of-sequence token, i.e.\ its stop reason is one of \texttt{max\_tokens} or \texttt{timeout}. Non-termination is a property of the entire trace, not of a moment within it; the detector returns the last emitted token as a placeholder onset.
+
+\paragraph{Looping.} We mark a generation as looping if any window of $W = 20$ contiguous tokens appears at least $r = 3$ times within the generated sequence. The onset of the loop is the start position of the second occurrence of the first window that hits the threshold, i.e.\ the first token at which the model committed to repeating itself instead of producing new content. The thresholds are calibrated to be tight enough to catch short phrase-level loops (the typical KV-cache catastrophe arc, see \cref{fig:teaser}, left) and loose enough to ignore natural repetition such as enumerated lists, where short windows can recur without indicating failure. Setting $r = 3$ rather than $r = 2$ is what makes the rule robust to coincidental pairs.
+
+\paragraph{Co-occurrence.} The two modes are not independent. A looping generation almost always escalates into non-termination, since once the model commits to a loop it has no mechanism to break out and exhausts the token budget. We report the two detectors separately because they have different temporal signatures: looping has a clear within-trace onset, non-termination does not. Both are used in this section to characterize where compression damage concentrates; HERALD itself is trained on a continuous damage target defined in \cref{sec:herald}, not on the union of these binary detectors.
+
+\paragraph{Wrong-answer carve-out.} We measure final-answer correctness alongside, but we exclude wrong answers from the catastrophic regime. The reason is empirical: even with no compression at all, Qwen2.5-7B-Instruct produces a $22.4\%$ wrong-answer rate on GSM8K ($112 / 500$ sequences in the uncompressed baseline, with task accuracy $77.6\%$). Wrong answers are therefore largely a property of the model and the task, not of compression, and folding them into the failure-mode characterization would obscure the compression-attributable damage that the rest of this paper is about. We track wrong-answer rate as a separate accuracy metric.
+
+\subsection{Prevalence across compressors}
+\label{sec:failures:per-press}
+
+\begin{figure}[H]
+  \centering
+  \fbox{%
+    \parbox[c][3.2cm][c]{0.9\textwidth}{%
+      \centering\itshape [Figure placeholder: bar chart of catastrophic rate per compressor, ordered worst to best, with the uncompressed baseline as a horizontal reference line.]%
+    }%
+  }
+  \caption{[To be drawn from \texttt{models/analysis/per\_press.json}.]}
+  \label{fig:per-press}
+\end{figure}
+
+\Cref{tab:per-press} reports the fraction of sequences exhibiting at least one catastrophe (looping or non-termination) under each compressor in our sweep. Numbers are sequence-level: a sequence counts as catastrophic if either detector fires anywhere in its trace.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lrr}
+\toprule
+\textbf{Compressor} & \textbf{Catastrophic rate} & $n_{\text{cat}} / n_{\text{seq}}$ \\
+\midrule
+KNorm              & $71.0\%$ & $1774 / 2500$ \\
+SnapKV             & $68.7\%$ & $1690 / 2460$ \\
+Random             & $35.9\%$ & $898 / 2500$ \\
+TOVA               & $15.4\%$ & $385 / 2500$ \\
+StreamingLLM       & $13.7\%$ & $342 / 2500$ \\
+ExpectedAttention  & $4.8\%$  & $121 / 2500$ \\
+\midrule
+\textit{None (uncompressed)} & \textit{$1.2\%$} & \textit{$6 / 500$} \\
+\bottomrule
+\end{tabular}
+\caption{Sequence-level catastrophic rate per compressor on GSM8K with Qwen2.5-7B-Instruct, pooled across all evaluated compression ratios. The uncompressed baseline establishes the model's intrinsic catastrophe rate on this task.}
+\label{tab:per-press}
+\end{table}
+
+Three observations stand out. First, catastrophic behavior is highly compressor-specific: there is a roughly $15\times$ spread between the most fragile compressor (KNorm at $71\%$) and the most robust (ExpectedAttention at $4.8\%$) on the same prompts and the same set of compression ratios. Second, two of the four ``principled'' compressors in our sweep (KNorm and SnapKV) are \emph{worse than random eviction} in this regime, and not by a small margin: by roughly a factor of two. Random eviction ($35.9\%$) sits below both, which is striking given that random is meant as a sanity baseline rather than a competitive method. Third, the uncompressed baseline is non-zero ($1.2\%$): a small fraction of long-form chain-of-thought generations on GSM8K loop or fail to terminate even with the full cache available. Any predictor of compression-induced catastrophes therefore has to clear an intrinsic floor; the true effect we want to model is the gap between this floor and the per-compressor rates above it.
+
+\subsection{Prevalence across compression ratios}
+\label{sec:failures:per-ratio}
+
+\begin{figure}[H]
+  \centering
+  \fbox{%
+    \parbox[c][3.2cm][c]{0.9\textwidth}{%
+      \centering\itshape [Figure placeholder: line plot of catastrophic rate vs.\ compression ratio, one curve per compressor, with the uncompressed baseline as a horizontal reference line.]%
+    }%
+  }
+  \caption{[To be drawn from \texttt{models/analysis/per\_ratio.json}.]}
+  \label{fig:per-ratio}
+\end{figure}
+
+Pooling all compressors at each ratio gives a clean view of how catastrophic behavior scales with compression aggressiveness (\cref{tab:per-ratio}).
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{rr}
+\toprule
+\textbf{Compression ratio} & \textbf{Catastrophic rate} \\
+\midrule
+$0.000$ (uncompressed) & $1.2\%$ \\
+$0.250$ & $10.1\%$ \\
+$0.500$ & $25.5\%$ \\
+$0.625$ & $35.9\%$ \\
+$0.750$ & $45.9\%$ \\
+$0.875$ & $56.7\%$ \\
+\bottomrule
+\end{tabular}
+\caption{Sequence-level catastrophic rate vs.\ compression ratio, pooled across all six compressors evaluated at each ratio. Each $0.125$ step in compression adds roughly ten percentage points of catastrophic behavior.}
+\label{tab:per-ratio}
+\end{table}
+
+The relationship is approximately linear: each $0.125$ step in compression adds roughly ten percentage points of catastrophic behavior, all the way from the floor at zero compression up to $56.7\%$ at the heaviest ratio we evaluate. There is no obvious ``safe'' heavy regime. By ratio $0.875$, more than half of all generations across all six compressors fail catastrophically, which inverts the usual mental model in which catastrophes are tail events to be ignored when reporting average accuracy: at heavy ratios they are the modal outcome.
+
+The pooled view also hides a useful asymmetry that \cref{tab:per-press} surfaces. The headline rate at $0.875$ is dominated by the fragile compressors (KNorm and SnapKV); the robust ones (ExpectedAttention) stay tolerable even there. This is precisely the tension that motivates a runtime predictor: an inference system that wants the memory savings of heavy compression cannot trust an averaged per-compressor accuracy number, because the variance across compressors and across individual sequences is enormous and concentrates exactly where it hurts.
+
+\subsection{What a catastrophe looks like}
+\label{sec:failures:qualitative}
+
+\Cref{fig:teaser} (left) tracks a single catastrophic generation under random eviction at ratio $0.75$. The model is asked a one-step GSM8K word problem, solves it correctly in the first part of the trace ($200$~kg total), then drifts into a spurious self-correction (``However, the question asks for\ldots''), and finally collapses into four near-identical repetitions of the same boxed answer before being cut off at the token budget. The arc of correct math, then drift, then loop crystallization, then non-termination is the canonical compression-induced catastrophe shape; both detectors fire on this single trace. The HERALD damage score, drawn as the vertical bar in the figure, rises tens of tokens before any externally visible failure becomes apparent.
+
+%=============================================================================
+% SECTION 3: HERALD
+%=============================================================================
+\section{HERALD}
+\label{sec:herald}
+
+\subsection{Per-token compression-damage target}
+\label{sec:herald:target}
+
+% TODO: define paired counterfactual replay. For each prompt, generate
+% twice: once with full cache, once under (press, ratio). Align by token
+% position. At each step t, compute JS divergence between compressed
+% and uncompressed next-token distributions; define future_sum_js_H(t)
+% as the sum of JS over the next H tokens. We use H = 25 in the
+% headline; we also report H = 5, 10, 50 for cross-horizon transfer.
+% Target transform: y = log1p(future_sum_js_H).
+
+\subsection{Per-token features}
+\label{sec:herald:features}
+
+% TODO: 24-feature CHEAP_ALL_FEATURES set (9 Tier-0: entropy,
+% top1_prob, top5_prob, h_alts, kl_div, top10_jaccard, tail_mass,
+% logit_range, eff_vocab_size; 12 rolling/EWMA over windows {8,32};
+% token_pos, relative_progress, compression_ratio). Note: feature
+% ablation (tier0_only 0.558 -> all_cheap 0.766) appears in
+% results/phase3/feature_ablation.json.
+
+\subsection{Per-token model}
+\label{sec:herald:model}
+
+% TODO: HGB regressor (sklearn HistGradientBoostingRegressor) on
+% log1p(future_sum_js_H). Hyperparameters: loss=squared_error,
+% max_iter=400, learning_rate=0.05, max_depth=8,
+% min_samples_leaf=200, l2_regularization=1.0, early_stopping,
+% validation_fraction=0.1, n_iter_no_change=20. Split:
+% GroupKFold(n_splits=5) by prompt_id; ~6.9M tokens, 29,240 runs.
+
+\subsection{Per-run trajectory-shape wrapper}
+\label{sec:herald:wrapper}
+
+% TODO: trajectory-shape wrapper over per-token OOF predictions. 17
+% pred-derived features, no metadata: 8 strict aggregates (max, p95,
+% p75, p50, mean, std, last5, top3) plus 9 trajectory features
+% (pred_above_p90_rate, pred_longest_run_above_p75_rate,
+% pred_count_local_maxima_rate (counts rate-normalised by n_tokens
+% per V1->V2 leakage fix), pred_max_pos, pred_late_minus_early,
+% pred_max_minus_p50, pred_p95_minus_p50, pred_auc,
+% pred_max_derivative). HGB wrapper: lr=0.05, max_iter=400,
+% max_depth=4, min_samples_leaf=20, l2=1.0. No metadata, so the
+% +0.053 margin over meta-only baseline (sum_js) is structural to
+% the predicted trajectory shape, not to compressor/ratio/task
+% leakage.
+
+\subsection{Streaming $O(1)$ implementation}
+\label{sec:herald:streaming}
+
+% TODO: StreamingHeraldRegressor maintains rolling and EWMA window
+% state per feature; per-token cost is O(F) in the feature count and
+% O(1) in trace length. Parity test on three held-out runs: max
+% absolute difference 0.0 at tol 5e-4, exact match.
+
+%=============================================================================
+% SECTION 4: EXPERIMENTAL SETUP
+%=============================================================================
+\section{Experimental setup}
+\label{sec:setup}
+
+% TODO: model (Qwen2.5-7B-Instruct), tasks (GSM8K, HumanEval,
+% IFEval, LongBench), compressors (StreamingLLM, SnapKV,
+% ExpectedAttention, KNorm, TOVA, Random), ratios (0.25, 0.375,
+% 0.5, 0.75, 0.875, 0.9375, 0.96875), sweep design, paired
+% counterfactual replay protocol, splits (prompt_group, LOPO press,
+% LOO ratio, LOO task), baselines (pred_max single-aggregate,
+% meta-only no-pred), cluster-bootstrap CI (n_boot=500, by
+% prompt_id).
+
+%=============================================================================
+% SECTION 5: RESULTS
+%=============================================================================
+\section{Results}
+\label{sec:results}
+
+% TODO: results tables.
+% (1) Per-token Spearman against future_sum_js_H for H in {5,10,25,50}
+%     with cluster-bootstrap CIs by prompt_id.
+% (2) Per-run wrapper Spearman against four targets (sum_js, sum_kl,
+%     rouge_l_drop, char_edit_ratio); report best single-aggregator
+%     substrate ceiling beside each.
+% (3) Generalization: per-compressor / per-ratio / per-task rho,
+%     with the heavy-ratio and ifeval slices called out.
+% (4) Calibration: reliability diagram + ECE for the per-run score.
+% (5) Streaming-vs-batched parity number.
+% Apply the audit framing fixes from notes/phase-3-validation-2026-
+% 05-15.md (B1: name the per-run wrapper "trajectory-shape pred-
+% only", disclose the +0.017 margin of the literal 8-feature
+% strict-aggregate variant; B2: refer to substrate ceilings as
+% best-single-aggregator ceilings; B3: scope the per-slice
+% retention argument to the single-aggregator regime; B4: drop
+% pre-committed-kill-threshold language).
+
+\end{document}

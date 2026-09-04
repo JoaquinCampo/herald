@@ -1,0 +1,52 @@
+% ============================================================
+% DRAFT NOTE (intervention)
+% Contains: The parity ladder that validates the causal interpretation and
+% documents when live forks, re-prefill, or historical labels are admissible.
+% Written now: The full validation requirements and their rationale.
+% Pending: Per-compressor and per-ratio parity outcomes.
+% Sources: docs/methodology.md; docs/_why/6_intervention_semantics.md;
+% docs/goal.md
+% ============================================================
+\section{Validated Intervention Protocol}
+\label{sec:intervention}
+
+The paired estimand is only meaningful when the two branches differ solely in
+the intended compression operation. We therefore treat intervention validation
+as a first-class contribution rather than an implementation detail. Each
+compressor is classified as cache-native, auxiliary-state, or
+re-prefill-defined before its labels are interpreted. Live-state forks are
+preferred for the first two classes; matched re-prefill is the faithful target
+for the third.
+
+The validation ladder has three checks. First, fork-clone parity and isolation
+continue two uncompressed state forks and require identical token IDs, while
+also verifying that writable cache storage, execution order, and hooks cannot
+cross-contaminate the branches. Second, sham re-prefill parity compares a live
+full-cache continuation with a no-press re-prefill from the same prefix.
+Third, where a live operator exists, intervention parity compares the
+compressed live-state fork with pressed re-prefill from that prefix. Every
+check records exact continuation match rate, first divergence position, and
+final quality delta.
+
+Passing sham parity permits a stored continuous reference to stand in for a
+no-press re-prefill. Passing intervention parity permits historical pressed
+re-prefill hybrids to be described as equivalent to live-cache activation. If
+either condition fails, labels are generated under the corresponding matched
+target instead of relying on a shortcut.
+
+\begin{table}[t]
+\centering
+\caption{Parity outcomes, reported for every compressor and removal ratio.}
+\label{tab:parity}
+\begin{tabular}{lllll}
+\toprule
+Compressor & Ratio & Fork and isolation & Sham re-prefill & Intervention \\
+\midrule
+\todo{compressor} & \todo{ratio} & \todo{outcome} & \todo{outcome} & \todo{outcome} \\
+\todo{compressor} & \todo{ratio} & \todo{outcome} & \todo{outcome} & \todo{outcome} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Figure~\todo{F2 reference} will depict the ladder and the branch pairs it
+validates.

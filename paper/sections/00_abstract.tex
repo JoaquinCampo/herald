@@ -1,0 +1,23 @@
+% ============================================================
+% DRAFT NOTE (abstract)
+% Contains: One paragraph. Compression harm is real, uneven, and measured
+% after the fact; the question is whether it can be forecast during a
+% generation from the model's own logits; the paired damage definition; the
+% corpus (contribution 1); the risk forecaster; the earliness curve as the
+% characterization; the headline confirmation result.
+% Written now: Skeleton only. Write last, once results exist.
+% Pending: Everything.
+% Sources: sections 1-3 as written; docs/goal.md
+% ============================================================
+\begin{abstract}
+\todo{Abstract: written last. Shape: (1) compression makes long-context
+inference cheaper but can silently make the answer worse, and today that is
+measured after the fact; (2) we ask whether, during a generation under
+compression, the model's own next-token distributions reveal that it will end
+worse than with the full cache; (3) damage is defined against the paired
+uncompressed run; (4) we release herald-logits, N runs / M token rows across
+tasks, compressors, ratios, with paired references, per-token signals,
+oracles, and scores; (5) a causal risk forecaster over zero-cost statistics;
+(6) earliness: at t tokens it reaches AUROC x, calibrated, vs an
+action-and-position comparator; (7) where it holds and degrades.}
+\end{abstract}

@@ -38,10 +38,47 @@ they never enter training rows.
 - Integrity gate identical to v1: one task per prompt, one `none` sequence
   and all 42 compressed sequences per prompt, unique `run_id`, contiguous
   `token_pos`. Any failure blocks; no outcome-selected deletion.
-- Additional label audit before any fitting: finite scores for every run;
-  label prevalence per task, press, and ratio recorded; the fraction of
+- Additional label audit before any fitting: score availability for every
+  run; label prevalence per task, press, and ratio recorded; the fraction of
   prompts whose reference run is itself wrong recorded (these prompts stay in;
   their compressed runs can only be damaged if scored strictly lower).
+  "Reference wrong" means `baseline_quality_score` strictly below the task's
+  maximum attainable score; it is a descriptive statistic only, never an
+  exclusion or weighting criterion.
+
+### 2.1 Null scores (ruling 2026-09-02, before the lock)
+
+Two distinct null patterns exist in the release and get opposite treatment:
+
+- **Prompt-level scoring gap**: the reference run and all 42 compressed runs
+  of a prompt have null scores. The gap is independent of compression, so the
+  prompt is excluded from training and evaluation. Record the excluded prompt
+  ids and counts per task in the lock; apply the identical rule to
+  confirmation prompts.
+- **Run-level null with a finite reference**: the compressed run produced no
+  scorable answer (non-termination, format break, unparseable output). This
+  is an outcome, not missing data. Set `compressed_quality_score` to the
+  task's minimum attainable score (0 for every task in the release) and label
+  normally: `damage = 1[baseline > 0]`. Never drop these runs; dropping them
+  is outcome-selected deletion and would remove the most damaged runs in the
+  corpus. Record their count per task, press, and ratio, and the fraction
+  carrying a catastrophe flag.
+- **Reference-level null with finite compressed scores** (ruling by the
+  lead, 2026-09-02): the reference run produced no scorable answer while some
+  compressed runs did. This is the mirror image of the run-level case and
+  gets the same treatment: set `baseline_quality_score` to the task's minimum
+  attainable score and label normally, so those compressed runs are not
+  damaged (they are compression-associated lift, recorded in the secondary
+  descriptives). Condition: the audit must verify, run by run, that the
+  reference null coincides with a recorded failure indicator (non-termination
+  flag, max-token or timeout stop reason, or no extractable answer) and record
+  the prompt ids. A reference null with no failure indicator is a data error
+  and blocks. Do not exclude these prompts: exclusion is outcome-selected
+  deletion and removes exactly the prompts where compression did not hurt.
+  Report a sensitivity analysis that drops reference-null prompts; the
+  primary label uses this rule.
+
+Any other null pattern blocks execution until ruled on and recorded.
 
 ## 3. Quarantine
 
@@ -69,16 +106,32 @@ opening.
 
 ## 5. Inputs
 
-Allowed: exactly the v1 whitelist (action categoricals, `log1p(token_pos+1)`,
-the twelve instantaneous sensors, the causal-history transforms), plus,
-optionally, the frozen v1 divergence forecaster's four horizon outputs as
-features. If used, they are computed by the frozen v1 model only; refitting it
-is out of scope.
+Frozen raw material (the only sources any feature may be derived from):
 
-Forbidden: every field in the v1 forbidden list, all quality and catastrophe
-fields, `relative_progress`, `output_length_so_far` beyond its identity with
-`t`, task identity as a predictor (stratification only), and any
-future-looking quantity.
+- the compression action: `press`, `compression_ratio`, and their identity;
+- absolute position `token_pos` (and transforms of it);
+- the twelve per-token instantaneous signals stored in the corpus:
+  `entropy`, `top1_prob`, `top5_prob`, `h_alts`, `avg_logp`, `delta_h`,
+  `delta_h_valid`, `kl_div`, `top10_jaccard`, `eff_vocab_size`,
+  `tail_mass`, `logit_range`;
+- optionally, the four horizon outputs of the frozen v1 divergence
+  forecaster, computed by that frozen model only (refitting it is out of
+  scope).
+
+Feature engineering is free on development folds: any transformation of the
+raw material that uses only rows of the same run with `token_pos <= t`
+(windows, differences, ratios, interactions, cumulative statistics, spectral
+or shape features, learned embeddings of the history, and so on). Every
+feature must pass an automated causality audit (recomputable from rows
+`<= t` alone) and the final feature set, with its code hash, is frozen in the
+prefit lock before confirmation opens. Feature choices made after seeing any
+confirmation row invalidate the confirmation.
+
+Forbidden as inputs, in any transformed form: every field in the v1
+forbidden list, all quality and catastrophe fields, `relative_progress`,
+final length or anything derived from it, task identity (stratification
+only), the uncompressed model's logits, oracle divergence fields, and any
+quantity from rows with `token_pos > t`.
 
 ## 6. Comparators
 

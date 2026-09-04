@@ -1,0 +1,31 @@
+% ============================================================
+% DRAFT NOTE (dataset)
+% Contains: The regenerated IFEval sweep, cell definition, coverage, and
+% provenance requirements.
+% Written now: Settled sweep design and label-provenance rationale.
+% Pending: Public artifact location and final manifest identifiers.
+% Sources: docs/methodology.md; docs/_why/6_intervention_semantics.md;
+% docs/_why/1_measuring_damage.md; docs/_why/3_measuring_quality.md
+% ============================================================
+\section{Dataset}
+
+The benchmark contains one completed paired intervention for each
+$(\text{model}, \text{task}, \text{prompt}, \compressor, \ratio, \switchpos)$
+cell. The initial study uses 200 IFEval prompts, three compressors, and four
+removal ratios. Its frozen sweep design contains 59,076 switch cells with no
+skipped rows. Switch positions are absolute generated-token positions, sampled
+on the fixed study grid; their meaning is thus consistent across prompts of
+different lengths.
+
+Each row stores the final quality delta and causal features from the reference
+stream at the decision boundary. The dataset manifest verifies scorer identity,
+ratio semantics, feature timing, exact cell keys, raw-artifact hashes, and
+complete prompt coverage. \todo{Add the released manifest version, artifact
+location, and exact compressor-to-intervention mapping.}
+
+Historical quality labels were not accepted merely because they shared token
+prefixes with the new protocol. Their controls may represent continuous
+decoding while their treatments use pressed re-prefill, a relationship that
+requires sham and intervention parity. The benchmark therefore uses labels
+regenerated under the validated intervention protocol, preserving a direct
+causal interpretation for every row.

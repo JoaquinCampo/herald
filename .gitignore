@@ -27,3 +27,14 @@ models/
 # Logs
 *.log
 nohup.out
+
+# LaTeX build outputs
+paper/*.pdf
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.out
+paper/*.toc
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.synctex.gz

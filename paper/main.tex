@@ -1,0 +1,49 @@
+% Provisional title and author metadata. Replace the article class in one line
+% when a venue is selected.
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{fancyhdr}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small HERALD: Hazard Estimation via Real-time Analysis of Logit Distributions}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\input{macros}
+
+% Title is provisional.
+\title{HERALD: Hazard Estimation via Real-time Analysis of Logit Distributions}
+\author{%
+  Joaquin Campo \and Ernesto Dufrechou \and Guillermo Moncecchi\\[2pt]
+  \normalsize Instituto de Computaci\'on, Facultad de Ingenier\'ia,
+  Universidad de la Rep\'ublica, Montevideo, Uruguay\\
+  \normalsize \texttt{\{joaquin.campo, edufrechou, gmonce\}@fing.edu.uy}\\[2pt]
+  \normalsize \url{https://github.com/JoaquinCampo/HERALD}\\
+  \normalsize \todo{dataset link once the new benchmark artifact is published}%
+}
+\date{}
+
+\begin{document}
+\maketitle
+
+\input{sections/00_abstract}
+\input{sections/01_introduction}
+\input{sections/02_target}
+\input{sections/03_corpus}
+\input{sections/04_forecaster}
+\input{sections/05_setup}
+\input{sections/06_results}
+\input{sections/07_discussion}
+
+\bibliographystyle{plainnat}
+\bibliography{bibliography}
+
+\end{document}

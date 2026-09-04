@@ -1,0 +1,57 @@
+% ============================================================
+% DRAFT NOTE (results)
+% Contains: The confirmation result and its characterization. Order:
+% headline earliness curve; comparator table per checkpoint; calibration;
+% stratified breakdown (task, compressor, ratio); catastrophic vs graceful;
+% what the forecaster looks at (ablation interpretation, deferred from
+% Section 4); secondary endpoints.
+% Written now: Outline only. No numbers exist yet.
+% Pending: Everything, from results/recovered/quality-risk-v1/.
+% Sources: agent REPORT.md and confirmation_result/report.json
+% ============================================================
+\section{Results}
+\label{sec:results}
+
+\subsection{Earliness: how soon the risk becomes readable}
+\todo{Figure: AUROC and calibration vs checkpoint t, HERALD vs action-clock
+vs prevalence, with prompt-cluster bands. One sentence on where the curve
+crosses the usefulness floor. This is the paper's main figure.}
+\begin{figure}[t]
+\centering
+\figplaceholder{AUROC (left) and calibration slope or ECE (right) as a
+function of checkpoint t, for HERALD, action-clock, and prevalence, with 95\%
+prompt-cluster bands}{results/recovered/quality-risk-v1/confirmation\_result/}
+\caption{\todo{Earliness curve caption.}}
+\label{fig:earliness}
+\end{figure}
+
+\subsection{Against the comparators}
+\todo{Table: per checkpoint, log loss / AUROC / Brier skill for HERALD,
+action-clock, action-only, prevalence, with simultaneous bounds on the
+paired differences. State the gate outcomes plainly.}
+
+\subsection{Calibration}
+\todo{Reliability diagram at t = 32 (and 128); slope, intercept, ECE with
+bounds. Whether the gate held.}
+
+\subsection{Where it holds and where it degrades}
+\todo{Stratified grid: task x compressor x ratio at t = 32; call out the
+fragile strata (heavy ratios, specific compressors, constrained-format
+tasks) and whether any subgroup was harmed relative to action-clock. Full
+grid to appendix.}
+
+\subsection{Catastrophic versus graceful damage}
+\todo{Earliness split by catastrophe flag. Expectation to test: catastrophic
+runs become readable earlier (loops have a signature); graceful damage is
+harder. Report both curves.}
+
+\subsection{What the forecaster is looking at}
+\todo{Interpretation of Table~\ref{tab:ablation}: which feature groups carry
+the signal; whether the mechanism hypothesis (uncertainty, instability,
+churn among alternatives) is supported; whether divergence-forecast features
+mattered. Keep interpretation tied to the ablation, not to feature
+importances alone.}
+
+\subsection{Secondary endpoints}
+\todo{Major damage (theta frozen; report value), catastrophe risk, magnitude
+given damage, all descriptive, opened after the primary decision.}

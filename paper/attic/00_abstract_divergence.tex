@@ -1,0 +1,33 @@
+% ============================================================
+% DRAFT NOTE (abstract)
+% Contains: The deployed-system framing, the current-state hazard target, the
+% training corpus and transfer setup, and the headline result.
+% Written now: Problem framing and objective under the 2026-09-01 pivot to
+% current-state multi-horizon divergence forecasting.
+% Pending: All empirical numbers and the final outcome statement.
+% Sources: pivot discussion (current-state hazard objective); prior HERALD
+% draft (voice); Jocana/herald-logits dataset card
+% ============================================================
+\begin{abstract}
+As language models are deployed in longer-context and lower-latency settings,
+inference-time approximations increasingly determine not only cost but
+reliability. KV-cache compression makes long-context inference cheaper, but
+today its damage is evaluated after generation, by averaging task scores over
+completed outputs. This misses the question a deployed system actually needs
+to answer: while decoding, is compression damaging this continuation right
+now, and how much damage is coming in the next few tokens? We introduce
+HERALD, an online forecaster of compression-induced damage built from the
+model's own logits. At every decoding step, whether or not the cache is
+currently compressed, HERALD predicts the divergence the compressed
+generation will accumulate against the uncompressed model over the next $k$
+tokens, evaluated on the same realized prefix so that ordinary autoregressive
+drift is factored out. The forecaster is a causal multi-horizon model over
+zero-cost statistics of the next-token distribution, trained on a public
+corpus of per-token compressed-generation traces and evaluated against strong
+temporal baselines, with grouped, stratified evaluation by task, compressor,
+ratio, horizon, and position. We validate that predicted distributional
+damage tracks realized task-quality failures, and we test cross-model
+transfer from the training corpus to a second model family.
+\todo{Insert the final held-out evidence: per-horizon correlations, baseline
+comparisons, quality-failure validation, and the transfer result.}
+\end{abstract}

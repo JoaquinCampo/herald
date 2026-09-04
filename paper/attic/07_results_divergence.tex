@@ -1,0 +1,115 @@
+% ============================================================
+% DRAFT NOTE (results)
+% Contains: The one-shot confirmation result, falsification battery,
+% stratified breakdowns, the quality-failure validation, and transfer.
+% Written now: The frozen current-state-damage-v1 confirmation numbers
+% (2026-09-01): per-horizon MSE vs action-clock, superiority bounds, and the
+% falsification outcomes. Verify each number against
+% results/recovered/current-state-damage-v1/confirmation_result/report.json
+% before submission.
+% Pending: Stratified tables, the quality-failure validation, and the
+% transfer experiment (not yet run).
+% Sources: current-state-damage-v1 confirmation result
+% ============================================================
+\section{Results}
+
+\todo{STALE SECTION: written for the divergence objective; to be rewritten for the quality-risk target. Do not review yet.}
+\label{sec:results}
+
+\subsection{Forecasting near-term damage}
+
+The confirmation set of 256 held-out prompt groups was opened and scored
+exactly once, after every modeling decision was frozen on the 508 development
+prompt groups. Table~\ref{tab:main-results} reports held-out MSE against the
+action-clock comparator.
+
+\begin{table}[t]
+\centering
+\caption{Held-out confirmation MSE by horizon. Improvement is relative MSE
+reduction over the action-clock comparator. Simultaneous one-sided
+superiority bounds on the paired loss difference are all below zero.}
+\label{tab:main-results}
+\begin{tabular}{lcccc}
+\toprule
+Horizon & HERALD & Action-clock & Improvement & Superiority bound \\
+\midrule
+$k{=}5$  & 0.006226 & 0.008386 & 25.8\% & $-0.001838$ \\
+$k{=}10$ & 0.004349 & 0.006172 & 29.5\% & $-0.001561$ \\
+$k{=}25$ & 0.002743 & 0.004244 & 35.4\% & $-0.001274$ \\
+$k{=}50$ & 0.001988 & 0.003529 & 43.7\% & $-0.001225$ \\
+\midrule
+Macro    & 0.003826 & 0.005583 & 31.5\% & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The causal signal strengthens with horizon: relative improvement grows from
+25.8\% at five tokens to 43.7\% at fifty. \todo{Interpret: is this because
+long-horizon damage is dominated by regime-level drift the causal features
+detect early, or because short-horizon damage has irreducible per-token
+noise? Check the development diagnostics.}
+
+\subsection{Falsification battery}
+
+The confirmation passed every preregistered check. Every task, compressor,
+and ratio subgroup had a negative paired loss difference against the
+comparator at every horizon; leave-one-task-out stress passed for all four
+held-out tasks and horizons; simultaneous residual calibration intervals
+contained zero and calibration-slope lower bounds were positive; predictions
+were finite, nonnegative, and horizon-monotone; and an independent
+recomputation reproduced the reported losses and superiority bounds.
+\todo{Render the subgroup grid as a compact table or heatmap from the
+confirmation report.}
+
+\subsection{Where the signal holds and where it degrades}
+
+\begin{table}[t]
+\centering
+\caption{Stratified held-out breakdown. \todo{Select the strata worth a
+main-body table from the confirmation report; the full grid goes to the
+appendix.}}
+\label{tab:strata-results}
+\begin{tabular}{llcccc}
+\toprule
+Stratum & Level & $k{=}5$ & $k{=}10$ & $k{=}25$ & $k{=}50$ \\
+\midrule
+\todo{task/compressor/ratio/position} & \todo{level} & \todo{v} & \todo{v} & \todo{v} & \todo{v} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Predicted divergence and realized quality failures}
+
+% DRAFT NOTE: this experiment has NOT been run. It is the paper's
+% load-bearing bridge from distribution-space damage to user-relevant
+% failure; without it the motivation overreaches the evidence.
+\todo{Run and report the preregistered secondary validation: per-run
+aggregates of predicted damage versus realized task-quality failures and
+catastrophe indicators.}
+\begin{figure}[t]
+\centering
+\figplaceholder{separation of failed versus clean runs by per-run aggregate
+of predicted damage, per task and compressor}{\todo{analysis output path}}
+\caption{\todo{Quality-failure validation caption and interpretation.}}
+\label{fig:quality-validation}
+\end{figure}
+
+\subsection{Cross-model transfer}
+
+% DRAFT NOTE: not yet established; the frozen result explicitly excludes it.
+\todo{Run and report zero-shot and adapted transfer on the second-family
+traces once collected.}
+\begin{table}[t]
+\centering
+\caption{Transfer to the second model family: zero-shot and after
+lightweight adaptation.}
+\label{tab:transfer-results}
+\begin{tabular}{lcccc}
+\toprule
+Mode & $k{=}5$ & $k{=}10$ & $k{=}25$ & $k{=}50$ \\
+\midrule
+\todo{zero-shot} & \todo{v} & \todo{v} & \todo{v} & \todo{v} \\
+\todo{adapted}   & \todo{v} & \todo{v} & \todo{v} & \todo{v} \\
+\bottomrule
+\end{tabular}
+\end{table}

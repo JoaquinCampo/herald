@@ -1,0 +1,32 @@
+% ============================================================
+% DRAFT NOTE (method)
+% Contains: The per-compressor scalar prediction target, causal input policy,
+% and learned and non-learned baselines.
+% Written now: The settled model family and feature-access constraints.
+% Pending: Exact fixed XGBoost hyperparameters and feature inventory.
+% Sources: docs/methodology.md; docs/goal.md; docs/_why/3_measuring_quality.md
+% ============================================================
+\section{Pre-switch Forecaster}
+
+For each compressor \compressor, we fit one scalar regressor
+\begin{equation}
+\hat d_c(s,r) = f_c(x_{\leq s}, r, s),
+\end{equation}
+where $x_{\leq s}$ contains only information available before compression is
+activated. Supported ratios are pooled within a compressor, with \ratio as an
+input. We fit a separate model for each compressor.
+
+The input whitelist contains the known removal ratio, absolute generated
+position, and causal pre-switch \texttt{feat\_\_*} statistics. Forbidden
+inputs are final reference length, relative position derived from final
+length, reference or hybrid quality, labels or label-derived fields, prompt
+identity, probes, hybrid-stream summaries, and every other post-switch signal.
+Feature timing at \switchpos is validated explicitly to exclude an off-by-one
+leak. Figure~\todo{F3 reference} will show this boundary.
+
+The primary learned model is a fixed XGBoost squared-error regressor
+\citep{xgboost}. A linear Huber regressor on the same whitelisted inputs is a
+learned baseline. Training-only non-learned baselines are the global mean and
+median, mean and median by ratio, and mean and median by ratio and 16-token
+absolute-position bucket. \todo{Specify the frozen XGBoost hyperparameters
+and the exact feature inventory.}

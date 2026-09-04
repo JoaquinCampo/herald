@@ -1,0 +1,113 @@
+% ============================================================
+% DRAFT NOTE (forecaster)
+% Contains: What the forecaster is; the raw material and the causal contract
+% (protocol section 5); feature engineering and ablation; model class and
+% frozen selection; calibration; inference cost. Comparators live in Setup;
+% interpretation of what the model looks at lives in Results.
+% Written now: Paragraphs 1, 2, and the structure of 4-6 (protocol-locked).
+% Pending (agent decisions): engineered features and ablation outcome;
+% whether the frozen divergence outputs were used; selected model class and
+% hyperparameters; calibration method; measured per-token cost.
+% Sources: docs/implementation/quality_risk_protocol.md sections 5 and 7;
+% current-state-damage-v1 protocol_lock.json (feature names, nested scheme)
+% ============================================================
+\section{The Forecaster}
+\label{sec:forecaster}
+
+HERALD is a classifier. At each decoding step \step{} of a compressed run it
+maps the causally available information \info{} to an estimate of
+$\risk(\step)$, the probability that the run ends damaged. It is trained on
+every compressed token row of the development prompts, each row carrying its
+run's label \dmg, so the same model serves every position and every
+compression action; position and action are inputs, not separate models.
+Because the label is shared by all rows of a run, early rows are noisy
+training examples by construction: the evidence at \step{} may not yet
+determine the outcome. That is the intended difficulty. The forecaster
+learns how much the evidence available at each point actually says about the
+outcome, and the earliness curve of Section~\ref{sec:results} reports the
+answer.
+
+\paragraph{Raw material and the causal contract.}
+Every input is derived from three sources. The compression action
+$\action = (\press, \ratio)$, encoded as compressor identity, ratio, and their
+combination, which carries the base rate of damage for that configuration.
+The absolute position \step. And the twelve per-token statistics of the
+compressed model's own next-token distribution described in
+Section~\ref{sec:corpus}: entropy, top-1 and top-5 probability, the number of
+plausible alternatives, average log-probability, entropy change and KL
+divergence from the previous step, top-10 overlap with the previous step,
+effective vocabulary size, tail probability mass, and logit range. A feature
+is admissible if it can be recomputed from rows of the same run with
+position at most \step; nothing else enters. This excludes the teacher-forced
+divergence oracles, because they require the full-cache model; the task
+scores and catastrophe flags, because they are the label or its
+correlates; relative progress and the final length, because they encode how
+the run ends; and the task identity, which is used to stratify results but
+never to predict them. The contract is what makes the forecaster zero-cost:
+at inference time it adds a fixed-size update of running statistics over
+logits the decoder has already produced, and one model evaluation.
+
+\paragraph{Feature engineering.}
+On top of the raw material we build causal transformations: trailing means
+and standard deviations over 8- and 32-token windows and exponential moving
+averages at matching half-lives for the principal signals, following the
+release, and \todo{describe the engineered features that survived
+development: differences, ratios, interactions, cumulative statistics, shape
+features of the recent trajectory, as reported by the agent}. \todo{State
+whether the four outputs of the frozen divergence forecaster of
+current-state-damage-v1 were included, and whether they survived.} Feature
+selection used development folds only, and the final feature set is frozen
+by code hash before confirmation. Table~\ref{tab:ablation} groups the
+features as instantaneous state, step-to-step dynamics, windowed history,
+and action-and-position, and reports development performance with each group
+removed; the interpretation of what the forecaster is looking at is deferred
+to Section~\ref{sec:results}.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Feature-group ablation on development folds (prompt-grouped
+out-of-fold). \todo{Fill from the agent's development report; choose the
+checkpoint and metric consistent with Section~\ref{sec:setup}.}}
+\label{tab:ablation}
+\begin{tabular}{lcc}
+\toprule
+Features removed & AUROC at $\step{=}32$ & Log loss at $\step{=}32$ \\
+\midrule
+None (full model)            & \todo{v} & \todo{v} \\
+Instantaneous state          & \todo{v} & \todo{v} \\
+Step-to-step dynamics        & \todo{v} & \todo{v} \\
+Windowed history             & \todo{v} & \todo{v} \\
+All sensors (action-clock)   & \todo{v} & \todo{v} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Model class and selection.}
+The first candidate is a gradient-boosted tree classifier over the frozen
+feature set, with \step{} as an ordinary input. The challenger is a causal
+sequence model over the raw per-token signals, a temporal convolutional
+network with a sigmoid head, which can in principle learn its own history
+features. Both are trained under the same nested prompt-grouped scheme:
+within the development prompts, one fold provides early stopping, three
+train, and the outer fold is held out, so hyperparameters are never chosen on
+data they are scored on. The selection rule was frozen before confirmation:
+if both candidates clear the development gates, the tree model is selected
+unless the sequence model's macro loss is better with a one-sided 95\%
+prompt-clustered bound. \todo{Report the selected model, its capacity and
+hyperparameters, and the development margin between the two.}
+
+\paragraph{Calibration.}
+A risk estimate is only useful to a decision if its probabilities mean what
+they say. The selected model's scores are calibrated with
+\todo{isotonic regression or Platt scaling; state which} fit on
+out-of-fold development scores only, and the calibrated map is frozen with
+the model. Calibration quality is a gate, not a diagnostic
+(Section~\ref{sec:setup}).
+
+\paragraph{Cost at inference.}
+Per token, the forecaster updates a fixed number of running statistics and
+evaluates one model; the cost is independent of sequence length and of the
+compressor. \todo{Report measured per-token latency of the feature update
+and model evaluation on CPU and, if measured, alongside a decode step on
+GPU.}

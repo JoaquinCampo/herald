@@ -1,0 +1,38 @@
+% ============================================================
+% DRAFT NOTE (discussion)
+% Contains: Interpretation by compressor and ratio, limits of the evidence,
+% and a short conclusion.
+% Written now: Scope limitations and the conditional interpretation frame.
+% Pending: The result-grounded account of success or failure by compressor and
+% ratio.
+% Sources: docs/goal.md; docs/methodology.md; docs/related_work.md
+% ============================================================
+\section{Discussion}
+
+The final discussion will interpret forecasting performance separately for
+each compressor and removal ratio, with the preregistered decision gate as the
+controlling evidence. \todo{Describe which compressors and ratios support or
+do not support magnitude forecasting, based on the held-out results.}
+
+\subsection{Limitations}
+
+This initial study concerns Llama-3.1-8B-Instruct \citep{llama31} on the
+single task IFEval. Its claim is limited to known compressors at known
+supported removal ratios. It does not establish that the features transfer to
+an unseen compressor, another model, another task, or an unseen ratio. IFEval
+loose accuracy is task grounded and deterministic, but it is still a bounded
+measure of instruction following rather than universal response quality.
+
+The parity ladder constrains the interpretation of every label: live-fork and
+matched-reprefill targets are comparable only to the extent established by the
+reported parity evidence. \todo{Add any result-specific limitations revealed
+by calibration, positive-damage slices, or ratio-level outcomes.}
+
+\subsection{Conclusion}
+
+HERALD frames KV-cache compression damage as a paired final-quality effect at
+a pre-switch decision boundary and tests whether causal state statistics can
+forecast its signed magnitude. The resulting evidence will state the claim at
+the compressor and ratio level, rather than relying on pooled accuracy.
+Future work may examine how a validated forecast can inform downstream
+serving policies.
