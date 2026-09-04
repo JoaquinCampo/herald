@@ -29,6 +29,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--feature-audit", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--device", choices=("cpu", "cuda"), default="cpu")
+    parser.add_argument(
+        "--exploratory-task-feature",
+        action="store_true",
+        help="NON-V1 EXPLORATORY: add task identity as a predictor "
+        "(forbidden by the v1 protocol; v2-feasibility pilot only).",
+    )
     return parser.parse_args()
 
 
@@ -271,6 +277,12 @@ def main() -> None:
         "log_token_clock",
     ]
     causal_features = [*action_features, *sensor_features]
+    if args.exploratory_task_feature:
+        tasks = sorted(str(value) for value in frame["task"].unique())
+        frame["task_category"] = pd.Categorical(
+            frame["task"], categories=tasks
+        )
+        causal_features = [*causal_features, "task_category"]
     for column in sensor_features:
         frame[column] = frame[column].astype(np.float32)
     weights = loss_weights(frame)
@@ -360,7 +372,11 @@ def main() -> None:
     )
     report = {
         "schema_version": SCHEMA_VERSION,
-        "status": "development_oof_complete_confirmation_unread",
+        "status": (
+            "exploratory_task_conditioned_not_a_v1_claim"
+            if args.exploratory_task_feature
+            else "development_oof_complete_confirmation_unread"
+        ),
         "protocol_lock_sha256": sha256_file(args.protocol_lock),
         "feature_audit_sha256": sha256_file(args.feature_audit),
         "data_manifest_sha256": sha256_file(args.data_root / "manifest.json"),
