@@ -76,3 +76,7 @@ restore your own access before using the remote recovery commands.
 ## Final research checkpoint
 
 The research reached the bounded impasse documented in experiments/065-research-impasse.md. No predictor was validated. The ownership heartbeat was paused on2026-09-07; restore files and access after formatting, then review065 before resuming research. Do not automatically relaunch closed experiments merely to recreate the previous cadence.
+
+## Format-ready backup
+
+The latest complete server snapshot is `/clustergpu/home/jcampo/herald-backups/2026-09-07-format-ready/research.tar`, with SHA256SUMS in that directory. It includes both research workspaces through the final research checkpoint. The prior temporary-fixture archive is copied alongside it. `mac-qa-runtime-packages.json` preserves the additional isolated QA preparation environment. Recreate environments after formatting; credentials are not included.
