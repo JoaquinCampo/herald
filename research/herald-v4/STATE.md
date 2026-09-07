@@ -1,6 +1,6 @@
 # Current owner state
 
-Updated 2026-09-07 UTC. Phase: PRESERVED; QA/EA design review next.
+Updated 2026-09-07 UTC. Phase: EXECUTE056 EA CPU technical slice.
 Owner task01a07744-a9c1-7e20-a463-b16d448dfbec.
 Root /Users/joaquincamponario/Documents/INCO/RESEARCH/herald-v4.
 Always explicit v4 workdir. V3 is a read-only archive.
@@ -90,6 +90,8 @@ Fullprojects/data/results onOrionexistingpaths; noGPU/newresearchduringpreservat
 See recovery/README.md. GitHubbranchpushed(firstcommitf8ba268). FullSHA256:1753v3+2126v4filesmatchOrion.
 Preservation COMPLETE: freshGitHubclone256filesexact; Orion3879filesSHA256exact.
 Research.tar4.0G+43Mfixtures verifiedSHA256OK. Syncfuturemilestonesbeforeresuming.
-Nextscientificdecision remains054/055feasibility; noGPUjobactive.
+Ownerselected056EAtechnicalCPUacceptance; noGPUjobactive.
 Atfuturemilestones syncOrion+commit/pushbranch, noforcepush orhistorydeletion.
-054MuSiQueand055EAfeasibilitynotescomplete; ownerhasnotselectednextpilot yet.
+056frozen: nativeEAdefaults, removal.10, tinyQwenCPU, sharedB0; see056.
+generic_probe_runner implements isolatedadapter+realCPUproof. NoQAcollectionyet.
+Nextaudittechnicalproof, thenfreezeQAfeasibilityifaccepted. No predictorselected.
