@@ -72,3 +72,7 @@ temporary CPU fixtures and audit helpers. Extract temporary fixtures into a
 chosen local temporary directory and update legacy absolute paths as needed.
 Your SSH and GitHub credentials are not in Git or these research archives;
 restore your own access before using the remote recovery commands.
+
+## Final research checkpoint
+
+The research reached the bounded impasse documented in experiments/065-research-impasse.md. No predictor was validated. The ownership heartbeat was paused on2026-09-07; restore files and access after formatting, then review065 before resuming research. Do not automatically relaunch closed experiments merely to recreate the previous cadence.
