@@ -21,6 +21,10 @@ git clone --branch feature/herald-v4-research https://github.com/joaquinCampo/he
 cd herald
 ```
 
+Install Git LFS and run `git lfs pull` in the checkout to retrieve the upstream
+RULER English-word resource. This is a vendored generator dependency; experiment
+datasets and outputs remain on Orion.
+
 Use `research/herald-v4` as the Codex project. Start by reading its `AGENTS.md`,
 `FRAMEWORK.md`, `RESEARCH.md` and `STATE.md`. Research conclusions and active
 work are in `experiments/`; the current objective is not yet scientifically met.
@@ -58,3 +62,13 @@ files for credentials and accidental data/model additions, commit, and push.
 Verify the GitHub branch SHA after pushing and run a checksum dry-run against
 Orion. Never force-push, replace main, or delete remote historical artifacts.
 If the remote branch has advanced, fetch and reconcile before writing.
+
+## Pre-format snapshot
+
+An additional server-side archive is stored at
+`/clustergpu/home/jcampo/herald-backups/2026-09-07-preformat/`. It includes both
+research workspaces, SHA-256 manifests, and a separate archive of task-owned
+temporary CPU fixtures and audit helpers. Extract temporary fixtures into a
+chosen local temporary directory and update legacy absolute paths as needed.
+Your SSH and GitHub credentials are not in Git or these research archives;
+restore your own access before using the remote recovery commands.

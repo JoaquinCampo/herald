@@ -87,6 +87,7 @@ Nextchoose16caseacceptancesliceonlyiffeasible, beforeanypredictor/datasetexpansi
 Userauthorizedsyncandpushtohttps://github.com/joaquinCampo/heraldbeforeformat.
 Selectedbranchfeature/herald-v4-research; source/docsunderresearch/herald-v3andv4.
 Fullprojects/data/results onOrionexistingpaths; noGPU/newresearchduringpreservation.
-See recovery/README.md. Finalbackup/remoteGitverificationpending.
+See recovery/README.md. GitHubbranchpushed(firstcommitf8ba268). FullSHA256:1753v3+2126v4filesmatchOrion.
+Snapshot verification is recorded in remote SHA256SUMS; newresearchpaused.
 Atfuturemilestones syncOrion+commit/pushbranch, noforcepush orhistorydeletion.
 054MuSiQueand055EAfeasibilitynotescomplete; ownerhasnotselectednextpilot yet.
