@@ -1,6 +1,6 @@
 # Current owner state
 
-Updated2026-09-07 UTC. Phase: EXECUTE058 MuSiQue pilot preparation.
+Updated2026-09-07 UTC. Phase: REFLECT062 MuSiQue feasibility FAIL, final audit pending.
 Owner task01a07744-a9c1-7e20-a463-b16d448dfbec.
 Root /Users/joaquincamponario/Documents/INCO/RESEARCH/herald-v4.
 Always explicit v4 workdir. V3 is a read-only archive.
@@ -44,23 +44,20 @@ matchedKnorm.10 comparator andinstrumentedno-op, independentstates.
 Officialmax-aliasanswertokenF1,signedloss. Noextraanswerextraction.
 Gates16scored/allstatechecks,>=12refsF1>=.8,>=3EA F1levels,>=4positivelosses.
 KnormcannotrescueEA failure. No tuningfixedslice afteroutcomes, nopredictorfit.
-059data prepared16rows,2255..4324prompttokens,maxanswer19.
-059independentauditFAIL groupingonly:16compositeIDs vs11selectedcomponents.
-GroupingfixrealreproPASS: full2417dev->459components, selected16->11.
-Rootverifiedallmanifestfieldsunchangedexceptgroup_id; independentrecheckPASS,see060.
-Do notacceptuniquecompositehashesasleakagegroups; resolvebeforeexposurebookkeeping.
-Data/scoringaudit mustpass beforeGPU. Nextminimalrealmodelrunnerfirstrowtechnicalcheck,
-thenremaining15sameprotocoliftechnicalpass. One-rowquality cannotselectcontinuation.
-Runnerindependent14checksPASS,see060. FirstrowGPUall9technicalgatesPASS; allbrancheswronganswerF1=0.
-RemainingrunSTOP:1morepassed, nextrowfaileduninterruptedvsB0parity,13notrun.
-Rootfoundrunnergate/scoringusesuninterruptedcontrary058sharedB0reference.
-Independentcontractreviewconfirmed061: fullprefillissupplemental,sharedB0isreference.
-Fixedsourceb571704412f3b221d7981abbfd04f28b89903374259f1b54da5d63f209488ac4.
-ExactfailedrowreplayPASSall5branchtokens/termination/all9gates; rootverified.
-Referenceplain_noopF1=EA4/9,loss0; supplementalparityfalsepreserved.
-generic_probe_runner ACTIVE final13OrionGPU, frozen058protocol.
-Outputsresults/musique-pilot-v1-first/ andmusique-pilot-v1-remaining/.
-Combinefirstoriginalrow+originalsecond+correctedthird+final13, no duplicatedrepros.
+058all16canonicalrowscomplete. Rootofficialrescoring80answers, see062.
+MeanreferenceF1=.42152778,5/16>=.8(required12). EAall16loss0,required4positive.
+EAfiveF1levels passesonlyscorelevelgate; no predictivevariation.
+KnormmeanF1=.3875,1positive/1negative/14zero, cannotrescueEA.
+All16sharedB0technicalgatespass; fullprefillsupplementalparity15/16.
+Originalgroupingfailurefixedfull2417dev459components,16selected11groups.
+Originalrunnerwrongreferencefailurecorrected061; exactall5branchreplayverified.
+Correctedsourceb571704412f3b221d7981abbfd04f28b89903374259f1b54da5d63f209488ac4.
+Canonicalrecords:firstoriginalrow+originalsecond+correctedthird+final13.
+No duplicatedrepros. Wrongreference+.126984historicalclaiminvalid; correctEA0.
+b16_audit ACTIVE independentfinal80scores/state/protocolaudit.
+FixedMuSiQue058sliceclosedpendingaudit, noparametertuning/predictorfit/newGPU.
+VTandMuSiQuepilotsunproductive; strategicretreatbeforeanynewcollection.
+NoGPUjobactive, onlypreservedkeepalive. Nootherworkeractive.
 
 ## Operational and preservation
 
