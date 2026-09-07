@@ -57,7 +57,9 @@ No duplicatedrepros. Wrongreference+.126984historicalclaiminvalid; correctEA0.
 Finalindependent80scores/16recordsPASS, fixedfeasibilityFAIL, see062.
 FixedMuSiQue058sliceclosed, noparametertuning/predictorfit/newGPU.
 VTandMuSiQuepilotsunproductive; strategicretreatbeforeanynewcollection.
-post_heads_strategy ACTIVE bounded063assumptionreview, no newcollection.
+063completed; ownerdeclinesredundanteligibilityaudit andnewarbitrarythresholds.
+strategic_restart ACTIVE bounded064seniorreviewofnewinformationmechanism.
+SolHighjustifiedafterunproductivepilotsandLunastrategyofferednoinformativestep.
 NoGPUjobactive, onlypreservedkeepalive. Nootherworkeractive.
 
 ## Operational and preservation
