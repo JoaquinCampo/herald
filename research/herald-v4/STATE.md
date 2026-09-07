@@ -44,7 +44,9 @@ matchedKnorm.10 comparator andinstrumentedno-op, independentstates.
 Officialmax-aliasanswertokenF1,signedloss. Noextraanswerextraction.
 Gates16scored/allstatechecks,>=12refsF1>=.8,>=3EA F1levels,>=4positivelosses.
 KnormcannotrescueEA failure. No tuningfixedslice afteroutcomes, nopredictorfit.
-value_data_adapter ACTIVE owns prepare_musique_pilot.py,data/musique-pilot-v1/,059record.
+059data prepared16rows,2255..4324prompttokens,maxanswer19.
+b16_audit ACTIVE independentdata/scoringcheck; rootflaggedsharedcomponentgrouping.
+Do notacceptuniquecompositehashesasleakagegroups; resolvebeforeexposurebookkeeping.
 Data/scoringaudit mustpass beforeGPU. Nextminimalrealmodelrunnerfirstrowtechnicalcheck,
 thenremaining15sameprotocoliftechnicalpass. One-rowquality cannotselectcontinuation.
 generic_probe_runner ACTIVE owns run_musique_pilot.py +musique-runner-cpu/; CPUonly.
