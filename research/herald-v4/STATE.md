@@ -54,7 +54,8 @@ thenremaining15sameprotocoliftechnicalpass. One-rowquality cannotselectcontinuat
 Runnerindependent14checksPASS,see060. FirstrowGPUall9technicalgatesPASS; allbrancheswronganswerF1=0.
 RemainingrunSTOP:1morepassed, nextrowfaileduninterruptedvsB0parity,13notrun.
 Rootfoundrunnergate/scoringusesuninterruptedcontrary058sharedB0reference.
-b16_audit ACTIVE independentcontractreview; noGPU/codefixyet.
+Independentcontractreviewconfirmed061: fullprefillissupplemental,sharedB0isreference.
+generic_probe_runner ACTIVE minimalfix+EXACTfailedrowGPUrepro; no13downstreamyet.
 Outputsresults/musique-pilot-v1-first/ andmusique-pilot-v1-remaining/.
 Preservefailure/repro/source; correctonlyiffrozencontractconfirms, rerunexactfailedrowfirst.
 
