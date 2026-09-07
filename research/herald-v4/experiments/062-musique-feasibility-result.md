@@ -1,6 +1,6 @@
 # MuSiQue058 feasibility result
 
-Owner rescored all80 raw branch answers from16 canonical records using the official max-alias tokenF1. Fixed feasibility FAIL. Independent final audit pending.
+Owner rescored all80 raw branch answers from16 canonical records using the official max-alias tokenF1. Fixed feasibility FAIL. Independent final audit accepted: all80 scores and16 technical records verified; results/musique-pilot-independent-audit.json SHA2568fb795f636925046087ef59dc3aa676e279dad71484a54a0a0efcdd4ac49c1d7.
 
 Canonical records use the original first row, original second row, corrected third-row reproduction, and13 final rows. Reproductions are not extra samples. All16 shared-boundary technical checks pass. Supplemental full-prefill parity holds15/16 and is not the reference.
 
