@@ -308,12 +308,13 @@ def run_row(
     )
 
     no_op_exact = (
-        uninterrupted.token_ids
-        == plain_noop.token_ids
-        == instrumented_noop.token_ids
-        and uninterrupted.termination_reason
-        == plain_noop.termination_reason
+        plain_noop.token_ids == instrumented_noop.token_ids
+        and plain_noop.termination_reason
         == instrumented_noop.termination_reason
+    )
+    uninterrupted_parity = (
+        uninterrupted.token_ids == plain_noop.token_ids
+        and uninterrupted.termination_reason == plain_noop.termination_reason
     )
     unchanged = (
         engine.cache_fingerprint(plain_boundary.cache) == plain_before
@@ -429,6 +430,7 @@ def run_row(
                 **ea.continuation_record(tokenizer, ea_result),
             },
             "no_op_exact": no_op_exact,
+            "uninterrupted_parity_supplemental": uninterrupted_parity,
         },
         "scores_by_answer": {
             name: answer_score(value["text"], row.get("answers"), scorer_root)
@@ -436,8 +438,53 @@ def run_row(
                 "uninterrupted": ea.continuation_record(
                     tokenizer, uninterrupted
                 ),
+                "plain_noop": ea.continuation_record(tokenizer, plain_noop),
+                "instrumented_noop": ea.continuation_record(
+                    tokenizer, instrumented_noop
+                ),
+                "knorm_10": ea.continuation_record(tokenizer, knorm_result),
                 "ea_10": ea.continuation_record(tokenizer, ea_result),
             }.items()
+        },
+        "quality_reference": {
+            "reference_branch": "plain_noop",
+            "signed_loss_reference_minus_ea_10": (
+                answer_score(
+                    tokenizer.decode(
+                        list(plain_noop.token_ids), skip_special_tokens=True
+                    ),
+                    row.get("answers"),
+                    scorer_root,
+                )
+                - answer_score(
+                    tokenizer.decode(
+                        list(ea_result.token_ids), skip_special_tokens=True
+                    ),
+                    row.get("answers"),
+                    scorer_root,
+                )
+                if scorer_root is not None
+                else None
+            ),
+            "signed_loss_reference_minus_knorm_10": (
+                answer_score(
+                    tokenizer.decode(
+                        list(plain_noop.token_ids), skip_special_tokens=True
+                    ),
+                    row.get("answers"),
+                    scorer_root,
+                )
+                - answer_score(
+                    tokenizer.decode(
+                        list(knorm_result.token_ids), skip_special_tokens=True
+                    ),
+                    row.get("answers"),
+                    scorer_root,
+                )
+                if scorer_root is not None
+                else None
+            ),
+            "uninterrupted_is_supplemental": True,
         },
         "cache_controls": {
             "plain_instrumented_boundary_equal": boundary_equal,

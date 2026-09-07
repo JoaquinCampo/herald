@@ -55,9 +55,12 @@ Runnerindependent14checksPASS,see060. FirstrowGPUall9technicalgatesPASS; allbran
 RemainingrunSTOP:1morepassed, nextrowfaileduninterruptedvsB0parity,13notrun.
 Rootfoundrunnergate/scoringusesuninterruptedcontrary058sharedB0reference.
 Independentcontractreviewconfirmed061: fullprefillissupplemental,sharedB0isreference.
-generic_probe_runner ACTIVE minimalfix+EXACTfailedrowGPUrepro; no13downstreamyet.
+Fixedsourceb571704412f3b221d7981abbfd04f28b89903374259f1b54da5d63f209488ac4.
+ExactfailedrowreplayPASSall5branchtokens/termination/all9gates; rootverified.
+Referenceplain_noopF1=EA4/9,loss0; supplementalparityfalsepreserved.
+generic_probe_runner ACTIVE final13OrionGPU, frozen058protocol.
 Outputsresults/musique-pilot-v1-first/ andmusique-pilot-v1-remaining/.
-Preservefailure/repro/source; correctonlyiffrozencontractconfirms, rerunexactfailedrowfirst.
+Combinefirstoriginalrow+originalsecond+correctedthird+final13, no duplicatedrepros.
 
 ## Operational and preservation
 
