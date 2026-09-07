@@ -46,7 +46,8 @@ Gates16scored/allstatechecks,>=12refsF1>=.8,>=3EA F1levels,>=4positivelosses.
 KnormcannotrescueEA failure. No tuningfixedslice afteroutcomes, nopredictorfit.
 059data prepared16rows,2255..4324prompttokens,maxanswer19.
 059independentauditFAIL groupingonly:16compositeIDs vs11selectedcomponents.
-value_data_adapter ACTIVE fixesfull-devconnectedgroups,preservingprompts/selection.
+GroupingfixrealreproPASS: full2417dev->459components, selected16->11.
+Rootverifiedallmanifestfieldsunchangedexceptgroup_id; independentrecheckpending.
 Do notacceptuniquecompositehashesasleakagegroups; resolvebeforeexposurebookkeeping.
 Data/scoringaudit mustpass beforeGPU. Nextminimalrealmodelrunnerfirstrowtechnicalcheck,
 thenremaining15sameprotocoliftechnicalpass. One-rowquality cannotselectcontinuation.

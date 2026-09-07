@@ -82,23 +82,97 @@ def context_text(row: dict[str, Any]) -> str:
     )
 
 
-def group_key(row: dict[str, Any]) -> str:
-    components = row["question_decomposition"]
-    payload = {
-        "question": normalized_text(row["question"]),
-        "component_ids": sorted(str(item["id"]) for item in components),
-        "component_answers": sorted(
-            normalized_text(str(item["answer"])) for item in components
-        ),
-        "supporting_paragraphs": sorted(
-            sha256_text(
+class UnionFind:
+    """Small deterministic disjoint-set implementation for dataset grouping."""
+
+    def __init__(self, members: list[str]) -> None:
+        self.parent = {member: member for member in members}
+
+    def find(self, member: str) -> str:
+        parent = self.parent[member]
+        if parent != member:
+            self.parent[member] = self.find(parent)
+        return self.parent[member]
+
+    def union(self, left: str, right: str) -> None:
+        left_root = self.find(left)
+        right_root = self.find(right)
+        if left_root == right_root:
+            return
+        if left_root > right_root:
+            left_root, right_root = right_root, left_root
+        self.parent[right_root] = left_root
+
+
+def grouping_features(row: dict[str, Any]) -> set[tuple[str, str]]:
+    features = {("composed_question", normalized_text(row["question"]))}
+    for item in row["question_decomposition"]:
+        features.add(("single_hop_id", str(item["id"])))
+        features.add(("component_answer", normalized_text(str(item["answer"]))))
+    for paragraph in row["paragraphs"]:
+        if paragraph["is_supporting"]:
+            paragraph_hash = sha256_text(
                 normalized_text(f"{paragraph['title']}\n{paragraph['paragraph_text']}")
             )
-            for paragraph in row["paragraphs"]
-            if paragraph["is_supporting"]
+            features.add(("supporting_paragraph", paragraph_hash))
+    return features
+
+
+def full_universe_groups(
+    rows: list[dict[str, Any]],
+) -> tuple[dict[str, str], dict[str, Any]]:
+    row_ids = [str(row["id"]) for row in rows]
+    if len(set(row_ids)) != len(row_ids):
+        raise ValueError("official source contains duplicate IDs")
+    union_find = UnionFind(row_ids)
+    feature_owner: dict[tuple[str, str], str] = {}
+    for row in rows:
+        row_id = str(row["id"])
+        for feature in grouping_features(row):
+            owner = feature_owner.setdefault(feature, row_id)
+            union_find.union(row_id, owner)
+
+    members_by_root: dict[str, list[str]] = {}
+    for row_id in row_ids:
+        members_by_root.setdefault(union_find.find(row_id), []).append(row_id)
+    component_members = {
+        root: sorted(members) for root, members in members_by_root.items()
+    }
+    group_by_row: dict[str, str] = {}
+    component_records = []
+    for members in sorted(component_members.values(), key=lambda value: value[0]):
+        canonical_hash = sha256_text(
+            json.dumps(members, ensure_ascii=False, separators=(",", ":"))
+        )
+        group_id = f"{TASK}-component-{canonical_hash}"
+        for row_id in members:
+            group_by_row[row_id] = group_id
+        component_records.append(
+            {
+                "group_id": group_id,
+                "member_count": len(members),
+                "first_member": members[0],
+                "last_member": members[-1],
+                "members_sha256": sha256_text(
+                    json.dumps(members, ensure_ascii=False, separators=(",", ":"))
+                ),
+            }
+        )
+    return group_by_row, {
+        "method": "deterministic_union_find",
+        "rule": [
+            "normalized composed question",
+            "any decomposition single-hop ID",
+            "any normalized constituent answer",
+            "any supporting paragraph title and text hash",
+        ],
+        "universe_rows": len(rows),
+        "universe_group_count": len(component_records),
+        "components": component_records,
+        "universe_components_sha256": sha256_text(
+            json.dumps(component_records, ensure_ascii=False, separators=(",", ":"))
         ),
     }
-    return sha256_text(json.dumps(payload, sort_keys=True, ensure_ascii=False))
 
 
 def format_prompt(row: dict[str, Any]) -> str:
@@ -298,6 +372,7 @@ def main() -> None:
     selected = sorted(candidates, key=lambda row: str(row["id"]))[:COUNT]
     if len(selected) != COUNT:
         raise ValueError(f"only {len(selected)} answerable two-hop rows available")
+    groups_by_id, grouping_metadata = full_universe_groups(official_rows)
     raw_by_converted_id = {
         str(row["id"]).replace("double__", "2hop__", 1): row for row in raw_rows
     }
@@ -351,9 +426,7 @@ def main() -> None:
             raise RuntimeError(
                 f"prompt plus horizon exceeds context limit for {row['id']}"
             )
-        group = group_key(row)
-        if group in group_ids:
-            raise RuntimeError(f"duplicate MuSiQue group in selected rows: {row['id']}")
+        group = groups_by_id[str(row["id"])]
         group_ids.add(group)
         overlaps = protected_overlap(prompt, row, protected)
         for key, value in overlaps.items():
@@ -367,7 +440,7 @@ def main() -> None:
         output_rows.append(
             {
                 "id": row["id"],
-                "group_id": f"{TASK}-{group}",
+                "group_id": group,
                 "prompt": prompt,
                 "answers": answers,
                 "task": TASK,
@@ -452,6 +525,11 @@ def main() -> None:
         "horizon_margin": HORIZON - max_answer_tokens,
         "overlap_counts": overlap_counts,
         "group_count": len(group_ids),
+        "grouping": {
+            **grouping_metadata,
+            "selected_group_count": len(group_ids),
+            "selected_group_ids": sorted(group_ids),
+        },
         "scorer_checks": scorer_check_results,
         "labels_preserved_in_selected_official": True,
         "labels_excluded_from_prompt": True,
