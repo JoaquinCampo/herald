@@ -51,8 +51,10 @@ Rootverifiedallmanifestfieldsunchangedexceptgroup_id; independentrecheckPASS,see
 Do notacceptuniquecompositehashesasleakagegroups; resolvebeforeexposurebookkeeping.
 Data/scoringaudit mustpass beforeGPU. Nextminimalrealmodelrunnerfirstrowtechnicalcheck,
 thenremaining15sameprotocoliftechnicalpass. One-rowquality cannotselectcontinuation.
-Runnerindependent14checksPASS,see060. generic_probe_runner ACTIVE firstrowOrionGPU.
-Outputresults/musique-pilot-v1-first/. Reviewtechnicalevidencebefore remaining15.
+Runnerindependent14checksPASS,see060. FirstrowGPUall9technicalgatesPASS; allbrancheswronganswerF1=0.
+generic_probe_runner ACTIVE remaining15OrionGPU, identicalprotocol.
+Outputsresults/musique-pilot-v1-first/ andmusique-pilot-v1-remaining/.
+After15completeevaluateall16frozen058gates; noqualitybasedrowselection.
 
 ## Operational and preservation
 
