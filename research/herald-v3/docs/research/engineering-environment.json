@@ -1,0 +1,34 @@
+{
+  "status": "prelaunch_environment_observed",
+  "observed_date": "2026-09-05",
+  "remote_root": "/clustergpu/home/jcampo/herald-v3",
+  "remote_python": "/clustergpu/home/jcampo/herald-v2/.venv/bin/python",
+  "reuse": "read-only environment; isolated v3 PYTHONPATH",
+  "model_snapshot": "/clustergpu/home/jcampo/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct/snapshots/a09a35458c702b33eeacc393d103063234e8bc28",
+  "packages": {
+    "torch": "2.10.0+cu128",
+    "transformers": "4.57.6",
+    "kvpress": "0.5.2",
+    "pydantic": "2.13.4",
+    "numpy": "2.4.6",
+    "datasets": "5.0.0",
+    "nltk": "3.9.4",
+    "langdetect": "1.0.9",
+    "immutabledict": "4.3.1",
+    "absl-py": "2.4.0"
+  },
+  "nltk_resources": [
+    "/clustergpu/home/jcampo/nltk_data/tokenizers/punkt",
+    "/clustergpu/home/jcampo/nltk_data/tokenizers/punkt_tab/english"
+  ],
+  "gpu": "RTX 5090",
+  "gpu_total_mib": 32607,
+  "preserved_keepalive_pid": 2106,
+  "gpu_experiment_launched": true,
+  "engine_smoke": {
+    "artifact": "results/engineering/smoke-01",
+    "passed": true,
+    "gate_count": 21,
+    "scope": "40-token synthetic engineering smoke, not quality acceptance"
+  }
+}

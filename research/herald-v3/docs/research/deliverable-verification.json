@@ -1,0 +1,37 @@
+{
+  "checked_at_utc": "2026-09-05T19:56:29.694243+00:00",
+  "status": "passed_deliverable_checks",
+  "artifact_hashes_verified": 1920,
+  "source_hashes_verified": 16,
+  "files": [
+    {
+      "path": "/Users/joaquincamponario/Documents/Codex/2026-09-05/herald-v3-drafts/outputs/herald-v3/docs/research/acceptance-slice.md",
+      "sha256": "e1d8048c6ffad0aa3650283d06326f5c471e439eeeb736ecb15e3a7ab62e7574",
+      "bytes": 4784
+    },
+    {
+      "path": "/Users/joaquincamponario/Documents/Codex/2026-09-05/herald-v3-drafts/outputs/herald-v3/docs/research/research-plan.md",
+      "sha256": "974b32ea011b78c1f6e90d0d7cdf33ab468a066bce4636f817cb6da91722c0e6",
+      "bytes": 9937
+    },
+    {
+      "path": "/Users/joaquincamponario/Documents/Codex/2026-09-05/herald-v3-drafts/outputs/herald-v3/docs/research/reuse-inventory.md",
+      "sha256": "dd2b9e0242eb46d2ed318a87c37af3e4c17ef6d26bac0775ff63da8a34c893d6",
+      "bytes": 6449
+    },
+    {
+      "path": "/Users/joaquincamponario/Documents/Codex/2026-09-05/herald-v3-drafts/outputs/herald-v3/docs/research/reuse-manifest.json",
+      "sha256": "5c53fb12c205376829e89816097688371deb5de637c12a883f428ffdb5d8265d",
+      "bytes": 329894
+    },
+    {
+      "path": "/Users/joaquincamponario/Documents/Codex/2026-09-05/herald-v3-drafts/outputs/herald-v3/worker-state.md",
+      "sha256": "daec8547f95e7cab1c44bd06eae5b4be52bfdb482a689a8960925c8162558c8a",
+      "bytes": 3322
+    }
+  ],
+  "limitations": [
+    "No v3 generation, training, GPU, scorer execution or real parity experiment performed",
+    "Scientific plan remains proposed for owner review"
+  ]
+}
