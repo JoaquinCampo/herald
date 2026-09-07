@@ -52,9 +52,11 @@ Do notacceptuniquecompositehashesasleakagegroups; resolvebeforeexposurebookkeepi
 Data/scoringaudit mustpass beforeGPU. Nextminimalrealmodelrunnerfirstrowtechnicalcheck,
 thenremaining15sameprotocoliftechnicalpass. One-rowquality cannotselectcontinuation.
 Runnerindependent14checksPASS,see060. FirstrowGPUall9technicalgatesPASS; allbrancheswronganswerF1=0.
-generic_probe_runner ACTIVE remaining15OrionGPU, identicalprotocol.
+RemainingrunSTOP:1morepassed, nextrowfaileduninterruptedvsB0parity,13notrun.
+Rootfoundrunnergate/scoringusesuninterruptedcontrary058sharedB0reference.
+b16_audit ACTIVE independentcontractreview; noGPU/codefixyet.
 Outputsresults/musique-pilot-v1-first/ andmusique-pilot-v1-remaining/.
-After15completeevaluateall16frozen058gates; noqualitybasedrowselection.
+Preservefailure/repro/source; correctonlyiffrozencontractconfirms, rerunexactfailedrowfirst.
 
 ## Operational and preservation
 
