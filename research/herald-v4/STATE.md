@@ -45,11 +45,12 @@ Officialmax-aliasanswertokenF1,signedloss. Noextraanswerextraction.
 Gates16scored/allstatechecks,>=12refsF1>=.8,>=3EA F1levels,>=4positivelosses.
 KnormcannotrescueEA failure. No tuningfixedslice afteroutcomes, nopredictorfit.
 059data prepared16rows,2255..4324prompttokens,maxanswer19.
-b16_audit ACTIVE independentdata/scoringcheck; rootflaggedsharedcomponentgrouping.
+059independentauditFAIL groupingonly:16compositeIDs vs11selectedcomponents.
+value_data_adapter ACTIVE fixesfull-devconnectedgroups,preservingprompts/selection.
 Do notacceptuniquecompositehashesasleakagegroups; resolvebeforeexposurebookkeeping.
 Data/scoringaudit mustpass beforeGPU. Nextminimalrealmodelrunnerfirstrowtechnicalcheck,
 thenremaining15sameprotocoliftechnicalpass. One-rowquality cannotselectcontinuation.
-generic_probe_runner ACTIVE owns run_musique_pilot.py +musique-runner-cpu/; CPUonly.
+RunnerCPUmakerpassed9gates; b16_audit ACTIVE independentrunnerreview.
 Data/runner coordinate schema, no overlapping writes. NoGPUjobactive.
 
 ## Operational and preservation
