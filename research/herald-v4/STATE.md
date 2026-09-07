@@ -47,12 +47,12 @@ KnormcannotrescueEA failure. No tuningfixedslice afteroutcomes, nopredictorfit.
 059data prepared16rows,2255..4324prompttokens,maxanswer19.
 059independentauditFAIL groupingonly:16compositeIDs vs11selectedcomponents.
 GroupingfixrealreproPASS: full2417dev->459components, selected16->11.
-Rootverifiedallmanifestfieldsunchangedexceptgroup_id; independentrecheckpending.
+Rootverifiedallmanifestfieldsunchangedexceptgroup_id; independentrecheckPASS,see060.
 Do notacceptuniquecompositehashesasleakagegroups; resolvebeforeexposurebookkeeping.
 Data/scoringaudit mustpass beforeGPU. Nextminimalrealmodelrunnerfirstrowtechnicalcheck,
 thenremaining15sameprotocoliftechnicalpass. One-rowquality cannotselectcontinuation.
-RunnerCPUmakerpassed9gates; b16_audit ACTIVE independentrunnerreview.
-Data/runner coordinate schema, no overlapping writes. NoGPUjobactive.
+Runnerindependent14checksPASS,see060. generic_probe_runner ACTIVE firstrowOrionGPU.
+Outputresults/musique-pilot-v1-first/. Reviewtechnicalevidencebefore remaining15.
 
 ## Operational and preservation
 
