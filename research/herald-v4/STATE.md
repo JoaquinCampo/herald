@@ -47,7 +47,8 @@ KnormcannotrescueEA failure. No tuningfixedslice afteroutcomes, nopredictorfit.
 value_data_adapter ACTIVE owns prepare_musique_pilot.py,data/musique-pilot-v1/,059record.
 Data/scoringaudit mustpass beforeGPU. Nextminimalrealmodelrunnerfirstrowtechnicalcheck,
 thenremaining15sameprotocoliftechnicalpass. One-rowquality cannotselectcontinuation.
-NoGPUjobactive. Nootherworkeractive.
+generic_probe_runner ACTIVE owns run_musique_pilot.py +musique-runner-cpu/; CPUonly.
+Data/runner coordinate schema, no overlapping writes. NoGPUjobactive.
 
 ## Operational and preservation
 
