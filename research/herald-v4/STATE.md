@@ -1,6 +1,6 @@
 # Current owner state
 
-Updated 2026-09-07 UTC. Phase: PRESERVE before user Mac format.
+Updated 2026-09-07 UTC. Phase: PRESERVED; QA/EA design review next.
 Owner task01a07744-a9c1-7e20-a463-b16d448dfbec.
 Root /Users/joaquincamponario/Documents/INCO/RESEARCH/herald-v4.
 Always explicit v4 workdir. V3 is a read-only archive.
@@ -88,6 +88,8 @@ Userauthorizedsyncandpushtohttps://github.com/joaquinCampo/heraldbeforeformat.
 Selectedbranchfeature/herald-v4-research; source/docsunderresearch/herald-v3andv4.
 Fullprojects/data/results onOrionexistingpaths; noGPU/newresearchduringpreservation.
 See recovery/README.md. GitHubbranchpushed(firstcommitf8ba268). FullSHA256:1753v3+2126v4filesmatchOrion.
-Snapshot verification is recorded in remote SHA256SUMS; newresearchpaused.
+Preservation COMPLETE: freshGitHubclone256filesexact; Orion3879filesSHA256exact.
+Research.tar4.0G+43Mfixtures verifiedSHA256OK. Syncfuturemilestonesbeforeresuming.
+Nextscientificdecision remains054/055feasibility; noGPUjobactive.
 Atfuturemilestones syncOrion+commit/pushbranch, noforcepush orhistorydeletion.
 054MuSiQueand055EAfeasibilitynotescomplete; ownerhasnotselectednextpilot yet.
