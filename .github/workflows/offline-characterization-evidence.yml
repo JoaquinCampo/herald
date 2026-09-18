@@ -1,0 +1,64 @@
+name: Offline characterization evidence
+
+on:
+  push:
+    branches: [research/offline-characterization-20260918]
+    paths: [.github/workflows/offline-characterization-evidence.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-existing-records:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      CUDA_VISIBLE_DEVICES: ""
+    steps:
+      - name: Read the fixed public evidence snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          git init source
+          git -C source remote add origin https://github.com/JoaquinCampo/herald.git
+          git -C source fetch --depth=1 origin 3e3715ca0bf196c620fc4ad2b16b5e2dde9ce272
+          git -C source checkout --detach FETCH_HEAD
+      - name: Inventory and package existing files only (no model imports or forward passes)
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import pathlib
+          import zipfile
+          root = pathlib.Path('source')
+          baseline = root / 'docs/_why/7_compression_damage_mechanism.md'
+          print('SOURCE_COMMIT: 3e3715ca0bf196c620fc4ad2b16b5e2dde9ce272')
+          print('BASELINE_PRESENT:', baseline.exists())
+          for name in ('dose', 'pinned', 'streaming', 'excise'):
+              path = root / 'herald-offline/mech-records' / (name + '.json')
+              rows = json.loads(path.read_text())
+              print(name, 'rows:', len(rows), 'first-row keys:', list(rows[0]) if rows else [], 'sha256:', hashlib.sha256(path.read_bytes()).hexdigest())
+              if rows and isinstance(rows[0], dict):
+                  print('first-arm names:', list(rows[0].get('arms', {})))
+          paths = sorted(p for p in root.rglob('*') if p.is_file() and '.git' not in p.relative_to(root).parts)
+          with zipfile.ZipFile('herald-evidence-snapshot.zip', 'w', compression=zipfile.ZIP_DEFLATED) as archive:
+              for path in paths:
+                  archive.write(path, path.relative_to(root).as_posix())
+          print('PACKAGED_FILES:', len(paths))
+          print('ARCHIVE_SHA256:', hashlib.sha256(pathlib.Path('herald-evidence-snapshot.zip').read_bytes()).hexdigest())
+          print('HISTORY_INDEX:')
+          for path in sorted((root / 'herald-offline/history').glob('*.md')):
+              heading = next((line for line in path.read_text().splitlines() if line.startswith('#')), '')
+              print(path.name, heading)
+          PY
+      - name: Export snapshot for local CPU analysis
+        uses: actions/upload-artifact@v4
+        with:
+          name: herald-existing-evidence
+          path: herald-evidence-snapshot.zip
+          retention-days: 1
+          if-no-files-found: error
