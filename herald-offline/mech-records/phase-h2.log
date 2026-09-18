@@ -1,0 +1,10 @@
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00, 327.71it/s]
+[113-competitor-v1-00-base excise] drop=22 score=0.0 runs=[]
+[113-competitor-v1-00-planted excise] drop=22 score=0.0 runs=['3704852', '3704852']
+[113-competitor-v1-01-base excise] drop=22 score=0.0 runs=[]
+[113-competitor-v1-01-planted excise] drop=22 score=0.0 runs=['4860455']
+[113-competitor-v1-02-base excise] drop=22 score=0.0 runs=[]
+[113-competitor-v1-02-planted excise] drop=22 score=0.0 runs=['6109704']
+[113-competitor-v1-03-base excise] drop=22 score=0.0 runs=[]
+[113-competitor-v1-03-planted excise] drop=22 score=0.0 runs=['6024064']
+wrote excise.json

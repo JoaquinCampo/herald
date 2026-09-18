@@ -1,0 +1,156 @@
+[
+ {
+  "mid": "113-competitor-v1-00-base",
+  "arm": "knorm:0.05",
+  "removal": 0.05,
+  "tA": 16,
+  "tB": 22
+ },
+ {
+  "mid": "113-competitor-v1-00-base",
+  "arm": "knorm:0.1",
+  "removal": 0.1,
+  "tA": 16,
+  "tB": 22
+ },
+ {
+  "mid": "113-competitor-v1-00-base",
+  "arm": "knorm:0.25",
+  "removal": 0.25,
+  "tA": 15,
+  "tB": 21
+ },
+ {
+  "mid": "113-competitor-v1-00-base",
+  "arm": "knorm:0.5",
+  "removal": 0.5,
+  "tA": 15,
+  "tB": 20
+ },
+ {
+  "mid": "113-competitor-v1-00-planted",
+  "arm": "knorm:0.05",
+  "removal": 0.05,
+  "tA": 16,
+  "tB": 19
+ },
+ {
+  "mid": "113-competitor-v1-00-planted",
+  "arm": "knorm:0.1",
+  "removal": 0.1,
+  "tA": 15,
+  "tB": 18
+ },
+ {
+  "mid": "113-competitor-v1-00-planted",
+  "arm": "knorm:0.25",
+  "removal": 0.25,
+  "tA": 15,
+  "tB": 18
+ },
+ {
+  "mid": "113-competitor-v1-00-planted",
+  "arm": "knorm:0.5",
+  "removal": 0.5,
+  "tA": 15,
+  "tB": 18
+ },
+ {
+  "mid": "113-competitor-v1-01-base",
+  "arm": "knorm:0.05",
+  "removal": 0.05,
+  "tA": 16,
+  "tB": 22
+ },
+ {
+  "mid": "113-competitor-v1-01-base",
+  "arm": "knorm:0.1",
+  "removal": 0.1,
+  "tA": 15,
+  "tB": 21
+ },
+ {
+  "mid": "113-competitor-v1-01-base",
+  "arm": "knorm:0.25",
+  "removal": 0.25,
+  "tA": 15,
+  "tB": 21
+ },
+ {
+  "mid": "113-competitor-v1-01-base",
+  "arm": "knorm:0.5",
+  "removal": 0.5,
+  "tA": 15,
+  "tB": 20
+ },
+ {
+  "mid": "113-competitor-v1-01-planted",
+  "arm": "knorm:0.05",
+  "removal": 0.05,
+  "tA": 16,
+  "tB": 20
+ },
+ {
+  "mid": "113-competitor-v1-01-planted",
+  "arm": "knorm:0.1",
+  "removal": 0.1,
+  "tA": 15,
+  "tB": 19
+ },
+ {
+  "mid": "113-competitor-v1-01-planted",
+  "arm": "knorm:0.25",
+  "removal": 0.25,
+  "tA": 15,
+  "tB": 19
+ },
+ {
+  "mid": "113-competitor-v1-01-planted",
+  "arm": "knorm:0.5",
+  "removal": 0.5,
+  "tA": 15,
+  "tB": 19
+ },
+ {
+  "mid": "113-competitor-v1-02-planted",
+  "arm": "knorm:0.1",
+  "removal": 0.1,
+  "tA": 16,
+  "tB": 20
+ },
+ {
+  "mid": "113-competitor-v1-02-planted",
+  "arm": "knorm:0.25",
+  "removal": 0.25,
+  "tA": 15,
+  "tB": 19
+ },
+ {
+  "mid": "113-competitor-v1-02-planted",
+  "arm": "knorm:0.5",
+  "removal": 0.5,
+  "tA": 15,
+  "tB": 19
+ },
+ {
+  "mid": "113-competitor-v1-03-base",
+  "arm": "knorm:0.5",
+  "removal": 0.5,
+  "tA": 15,
+  "tB": 21
+ },
+ {
+  "mid": "113-competitor-v1-03-planted",
+  "arm": "knorm:0.25",
+  "removal": 0.25,
+  "tA": 15,
+  "tB": 21
+ },
+ {
+  "mid": "113-competitor-v1-03-planted",
+  "arm": "knorm:0.5",
+  "removal": 0.5,
+  "tA": 15,
+  "tB": 21
+ }
+]

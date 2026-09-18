@@ -1,0 +1,50 @@
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00, 352.94it/s]
+[113-competitor-v1-00-base] ref_match=True
+[113-competitor-v1-00-base knorm:0.0] score=1.0 runs=['3705852'] match=True
+[113-competitor-v1-00-base knorm:0.05] score=0.0 runs=['370585'] match=n/a
+[113-competitor-v1-00-base knorm:0.1] score=0.0 runs=['370585'] match=True
+[113-competitor-v1-00-base knorm:0.25] score=0.0 runs=['370585'] match=n/a
+[113-competitor-v1-00-base knorm:0.5] score=0.0 runs=[] match=n/a
+[113-competitor-v1-00-planted] ref_match=True
+[113-competitor-v1-00-planted knorm:0.0] score=1.0 runs=['3705852'] match=True
+[113-competitor-v1-00-planted knorm:0.05] score=0.0 runs=['37058'] match=n/a
+[113-competitor-v1-00-planted knorm:0.1] score=0.0 runs=['370585'] match=True
+[113-competitor-v1-00-planted knorm:0.25] score=0.0 runs=['37058'] match=n/a
+[113-competitor-v1-00-planted knorm:0.5] score=0.0 runs=[] match=n/a
+[113-competitor-v1-01-base] ref_match=True
+[113-competitor-v1-01-base knorm:0.0] score=1.0 runs=['4860155'] match=True
+[113-competitor-v1-01-base knorm:0.05] score=0.0 runs=['4860151'] match=n/a
+[113-competitor-v1-01-base knorm:0.1] score=0.0 runs=['486015'] match=True
+[113-competitor-v1-01-base knorm:0.25] score=0.0 runs=['486051'] match=n/a
+[113-competitor-v1-01-base knorm:0.5] score=0.0 runs=[] match=n/a
+[113-competitor-v1-01-planted] ref_match=True
+[113-competitor-v1-01-planted knorm:0.0] score=1.0 runs=['4860155'] match=True
+[113-competitor-v1-01-planted knorm:0.05] score=0.0 runs=['486015'] match=n/a
+[113-competitor-v1-01-planted knorm:0.1] score=0.0 runs=['486015'] match=True
+[113-competitor-v1-01-planted knorm:0.25] score=0.0 runs=['486045'] match=n/a
+[113-competitor-v1-01-planted knorm:0.5] score=0.0 runs=['48645', '48645', '48645'] match=n/a
+[113-competitor-v1-02-base] ref_match=True
+[113-competitor-v1-02-base knorm:0.0] score=1.0 runs=['6109204'] match=True
+[113-competitor-v1-02-base knorm:0.05] score=1.0 runs=['6109204'] match=n/a
+[113-competitor-v1-02-base knorm:0.1] score=1.0 runs=['6109204'] match=True
+[113-competitor-v1-02-base knorm:0.25] score=1.0 runs=['6109204'] match=n/a
+[113-competitor-v1-02-base knorm:0.5] score=1.0 runs=['6109204', '6109204', '6109204', '6109204'] match=n/a
+[113-competitor-v1-02-planted] ref_match=True
+[113-competitor-v1-02-planted knorm:0.0] score=1.0 runs=['6109204'] match=True
+[113-competitor-v1-02-planted knorm:0.05] score=1.0 runs=['6109204'] match=n/a
+[113-competitor-v1-02-planted knorm:0.1] score=0.0 runs=['6109704'] match=True
+[113-competitor-v1-02-planted knorm:0.25] score=0.0 runs=['6109704'] match=n/a
+[113-competitor-v1-02-planted knorm:0.5] score=0.0 runs=['610797', '610797', '610792', '610797'] match=n/a
+[113-competitor-v1-03-base] ref_match=True
+[113-competitor-v1-03-base knorm:0.0] score=1.0 runs=['6024061'] match=True
+[113-competitor-v1-03-base knorm:0.05] score=1.0 runs=['6024061'] match=n/a
+[113-competitor-v1-03-base knorm:0.1] score=1.0 runs=['6024061'] match=True
+[113-competitor-v1-03-base knorm:0.25] score=1.0 runs=['6024061'] match=n/a
+[113-competitor-v1-03-base knorm:0.5] score=0.0 runs=['6024601'] match=n/a
+[113-competitor-v1-03-planted] ref_match=True
+[113-competitor-v1-03-planted knorm:0.0] score=1.0 runs=['6024061'] match=True
+[113-competitor-v1-03-planted knorm:0.05] score=1.0 runs=['6024061'] match=n/a
+[113-competitor-v1-03-planted knorm:0.1] score=1.0 runs=['6024061'] match=True
+[113-competitor-v1-03-planted knorm:0.25] score=0.0 runs=['6024064', '6024064', '6024064', '6024064', '6024064', '6024064', '6024064', '6024064'] match=n/a
+[113-competitor-v1-03-planted knorm:0.5] score=0.0 runs=['6024601'] match=n/a
+wrote dose.json

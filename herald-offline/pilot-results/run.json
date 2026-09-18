@@ -1,0 +1,126 @@
+{
+  "completed_prompt_count": 8,
+  "config": {
+    "actions": [
+      {
+        "action_id": "knorm:0",
+        "name": "knorm",
+        "removal_fraction": 0.0
+      },
+      {
+        "action_id": "knorm:0.1",
+        "name": "knorm",
+        "removal_fraction": 0.1
+      }
+    ],
+    "boundary": {
+      "assistant_prefix": "optional row field rendered with continue_final_message",
+      "generated_ids": [],
+      "logical_position": "prompt_length - 1",
+      "pending_token": "prompt_ids[:, -1]",
+      "prefill": "prompt_ids[:, :-1]"
+    },
+    "default_max_new_tokens": 128,
+    "max_prompts": 8,
+    "reference_path": "full_prefill",
+    "selected_prompt_count": 8
+  },
+  "engine": {
+    "engine_path": "/clustergpu/home/jcampo/herald-v3/src/herald_v3/engineering/engine.py",
+    "engine_root": "/clustergpu/home/jcampo/herald-v3/src",
+    "engine_sha256": "4071a4fcdb2bae4d3d7f3f05b1560d54dd2f2143d675e4e2e79a912ae67dbb52",
+    "pilot_source_path": "/clustergpu/home/jcampo/herald-v4/scripts/run_pair_pilot.py",
+    "pilot_source_sha256": "5cc05f71ce2b71ba55bdf930524157cd26300f985c6d5315b1d3c80279fe4e77"
+  },
+  "failed_prompt_count": 0,
+  "failures": [],
+  "finished_at_utc": "2026-09-17T18:43:12.096706+00:00",
+  "manifest_path": "/clustergpu/home/jcampo/herald-v4/data/113-competitor-v1/pair-manifest.json",
+  "manifest_sha256": "917c47aba6f1360e76aa52bd64d24ca7c35b552215eca2f9578de7c7530ecae9",
+  "prompts": [
+    {
+      "id": "113-competitor-v1-00-base",
+      "path": "0000-113-competitor-v1-00-base.json",
+      "prompt_index": 0,
+      "status": "completed"
+    },
+    {
+      "id": "113-competitor-v1-00-planted",
+      "path": "0001-113-competitor-v1-00-planted.json",
+      "prompt_index": 1,
+      "status": "completed"
+    },
+    {
+      "id": "113-competitor-v1-01-base",
+      "path": "0002-113-competitor-v1-01-base.json",
+      "prompt_index": 2,
+      "status": "completed"
+    },
+    {
+      "id": "113-competitor-v1-01-planted",
+      "path": "0003-113-competitor-v1-01-planted.json",
+      "prompt_index": 3,
+      "status": "completed"
+    },
+    {
+      "id": "113-competitor-v1-02-base",
+      "path": "0004-113-competitor-v1-02-base.json",
+      "prompt_index": 4,
+      "status": "completed"
+    },
+    {
+      "id": "113-competitor-v1-02-planted",
+      "path": "0005-113-competitor-v1-02-planted.json",
+      "prompt_index": 5,
+      "status": "completed"
+    },
+    {
+      "id": "113-competitor-v1-03-base",
+      "path": "0006-113-competitor-v1-03-base.json",
+      "prompt_index": 6,
+      "status": "completed"
+    },
+    {
+      "id": "113-competitor-v1-03-planted",
+      "path": "0007-113-competitor-v1-03-planted.json",
+      "prompt_index": 7,
+      "status": "completed"
+    }
+  ],
+  "runtime": {
+    "attention_implementation": "sdpa",
+    "model_path": "/clustergpu/home/jcampo/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct/snapshots/a09a35458c702b33eeacc393d103063234e8bc28",
+    "model_signature": {
+      "attention_implementation": "sdpa",
+      "buffer_bytes": 256,
+      "checkpoint_fingerprint": "6877e4da2a1d339c4c450ca175fd445bc1b2df2d433de152f501d0443017caff",
+      "checkpoint_fingerprint_kind": "model_metadata_signature_not_weight_hash",
+      "checkpoint_revision": "a09a35458c702b33eeacc393d103063234e8bc28",
+      "config_class": "Qwen2Config",
+      "device": "cuda:0",
+      "dtype": "torch.bfloat16",
+      "head_dim": 128,
+      "hidden_size": 3584,
+      "model_class": "Qwen2ForCausalLM",
+      "name_or_path": "/clustergpu/home/jcampo/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct/snapshots/a09a35458c702b33eeacc393d103063234e8bc28",
+      "num_attention_heads": 28,
+      "num_hidden_layers": 28,
+      "num_key_value_heads": 4,
+      "parameter_bytes": 15231233024,
+      "parameter_count": 7615616512,
+      "vocab_size": 152064
+    },
+    "platform": "Linux-5.14.0-611.55.1.el9_7.x86_64-x86_64-with-glibc2.34",
+    "python_version": "3.12.12",
+    "requested_device": "cuda",
+    "requested_dtype": "bfloat16",
+    "resolved_device": "cuda",
+    "resolved_dtype": "torch.bfloat16",
+    "seed": 0,
+    "torch_version": "2.10.0+cu128",
+    "transformers_version": "4.57.6"
+  },
+  "schema_version": "pair_pilot.v1",
+  "started_at_utc": "2026-09-17T18:42:41.770274+00:00",
+  "status": "completed"
+}
