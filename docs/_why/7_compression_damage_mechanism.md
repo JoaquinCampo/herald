@@ -2,6 +2,8 @@
 
 **Current state: completed reader/MLP intervention follow-up.** Read [record 14](14_mediation_state_summary.md) for the new evidence, deductions, counterexamples, and remaining tests. The complete companion report, effect/exception ledgers, tests and staged token/cache factorial are in `herald-mediation-reanalysis.zip`, delivered with this investigation. The preceding state of this entrypoint is preserved unchanged in [the pre-mediation archive](archive/7_compression_damage_mechanism_before_mediation.md). [Record 11](11_gpu_demand_conditioned_damage.md) retains the earlier array analysis; its proposed intervention has now been run, but its natural-path interpretation remains revisable.
 
+**Complementary reanalysis:** [context, token/cache channels and utility](14_mediation_context_and_quality.md) adds the full recipient-interaction comparison, survivor clamp controls, a broader 199-array conflict sensitivity check, and a second standalone packet cross-check. Both concurrent research records are preserved. The companion wrapper `staged_token_cache_cross.py` prelists 60 crossed and 125 early continuations with dense current-winner conflict observations; the alternative wrapper described in the state summary uses a different counting/design convention. Select one explicit plan rather than counting the two designs as independent evidence. Neither has new GPU results.
+
 ## Scope and evidence units
 
 One Qwen2.5-7B-Instruct checkpoint, eight NIAH prompts in four paired families. The latest collection is Knorm0.1: 30 eligible decisions, 390 patches plus 60 reference/compressed output records, and 75 full continuations at five first errors. There are 13 earlier decisions in eventually failed arms and 12 decisions in preserved arms. Conditions and repeated continuations are not independent prompts. Four first errors are final-digit truncations; only one is a middle-digit swap.
@@ -32,8 +34,12 @@ A new reference-free quantity projects the current run's last three MLP outputs 
 
 A task-aware period-runner marker flags the four upcoming truncations on this small slice. In the earlier72-arm archive it gives only7/22 early detections and49/50 preserved negatives. Its false positive is02-base/Knorm0.5. It needs known answer length; it is not a mode-general predictor.
 
+The broader stored-increment conflict check reads199 eligible older NPZ cells and verifies each payload hash. The exact new raw-module/global-runner feature cannot be reconstructed at all72 onset exports because runner-up readout rows are absent. A clearly separate smaller-candidate-set variant detects2/22 by sampled error, only1/22 early, with50/50 preserved unflagged. Sparse0/4/6 sampling misses the new offset5 conflict. Do not extrapolate3/5 or treat missing directions as safe negatives. Full tables and exceptions are in the complementary record's bundle.
+
 ## Reproduction and next evidence
 
 `herald-offline/scripts/mediation_core.py` independently checks the five fixed-margin contrasts, projected recovery and continuation counts from `HERALD_MEDIATION_TEXT_PACKET.md`. The full companion bundle includes a separate parser/auditor, complete source locators,28 passing targeted CPU tests, and a staged GPU runner. No new model forward pass was made here. Original full-logit/cache execution gates remain producer evidence; the new independent audit covers exported tables and selected prior NPZs.
+
+The complementary `herald-offline/scripts/mediation_packet_core.py` is byte-identical to its locally tested copy and reproduces the fixed contrasts, native conflict hits,44/75 first-score versus45/75 anywhere-score distinction, and9 distinct global response sequences (11 arm/sequence pairs). Its accompanying expanded analysis has39 targeted CPU tests (33 new plus6 preserved owner wrapper tests). These are separate analysis checks, not additional model experiments.
 
 The focused next test independently crosses the patched versus unpatched returned cache with the reference versus native current token. It also continues earlier token-preserving reader/final-MLP patches. This distinguishes output redirection from persistent-state repair. The staged code is CPU-tested and not GPU-executed. Raw evidence and large arrays remain outside Git.
