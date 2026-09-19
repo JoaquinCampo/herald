@@ -1,49 +1,37 @@
-# How KV-cache compression damages NIAH recall: current mechanism record
+# How KV-cache compression changes computation and answer quality
 
-**Current state: GPU follow-up reanalysis, 2026-09-18.** Start here; read [record 11](11_gpu_demand_conditioned_damage.md) for methods, counts, exceptions and remaining causal questions. The original 2026-09-18 record is preserved unchanged in [the historical archive](archive/7_compression_damage_mechanism_20260918.md). Its value-inertness and onset-intactness conclusions must not be treated as current knowledge.
+**Current state: mediation and continuation follow-up.** Start with [record 14](14_mediation_context_and_quality.md). [Record 11](11_gpu_demand_conditioned_damage.md) contains the prior exported-array reanalysis and anatomical/MLP observations. The original record is preserved in [the historical archive](archive/7_compression_damage_mechanism_20260918.md); its blanket value-inertness and onset-intactness claims are not current knowledge.
 
 ## Scope
 
-Qwen2.5-7B-Instruct, eight NIAH prompts in four base/planted families. The original corpus has 80 repeated-treatment arms. The GPU follow-up has 72 non-excision arms: 22 damaged and 50 preserved. There are 406 paired comparisons at offsets 0/4/6, representing 297 distinct arm/prefix/position contexts, not 406 independent examples. Same emitted tokens do not imply identical generated K/V. Task damage means original free-running exact-number recall loss, not arbitrary next-token disagreement or continuous prose quality.
+One Qwen2.5-7B-Instruct checkpoint; eight prompts/four paired families. Original80 arms; earlier GPU72 non-excision arms and406 paired comparisons (297 contexts). New mediation:30 native-prefix decisions,390 patches,60 baseline outputs and75 continuations at five first errors in three families. Repeated conditions and duplicate trajectories are not independent examples. No predictor/controller/compressor is being built.
 
 ## Current account
 
-Compression removes source-reading paths unevenly across grouped-query attention. The significance of a removed path depends on query, cache history, transformed values and downstream computation. At the sampled wrong decisions under correct reference prefixes, large losses of signed decision support are expressed through late MLP residual updates. Whether a decision survives depends on remaining signed margin, not missing attention mass alone. Wrong digits, closure tokens and still-correct digits then lead to different trajectories.
+Compression changes source access unevenly across grouped-query attention. The significance depends on the demanded computation, transformed values and recipient state. Earlier arrays localized large signed-margin changes to late MLP residual updates. The completed interventions now show that allowing MLP25-27 to respond to restored readers adds5.625-10.375 logits in all five sampled first errors. Freezing them removes binary correction in only3/5; the remaining two small positive margins do not imply absent mediation.
 
-This is a supported working account, not a fully established causal circuit. In particular, the proposed path from the identified reader groups to the late MLP response still needs interchange/mediation tests. Readout bookkeeping is not causal attribution.
+That is mediation of a defined oracle patch, not a unique natural cause or a fraction of compression damage. The same captured compressed MLP outputs coexist with0/5,2/5 or3/5 correct decisions in different recipient settings. Reference backgrounds resist reverse-reader patches partly through lower susceptibility in the four truncations, not merely greater starting reserve. Comparable reader/MLP responsiveness occurs in preserved cases.
 
-## What the new evidence changes
+Joint-reader binary rescue5/5 is compatible with subadditive fixed-margin interactions5/5. L23G2 alone repairs0/5 despite its earlier anatomical prominence; alternative L23G1 repairs4/5. It is an active comparator, not an inert sham. Correct continuation does not require every late module to have a positive or reference-like projection.
 
-**Values are not ruled out.** Correctly mapped mean-V interventions change the selected token in 4/7 compressed conditions; legacy targeting changed 0/7. In the clean competitor swap, replacing distractor values changes `7` to the correct `2`, while replacing both sources produces a period. The correct/distractor logit margin is -4.75 at baseline, -7.125 with needle replacement, +15.875 with distractor replacement and -1 with both: a -14.5-unit factorial interaction. These are one-step interventions, not verified full-answer rescues.
+## Separate token, state and utility
 
-**Early anatomical damage exists, but is nonspecific.** At native onset, 26/32 nonzero Knorm arms lose over 80% of L23 last-two-digit attention. This includes 21 failures and five successes. In all 26, L23 KV group 2 (query heads 14–20) loses its tail mass already at fixed-query deletion. That group originally carries 83.08–93.00% of the layer's tail attention. Unweighted source-survival counts conceal the concentration.
+The supplied continuations remove hooks after one forward but retain both its selected token and returned K/V. Earlier-layer patches can change the newly written input-token K/V in higher layers; old slots are not restored. In the pinned decoder, MLP27 comes after all K/V writes. A final-MLP-only patch that leaves the greedy token unchanged is therefore predicted to leave the whole future unchanged, under identical persistent state and removed hooks. This is a formal conditional deduction with exact GPU gates staged, not an additional measurement.
 
-**Anatomy is not fixed signed support.** For those 26 arms, the recorded FP32 deletion output projected on the same final-truth-digit/period direction is positive at onset and negative at final-digit demand, 26/26. Query and generated history both change between those states; tiny signs lack native per-contrast error bounds. This is not a query-only causal test.
+At four actual truncation errors, MLP27-only patches change the last digit and repair the first answer without needing prior-cache repair. All five intervention sites are the last independent truth/distractor distinction (the swap has shared suffix04), so0/5 tests another independent retrieval choice after repair. Do not infer restored source-reading capacity from completion alone.
 
-**The late decision is constructed differently.** Under correct reference prefixes there are 28 sampled wrong decisions across 21 damaged arms; `00-planted/knorm:0.05` fails at an unsampled time. In 28/28, the summed reference MLP updates support the correct token and the compressed updates oppose it. In 28/28, the MLP contribution change exceeds the attention contribution change. L25–27 MLP increments account for 60.0–96.5%, median 78.6%, of the signed margin loss under common-scale stored-update accounting. This does not mean those layers uniquely cause that percentage of the error. All 150 reference-owned sampled decisions of preserved arms remain correct.
+The75 continuations contain9 distinct full token sequences (11 arm/sequence pairs). All44 immediately correct decisions give correct first numbers; all31 wrong decisions give wrong first numbers. Any-exact-number credit is45/75, not44/75: reverseMLPs in01-planted produce an incorrect first number followed by a contradictory explanation mentioning truth. This is a utility difference, not demonstrated first-answer repair.
 
-**Wrong emitted history is not necessary for the sampled first errors.** At all 16 native snapshots exactly at the first error, a full-reference forward using the same emitted prefix selects the correct token while the compressed forward does not. Generated cache states may already differ.
+## Signals: changed computation is not anticipated quality loss
 
-## Three-family terminology
+Earlier onset tail deficits/Jacobian changes precede errors but also occur in survivors. A new gold-free readout statistic projects the final three raw MLP outputs onto current winner minus current runner-up. Negative support occurs before3/5 native failures and in0/3 preserved arms at the sampled checkpoints; misses00-base/02-planted. It becomes positive at the five wrong decisions when the winner changes. This transient pattern is exploratory, not held-out validation. Under intervention it is negative in five correct and five wrong answers.
 
-Tail collapse and competitor surge remain useful access/readout descriptions. Cascade is a temporal behavior, not a demonstrated disjoint circuit. Do not identify attention with factual evidence and MLPs with an unchanged prior: in these records reference MLP updates provide substantial correct support. The exact gates and features underlying their changed response remain unmeasured.
+The broader older-array stored-increment variant is not the same feature: with0/4/6 sampling and a smaller candidate set it flags2/22 failures by error, only1/22 early, with50/50 preserved unflagged. Full-vocabulary runner-up rows are missing at72 onset exports. Do not treat missing observations as safe negatives or extrapolate the small3/5 result.
 
-Pinned and streaming successes still show that retained-position identity matters, but they retain K/V jointly and do not establish routing-only rescue. The old excision deletes the entire 22-token needle union across all heads; it is not a sparse global anchor-necessity experiment. The decisive-digit-position association remains a four-family confounded observation, not a tested protection law.
+Detecting a changed computation, an approaching token boundary and loss of a declared utility require different information. Own-stream logits, oracle source spans, reference donors and future truth directions have different costs and privileges. No continuous severity scale follows from exact-number recall.
 
-## Early signals
+## Reproduce and continue
 
-On the 72-arm GPU population, onset L23 tail ratio <0.2 has sensitivity 21/22 and specificity 45/50; within the ten preserved nonzero Knorm arms, specificity is only 5/10. Its detected failures are 2–6 token decisions ahead of their first error. Its failure miss is `02-planted/knorm:0.1`; preserved positives are `02-base/knorm:0.25`, `02-base/knorm:0.5`, `03-base/knorm:0.1`, `03-base/knorm:0.25`, and `03-planted/knorm:0.1`.
+[Record14](14_mediation_context_and_quality.md) records counts, exceptions, fixed-contrast calculations and the focused next handoff. `herald-offline/scripts/mediation_packet_core.py` checks the core results directly from the readable packet without model imports. The companion `herald-mediation-reanalysis.zip` preserves the full analysis, ledgers, tests and staged token/cache cross runner.
 
-An onset relative query-Jacobian norm threshold >0.25 also detects 21/22, but specificity is 43/50, or 3/10 within ordinary Knorm survivors. Functional change is not the same as failed quality.
-
-The own-stream digit-gap threshold <ln(10,000) detects 21/22 overall, 14/22 on an earlier decision and 5/22 at least two decisions early; pooled specificity is 44/50, within ordinary Knorm survivors 4/10. Digit entropy >0.02 detects 18/22 overall but only 7/22 early. These are descriptive thresholds, not fitted or held-out validated predictors. Internal reference-access/oracle measurements must not be presented as cheap operational warnings.
-
-Negative summed MLP support at the sampled 0/4/6 positions detects 16/22 by the first error decision, with specificity 48/50, but 0/22 with a positive observed token lead. It is an oracle same-step diagnostic. Missing intermediate checkpoints leave its earlier timing unresolved.
-
-## Reproduction and next evidence
-
-`herald-offline/scripts/gpu_followup_core.py` independently reproduces the primary counts from the returned three-ZIP package, streaming its large trace and loading the exported NPZs. It uses NumPy and makes no model forwards. The complete companion analysis bundle, `herald-gpu-reanalysis.zip`, contains the full cell/exception/signal ledgers, a second analysis implementation, tests, and the staged head/MLP mediation script. The raw GPU archives remain outside Git.
-
-The next causal test restores reference head outputs in compression, then repeats that intervention while freezing late MLP outputs at their original compressed values. Reverse patches, self-patch parity and a same-sized different-head-group control are included. The staged script is CPU-tested and compiled, not GPU-executed. Immediate corrections must not be called repaired recall until full continuations are measured.
-
-All 1,246 input payload hashes were checked; 812 exported array hashes, 24 no-op equalities and the separate exported-array audit pass. There were no new model forwards. The analysis outputs regenerate byte-identically and 69 targeted tests pass. Full-repository testing, Ruff and mypy are not certified.
+Next:60 token-by-cache crossed continuations and125 same-token early continuations, with dense conflict observations and exact cache/trajectory gates. These scripts are CPU-tested and compiled, not GPU-executed. All older research records are retained unchanged; raw GPU arrays and user packets remain outside Git.
