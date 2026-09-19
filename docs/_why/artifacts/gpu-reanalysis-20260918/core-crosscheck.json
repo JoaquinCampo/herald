@@ -1,0 +1,23 @@
+{
+  "MLP_larger_than_attention": 28,
+  "MLP_positive_alignment": 28,
+  "comp_MLP_negative": 28,
+  "comparisons": 406,
+  "coordinate_factorial": -14.5,
+  "late_MLP_fraction_median": 0.7863036274424074,
+  "late_MLP_fraction_range": [0.6001339076428183, 0.9649630924367838],
+  "max_odds_identity_error": 0.0000133514404296875,
+  "noop": 24,
+  "npz_hashes": 812,
+  "preserved_reference_correct": [150, 150],
+  "recorded_projection_sign_reversal": 26,
+  "ref_MLP_positive": 28,
+  "scope": "8 prompts, 4 families; repeated arms. FP32 bridge signs lack per-contrast native error bounds. Stored-update accounting is not causal attribution.",
+  "severe_damaged": 21,
+  "severe_group_zero": 26,
+  "severe_preserved_ids": ["02-base/knorm:0.25", "02-base/knorm:0.5", "03-base/knorm:0.1", "03-base/knorm:0.25", "03-planted/knorm:0.1"],
+  "severe_tail": 26,
+  "source_odds_checks": 967974,
+  "unique_contexts": 297,
+  "wrong_reference_prefix_cells": 28
+}
